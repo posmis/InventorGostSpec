@@ -67,11 +67,10 @@ internal sealed class GostText
 
         // В однострочной графе (обозначение, подписи) ручной перенос строки — просто пробел.
         text = string.Join(" ", text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
-        // Сжимается только сама строка; вынос наклона от сжатия не зависит.
-        var raw = RawWidth(text, capHeight);
-        var overhang = Overhang(capHeight);
-        var scale = raw + overhang > maxWidth && raw > 0 ? Math.Max(maxWidth - overhang, raw * 0.1) / raw : 1;
-        var drawn = raw * scale + overhang;
+        // Как в КОМПАС-3D: сжимается наклонённый текст целиком — вместе с шириной уменьшается и наклон.
+        var full = Measure(text, capHeight);
+        var scale = full > maxWidth ? maxWidth / full : 1;
+        var drawn = full * scale;
         var left = align switch
         {
             TextAlign.Center => x + (maxWidth - drawn) / 2,
@@ -82,8 +81,8 @@ internal sealed class GostText
         var state = gfx.Save();
         gfx.TranslateTransform(left, baseline);
 
-        // Сжатие по ширине и наклон: x' = scale·x − shear·y (ось Y направлена вниз, буквы — выше базовой линии).
-        gfx.MultiplyTransform(new XMatrix(scale, 0, -GostLayout.ItalicShear, 1, 0, 0));
+        // Наклон, затем сжатие: x' = scale·(x − shear·y) (ось Y направлена вниз, буквы — выше базовой линии).
+        gfx.MultiplyTransform(new XMatrix(scale, 0, -GostLayout.ItalicShear * scale, 1, 0, 0));
         gfx.DrawString(text, Font(capHeight), XBrushes.Black, 0, 0, XStringFormats.BaseLineLeft);
         gfx.Restore(state);
         return drawn;

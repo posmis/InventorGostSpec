@@ -62,7 +62,7 @@ public static class GostLayout
     public const double LineSpacing = 1.2;
 
     /// <summary>Отступ в узкой графе «Формат», чтобы сжатый шрифт 5 был читаемым.</summary>
-    public const double NarrowPadding = 0.3;
+    public const double NarrowPadding = 0.5;
 
     /// <summary>Наименование изделия в основной надписи — шрифт 5 (3,5, если не помещается в две строки).</summary>
     public const double NameTextHeight = 5;

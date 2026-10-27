@@ -53,6 +53,21 @@ public static class SpecificationEditor
         }
     }
 
+    /// <summary>
+    /// Обновляет строку компонента по свежим данным из Inventor после правки его iProperties из спецификации.
+    /// Изменение не подсвечивается (его сделал пользователь). Если сменился раздел, строка переходит
+    /// в конец нового раздела своей группы и получает номер позиции из его резерва.
+    /// </summary>
+    public static void RefreshComponent(Specification spec, SpecificationContext context, SpecRow row, ComponentData data)
+    {
+        var oldSection = row.SectionId;
+        row.Source = ComponentSnapshot.FromComponent(data);
+        if (!string.Equals(oldSection, row.SectionId, StringComparison.OrdinalIgnoreCase))
+        {
+            OnSectionChanged(spec, context, row);
+        }
+    }
+
     /// <summary>Снимает ручное переопределение ячейки строки компонента.</summary>
     public static void ClearOverride(Specification spec, SpecificationContext context, SpecRow row, SpecColumn column)
     {

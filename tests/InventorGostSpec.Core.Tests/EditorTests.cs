@@ -105,6 +105,24 @@ public class EditorTests
     }
 
     [Fact]
+    public void Refresh_component_moves_row_to_new_section_without_highlight()
+    {
+        var (spec, context) = Build();
+        var row = TestData.ByName(spec, "Вторая");
+        var data = TestData.Part("А.002", "Вторая");
+        data.SectionId = SectionIds.StandardProducts;
+
+        SpecificationEditor.RefreshComponent(spec, context, row, data);
+
+        Assert.Equal(SectionIds.StandardProducts, row.SectionId);
+        Assert.Equal("Вторая", TestData.Names(spec).Last());
+        Assert.Equal(RowStatus.None, row.Status);
+        Assert.Equal(7, row.Position);
+        // ГОСТ: у стандартных изделий графа «Обозначение» пустая.
+        Assert.Equal("", row.Get(SpecColumn.Designation));
+    }
+
+    [Fact]
     public void Manual_item_gets_reserve_position_and_component_rows_cannot_be_deleted()
     {
         var (spec, context) = Build();

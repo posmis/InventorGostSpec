@@ -66,7 +66,7 @@ internal static class AssemblyReader
         };
     }
 
-    private static decimal Quantity(BOMRow row)
+    internal static decimal Quantity(BOMRow row)
     {
         try
         {

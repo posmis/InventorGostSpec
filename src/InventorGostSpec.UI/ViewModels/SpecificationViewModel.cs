@@ -60,6 +60,7 @@ public sealed class SpecificationViewModel : ObservableObject
         ReservesCommand = new RelayCommand(EditReserves);
         SaveCommand = new RelayCommand(Save, () => IsDirty);
         WritePositionsCommand = new RelayCommand(WritePositions);
+        EditComponentCommand = new RelayCommand(EditComponent, () => CanEditComponent(SelectedRow?.Row));
         NextChangeCommand = new RelayCommand(GoToNextChange, () => Specification.Rows.Any(r => r.Status != RowStatus.None));
         ClearSearchCommand = new RelayCommand(() => SearchText = "", () => IsSearching);
 
@@ -145,6 +146,9 @@ public sealed class SpecificationViewModel : ObservableObject
     public ICommand SaveCommand { get; }
     public ICommand WritePositionsCommand { get; }
     public ICommand NextChangeCommand { get; }
+
+    /// <summary>Свойства компонента (раздел, формат, поля сортировки) — записываются в его iProperties.</summary>
+    public ICommand EditComponentCommand { get; }
     public ICommand ClearSearchCommand { get; }
 
     /// <summary>Поиск по обозначению, наименованию, примечанию и позиции. Показываются только найденные строки.</summary>
@@ -575,6 +579,46 @@ public sealed class SpecificationViewModel : ObservableObject
         new[] { SpecColumn.Designation, SpecColumn.Name, SpecColumn.Note, SpecColumn.Position, SpecColumn.Format, SpecColumn.Zone }
             .Any(c => row.Get(c).Replace('ё', 'е').Replace('Ё', 'Е')
                 .Contains(text.Replace('ё', 'е').Replace('Ё', 'Е'), StringComparison.CurrentCultureIgnoreCase));
+
+    /// <summary>У строки есть компонент в сборке, которому можно задать свойства (не документ и не удалённый).</summary>
+    private static bool CanEditComponent(SpecRow? row) =>
+        row is { Kind: RowKind.Component, IsRemoved: false, ComponentKey: { } key } && !key.StartsWith("drawing:", StringComparison.Ordinal);
+
+    private void EditComponent()
+    {
+        var row = SelectedRow?.Row;
+        if (!CanEditComponent(row))
+        {
+            return;
+        }
+
+        var key = row!.ComponentKey!;
+        var current = _host.ReadComponentProperties(key);
+        if (current is null)
+        {
+            _dialogs.Warning("Компонент не найден в сборке. Обновите спецификацию из сборки.");
+            return;
+        }
+
+        // Только общий справочник разделов: раздел записывается в файл детали и должен быть понятен в других сборках.
+        var sections = SpecificationContext.Create(_settings, new Specification()).Catalog.Sections;
+        var title = string.Join(" ", new[] { row.Get(SpecColumn.Designation), row.Get(SpecColumn.Name) }.Where(s => s.Length > 0));
+        var viewModel = new AssignSectionViewModel(sections, current, $"{title}\nСвойства записываются в файл компонента и действуют во всех сборках.");
+        if (!_dialogs.EditComponentProperties(viewModel))
+        {
+            return;
+        }
+
+        var changes = viewModel.GetChanges();
+        if (changes.Count == 0)
+        {
+            return;
+        }
+
+        var data = _host.WriteComponentProperties(key, changes);
+        SpecificationEditor.RefreshComponent(Specification, _context, row, data);
+        Changed(rebuild: true, selectRowId: row.Id);
+    }
 
     /// <summary>Выделяет следующую подсвеченную строку (новую, изменённую или удалённую), по кругу.</summary>
     private void GoToNextChange()

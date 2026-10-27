@@ -36,6 +36,43 @@ internal sealed class FakeHost : ISpecificationHost
     }
 
     public void ReportError(Exception exception) => throw exception;
+
+    /// <summary>iProperties SPEC_* компонентов по ключу.</summary>
+    public Dictionary<string, Dictionary<string, string>> Properties { get; } = new();
+
+    public IReadOnlyDictionary<string, string?>? ReadComponentProperties(string componentKey)
+    {
+        if (Components.All(c => c.Key != componentKey))
+        {
+            return null;
+        }
+
+        return Properties.TryGetValue(componentKey, out var values)
+            ? values.ToDictionary(p => p.Key, p => (string?)p.Value)
+            : new Dictionary<string, string?>();
+    }
+
+    public ComponentData WriteComponentProperties(string componentKey, IReadOnlyDictionary<string, string> changes)
+    {
+        var values = Properties.TryGetValue(componentKey, out var existing) ? existing : Properties[componentKey] = new();
+        foreach (var (name, value) in changes)
+        {
+            values[name] = value;
+        }
+
+        var component = Components.Single(c => c.Key == componentKey);
+        if (changes.TryGetValue(Core.Storage.PropertyNames.Section, out var section))
+        {
+            component.SectionId = section;
+        }
+
+        if (changes.TryGetValue(Core.Storage.PropertyNames.Format, out var format))
+        {
+            component.Format = format;
+        }
+
+        return component;
+    }
 }
 
 internal sealed class FakeDialogs : IDialogService
@@ -66,6 +103,14 @@ internal sealed class FakeDialogs : IDialogService
     {
         OnNewSection?.Invoke(viewModel);
         return OnNewSection is not null;
+    }
+
+    public Action<AssignSectionViewModel>? OnComponentProperties { get; set; }
+
+    public bool EditComponentProperties(AssignSectionViewModel viewModel)
+    {
+        OnComponentProperties?.Invoke(viewModel);
+        return OnComponentProperties is not null;
     }
 
     public bool EditGroup(GroupViewModel viewModel)

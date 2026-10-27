@@ -354,6 +354,42 @@ public class SpecificationViewModelTests
     }
 
     [Fact]
+    public void Component_properties_are_written_and_row_moves_to_new_section()
+    {
+        var vm = Open();
+        vm.SelectedRow = RowByName(vm, "Ось");
+        Assert.True(vm.EditComponentCommand.CanExecute(null));
+        _dialogs.OnComponentProperties = props =>
+        {
+            props.SelectedSection = props.Sections.Single(s => s.Id == SectionIds.StandardProducts);
+            props.Format.Value = "А4";
+        };
+
+        vm.EditComponentCommand.Execute(null);
+
+        Assert.Equal(SectionIds.StandardProducts, _host.Properties["А.002.ipt"][PropertyNames.Section]);
+        Assert.Equal("А4", _host.Properties["А.002.ipt"][PropertyNames.Format]);
+        var row = RowByName(vm, "Ось");
+        Assert.Equal(SectionIds.StandardProducts, row.SectionId);
+        Assert.Equal("А4", row.Format);
+        Assert.False(row.IsChanged);
+        Assert.Same(row, vm.SelectedRow);
+        Assert.True(vm.IsDirty);
+    }
+
+    [Fact]
+    public void Component_properties_are_not_available_for_manual_rows()
+    {
+        var vm = Open();
+        vm.SelectedRow = vm.Rows.First(r => r.IsReserve);
+        vm.AddItemCommand.Execute(null);
+
+        Assert.False(vm.EditComponentCommand.CanExecute(null));
+        vm.SelectedRow = vm.Rows[0];
+        Assert.False(vm.EditComponentCommand.CanExecute(null));
+    }
+
+    [Fact]
     public void Search_shows_matching_rows_with_their_headers()
     {
         var vm = Open();

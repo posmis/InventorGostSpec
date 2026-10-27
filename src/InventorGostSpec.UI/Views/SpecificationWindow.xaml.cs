@@ -74,6 +74,9 @@ public partial class SpecificationWindow : Window, IDialogService
     public bool EditReserves(ReserveSettingsViewModel viewModel) =>
         new ReserveSettingsWindow(viewModel) { Owner = this }.ShowDialog() == true;
 
+    public bool EditComponentProperties(AssignSectionViewModel viewModel) =>
+        new AssignSectionWindow(viewModel) { Owner = this }.ShowDialog() == true;
+
     public bool EditGroup(GroupViewModel viewModel) =>
         new GroupWindow(viewModel) { Owner = this }.ShowDialog() == true;
 

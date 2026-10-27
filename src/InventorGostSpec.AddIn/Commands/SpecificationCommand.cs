@@ -80,6 +80,34 @@ internal sealed class SpecificationCommand : AddInCommand
             return report + "\n\nСохраните сборку, чтобы изменения записались в файл.";
         }
 
+        public IReadOnlyDictionary<string, string?>? ReadComponentProperties(string componentKey)
+        {
+            var item = FindItem(componentKey);
+            return item is null
+                ? null
+                : ComponentTarget.SpecProperties.ToDictionary(name => name, name => (string?)item.Target.Get(name));
+        }
+
+        public ComponentData WriteComponentProperties(string componentKey, IReadOnlyDictionary<string, string> changes)
+        {
+            var item = FindItem(componentKey) ?? throw new InvalidOperationException("Компонент не найден в сборке.");
+            using (var transaction = new InventorTransaction(_context.Application, (Document)_assembly, "Свойства компонента"))
+            {
+                foreach (var (name, value) in changes)
+                {
+                    item.Target.Set(name, value);
+                }
+
+                transaction.Commit();
+            }
+
+            return AssemblyReader.ToComponentData(item.Target, item.Key, AssemblyReader.Quantity(item.Row));
+        }
+
         public void ReportError(Exception exception) => Log.Error("SpecificationWindow", exception);
+
+        private BomItem? FindItem(string componentKey) =>
+            BomAccess.GetFirstLevel(_assembly)
+                .FirstOrDefault(i => string.Equals(i.Key, componentKey, StringComparison.OrdinalIgnoreCase));
     }
 }

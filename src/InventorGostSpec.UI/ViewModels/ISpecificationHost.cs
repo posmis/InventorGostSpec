@@ -21,6 +21,18 @@ public interface ISpecificationHost
     /// <summary>Записывает номера позиций в BOM Inventor и возвращает отчёт для пользователя.</summary>
     string WritePositions(Specification specification);
 
+    /// <summary>
+    /// Текущие значения свойств спецификации (iProperties SPEC_*) компонента.
+    /// <c>null</c> — компонента нет в сборке.
+    /// </summary>
+    IReadOnlyDictionary<string, string?>? ReadComponentProperties(string componentKey);
+
+    /// <summary>
+    /// Записывает свойства в iProperties компонента (имя свойства → значение, пустое — удалить)
+    /// и возвращает его свежие данные для обновления строки.
+    /// </summary>
+    ComponentData WriteComponentProperties(string componentKey, IReadOnlyDictionary<string, string> changes);
+
     /// <summary>Записывает непредвиденную ошибку окна в журнал.</summary>
     void ReportError(Exception exception);
 }
@@ -42,4 +54,6 @@ public interface IDialogService
     bool EditReserves(ReserveSettingsViewModel viewModel);
 
     bool EditGroup(GroupViewModel viewModel);
+
+    bool EditComponentProperties(AssignSectionViewModel viewModel);
 }

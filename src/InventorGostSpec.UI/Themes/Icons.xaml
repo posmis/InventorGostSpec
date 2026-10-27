@@ -315,6 +315,23 @@
             </DrawingGroup>
         </DrawingImage.Drawing>
     </DrawingImage>
+    <DrawingImage x:Key="Icon.Properties">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="Transparent" Geometry="M 0 0 L 16 0 L 16 16 L 0 16 Z" />
+                <GeometryDrawing Brush="#F5C342" Geometry="M 7.5 1.5 L 14.5 1.5 L 14.5 7.5 L 7.5 14.5 L 1.5 8.5 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#A87B0C" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Geometry="M 11.5 4.5 L 11.5 4.5">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#A87B0C" Thickness="2" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
     <DrawingImage x:Key="Icon.Search">
         <DrawingImage.Drawing>
             <DrawingGroup>

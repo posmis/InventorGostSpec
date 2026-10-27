@@ -58,10 +58,10 @@ public static class GostLayout
     public const double ItalicShear = 0.364;
 
     /// <summary>
-    /// Базовая линия текста в графе — ниже середины, как в КОМПАС-3D: в строке 8 мм — на 1,5 мм выше нижней линии,
-    /// в графе основной надписи 5 мм — почти на линии.
+    /// Расстояние от нижней линии графы до базовой линии текста: текст по центру графы по высоте, как в основной
+    /// надписи КОМПАС-3D. Строки таблицы спецификации — см. <see cref="RowBaselineGap"/>.
     /// </summary>
-    public static double BaselineGap(double cellHeight, double capHeight) => Math.Max(0.3, (cellHeight - capHeight) / 2 - 0.75);
+    public static double BaselineGap(double cellHeight, double capHeight) => Math.Max(0.3, (cellHeight - capHeight) / 2);
 
     /// <summary>Базовая линия в строке таблицы — на 1,5 мм выше нижней линии (как в КОМПАС-3D), с местом для подчёркивания.</summary>
     public const double RowBaselineGap = 1.5;

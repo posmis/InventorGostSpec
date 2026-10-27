@@ -41,7 +41,7 @@ public static class GostPdfWriter
         return pages.Count;
     }
 
-    /// <summary>Входит ли лист в графу «Лист» записи изменения («2», «1-3», «1, 4»). Без номеров — первый лист.</summary>
+    /// <summary>Входит ли лист в графу «Лист» записи изменения («2», «1-3», «1, 4»). Без номеров — только первый лист.</summary>
     public static bool SheetMatches(string sheets, int sheet)
     {
         var any = false;
@@ -287,12 +287,13 @@ public static class GostPdfWriter
         }
 
         /// <summary>
-        /// Записи изменений этого листа — в две строки над заголовком, снизу вверх по порядку внесения;
-        /// если записей больше, выводятся последние.
+        /// Записи изменений в две строки над заголовком, снизу вверх по порядку внесения; если записей больше,
+        /// выводятся последние. На первом листе — все изменения документа, на остальных — изменения этого листа
+        /// (по графе «Лист»).
         /// </summary>
         private void DrawChanges()
         {
-            var changes = _title.Changes.Where(c => SheetMatches(c.Sheet, _index + 1)).TakeLast(2).ToList();
+            var changes = _title.Changes.Where(c => First || SheetMatches(c.Sheet, _index + 1)).TakeLast(2).ToList();
             var headerTop = TitleTop + 10;
             for (var i = 0; i < changes.Count; i++)
             {

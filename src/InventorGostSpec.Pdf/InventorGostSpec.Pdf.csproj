@@ -10,6 +10,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Шрифт по умолчанию — поставляется вместе с утилитой. -->
+    <None Include="Fonts\*.ttf" CopyToOutputDirectory="PreserveNewest" LinkBase="Fonts" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\InventorGostSpec.Excel\InventorGostSpec.Excel.csproj" />
   </ItemGroup>
 

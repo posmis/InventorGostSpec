@@ -156,12 +156,13 @@ public static class SpecPaginator
             case ExcelFormat.RowTypes.Text:
                 return new Block(Wrap(row.Name, nameWidth, measure).Select(text => new PrintLine { Name = text }).ToList(), false);
 
+            // Резерв — просто свободная строка, номер позиции не печатается.
             case "":
+            case ExcelFormat.RowTypes.Reserve:
                 return new Block(new List<PrintLine> { PrintLine.Blank }, false);
 
             default:
             {
-                // Изделие и резерв (резерв — пустая строка, номер позиции печатается, если оставлен).
                 var designation = Wrap(row.Designation, GostLayout.TextWidth(GostLayout.DesignationColumn), measure);
                 var name = Wrap(row.Name, nameWidth, measure);
                 var note = Wrap(row.Note, GostLayout.TextWidth(GostLayout.NoteColumn), measure);
@@ -182,11 +183,22 @@ public static class SpecPaginator
         }
     }
 
+    /// <summary>Насколько можно сжать текст по ширине, чтобы не переносить его (80 %).</summary>
+    public const double MinCompression = 0.8;
+
     /// <summary>
     /// Перенос по словам (и после дефиса). Явный перенос строки в ячейке сохраняется.
-    /// Слово длиннее графы остаётся целым — при выводе оно сжимается по ширине.
+    /// Если текст чуть-чуть не помещается и сжатие до 80 % по ширине экономит строку — не переносим, при выводе он сжимается.
+    /// Слово длиннее графы остаётся целым и тоже сжимается.
     /// </summary>
     public static List<string> Wrap(string text, double width, Func<string, double, double> measure)
+    {
+        var normal = WrapAt(text, width, measure);
+        var compressed = WrapAt(text, width / MinCompression, measure);
+        return compressed.Count < normal.Count ? compressed : normal;
+    }
+
+    private static List<string> WrapAt(string text, double width, Func<string, double, double> measure)
     {
         var result = new List<string>();
         foreach (var paragraph in text.Replace("\r", "").Split('\n'))

@@ -19,6 +19,9 @@ public sealed record InstalledFont(string Family, string Style, string Path)
 /// </summary>
 public static class FontLocator
 {
+    /// <summary>Шрифт, поставляемый с утилитой (папка Fonts рядом с программой), — по умолчанию.</summary>
+    public static string BundledFontPath => Path.Combine(AppContext.BaseDirectory, "Fonts", "gost_merged.ttf");
+
     /// <summary>Шрифты ГОСТ 2.304 в порядке предпочтения: КОМПАС, AutoCAD, свободные.</summary>
     public static readonly string[] GostFamilies =
     {
@@ -38,7 +41,8 @@ public static class FontLocator
         GostFamilies.Where(f => All.Any(font => font.Family.Equals(f, StringComparison.OrdinalIgnoreCase))).ToList();
 
     /// <summary>
-    /// Файл шрифта: указанное семейство (или путь к .ttf), иначе первый найденный шрифт ГОСТ, иначе запасной.
+    /// Файл шрифта: указанное семейство (или путь к .ttf), иначе поставляемый шрифт «Gost merged»,
+    /// иначе первый установленный шрифт ГОСТ, иначе запасной.
     /// </summary>
     public static InstalledFont? Find(string? family)
     {
@@ -49,11 +53,17 @@ public static class FontLocator
                 return ReadNames(family) is { } names ? names with { Path = family } : null;
             }
 
-            return FindFamily(family.Trim());
+            return Bundled() is { } bundled && bundled.Family.Equals(family.Trim(), StringComparison.OrdinalIgnoreCase)
+                ? bundled
+                : FindFamily(family.Trim());
         }
 
-        return GostFamilies.Concat(FallbackFamilies).Select(FindFamily).FirstOrDefault(f => f is not null);
+        return Bundled() ?? GostFamilies.Concat(FallbackFamilies).Select(FindFamily).FirstOrDefault(f => f is not null);
     }
+
+    /// <summary>Поставляемый шрифт; <c>null</c> — файла нет.</summary>
+    public static InstalledFont? Bundled() =>
+        File.Exists(BundledFontPath) && ReadNames(BundledFontPath) is { } font ? font with { Path = BundledFontPath } : null;
 
     private static InstalledFont? FindFamily(string family)
     {

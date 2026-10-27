@@ -50,7 +50,7 @@
 
             <TextBlock Grid.Row="4" Style="{StaticResource Label}" Text="Шрифт" />
             <ComboBox x:Name="FontBox" Grid.Row="4" Grid.Column="1" IsEditable="True" Padding="4,3"
-                      ToolTip="Шрифт ГОСТ 2.304: «GOST type B», «GOST type A» (КОМПАС-3D), ISOCPEUR (AutoCAD) или путь к файлу .ttf. Пусто — первый найденный шрифт ГОСТ." />
+                      ToolTip="Шрифт ГОСТ 2.304: «GOST type B», «GOST type A» (КОМПАС-3D), ISOCPEUR (AutoCAD) или путь к файлу .ttf. «Автоматически» — шрифт Gost merged, поставляемый с утилитой." />
             <TextBlock x:Name="FontHint" Grid.Row="5" Grid.Column="1" Foreground="#6B7280" Margin="0,4,0,0" TextWrapping="Wrap" />
         </Grid>
 

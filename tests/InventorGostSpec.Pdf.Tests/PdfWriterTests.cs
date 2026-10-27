@@ -31,7 +31,7 @@ public class PdfWriterTests : IDisposable
             file.Rows.Add(new SheetRow("", "А4", "", i.ToString(), $"АБВГ.715431.{i:000}", $"Деталь {i}", "1", "", ""));
         }
 
-        Assert.NotNull(FontLocator.Find(null));
+        Assert.Equal("Gost merged", FontLocator.Find(null)!.Family);
         var pages = GostPdfWriter.Write(file, new PdfOptions(), _pdf);
 
         Assert.Equal(2, pages);

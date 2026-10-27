@@ -18,7 +18,13 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         var installed = FontLocator.InstalledGostFamilies();
+        var bundled = FontLocator.Bundled();
         FontBox.Items.Add(AutoFont);
+        if (bundled is not null)
+        {
+            FontBox.Items.Add(bundled.Family);
+        }
+
         foreach (var family in installed)
         {
             FontBox.Items.Add(family);
@@ -26,9 +32,11 @@ public partial class MainWindow : Window
 
         FontBox.Items.Add("Arial");
         FontBox.Text = _settings.Font.Length > 0 ? _settings.Font : AutoFont;
-        FontHint.Text = installed.Count > 0
-            ? $"Найдены шрифты ГОСТ: {string.Join(", ", installed)}."
-            : "Шрифты ГОСТ не найдены — будет использован Arial. Установите «GOST type B» (КОМПАС-3D) или ISOCPEUR либо укажите путь к .ttf.";
+        FontHint.Text = bundled is not null
+            ? $"Автоматически — «{bundled.Family}» (поставляется с утилитой)."
+            : installed.Count > 0
+                ? $"Найдены шрифты ГОСТ: {string.Join(", ", installed)}."
+                : "Шрифты ГОСТ не найдены — будет использован Arial. Укажите путь к .ttf.";
         ItalicBox.IsChecked = _settings.Italic;
         OpenBox.IsChecked = _settings.OpenAfter;
 

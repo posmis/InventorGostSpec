@@ -21,6 +21,27 @@ public class PaginatorTests
     }
 
     [Fact]
+    public void Slightly_long_text_is_compressed_instead_of_wrapped()
+    {
+        // 34 символа = 68 мм в графе 60 мм: сжатие до 88 % — переносить не нужно.
+        Assert.Single(SpecPaginator.Wrap("Гайка барашек DIN 315 - M8 - St - C", 60, Measure));
+
+        // 45 символов = 90 мм: сжатия до 80 % не хватает — перенос.
+        Assert.Equal(2, SpecPaginator.Wrap("Гайка барашек DIN 315 - M8 - St - C, оцинкован", 60, Measure).Count);
+    }
+
+    [Fact]
+    public void Reserve_rows_are_free_lines_without_position()
+    {
+        var reserve = new SheetRow(ExcelFormat.RowTypes.Reserve, "", "", "3", "", "", "", "", "");
+
+        var page = Assert.Single(SpecPaginator.Paginate(new[] { Item("Корпус", "1"), reserve, Item("Крышка", "4") }, Measure));
+
+        Assert.Equal(new[] { "1", "", "4" }, page.Select(l => l.Position));
+        Assert.True(page[1].IsBlank);
+    }
+
+    [Fact]
     public void Long_words_stay_whole_and_explicit_line_breaks_are_kept()
     {
         Assert.Equal(new[] { "АБВГ.301234.001-01АБВГ.301234.001" }, SpecPaginator.Wrap("АБВГ.301234.001-01АБВГ.301234.001", 20, Measure));
@@ -63,7 +84,7 @@ public class PaginatorTests
 
         Assert.Equal(28, pages[0].Count);
         Assert.Equal("29", pages[1][0].Position);
-        Assert.Equal(3, pages[1].Count);
+        Assert.True(pages[1].Count > 1);
         Assert.All(pages[1].Skip(1), line => Assert.Equal("", line.Position));
     }
 

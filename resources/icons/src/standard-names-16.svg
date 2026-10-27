@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Болт -->
+  <g stroke="#1C5F9E" stroke-linejoin="round">
+    <path d="M1.5 1.5 H7.5 V4.5 H1.5 Z" fill="#A9D0F5"/>
+    <path d="M3.5 4.5 H5.5 V14.5 H3.5 Z" fill="#5AA0E6"/>
+  </g>
+  <!-- Наименование -->
+  <path d="M7.5 11.5 H14.5 M7.5 13.5 H12.5" stroke="#616161"/>
+  <!-- Карандаш -->
+  <path d="M12.5 1.5 L14.5 3.5 L10 8 L8 6 Z" fill="#F59B23" stroke="#B4620A" stroke-linejoin="round"/>
+  <path d="M8 6 L10 8 L7 9 Z" fill="#FCE3BD" stroke="#B4620A" stroke-linejoin="round"/>
+</svg>

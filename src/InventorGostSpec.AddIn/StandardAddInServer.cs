@@ -22,6 +22,7 @@ public sealed class StandardAddInServer : ApplicationAddInServer
             _commands = new CommandRegistry(context);
             _commands.Register(new AssignSectionCommand());
             _commands.Register(new AutoAssignCommand());
+            _commands.Register(new StandardNamesCommand());
             _commands.Register(new SpecificationCommand());
             _commands.Register(new WritePositionsCommand());
 

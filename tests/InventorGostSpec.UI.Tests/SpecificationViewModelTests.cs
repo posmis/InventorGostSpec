@@ -329,3 +329,72 @@ public class AssignSectionViewModelTests
         Assert.Equal("", vm.GetChanges()[PropertyNames.Section]);
     }
 }
+
+public class StandardNamesViewModelTests
+{
+    [Fact]
+    public void Statuses_and_default_selection()
+    {
+        var vm = new StandardNamesViewModel(new[]
+        {
+            new StandardNameCandidate("a", "Болт ГОСТ 7798-70 M12x60", "ГОСТ 7798-70 - М12 x 60", false),
+            new StandardNameCandidate("b", "Болт М8х20 ГОСТ 7798-70", "Болт М8х20 ГОСТ 7798-70", false),
+            new StandardNameCandidate("c", "ГОСТ 5915-70 М12", "", false),
+        });
+
+        var changed = vm.Items.Single(i => i.Candidate.Key == "a");
+        Assert.Equal(StandardNameStatus.Change, changed.Status);
+        Assert.Equal("Болт М12х60 ГОСТ 7798-70", changed.Proposed);
+        Assert.True(changed.IsSelected);
+
+        var ok = vm.Items.Single(i => i.Candidate.Key == "b");
+        Assert.Equal(StandardNameStatus.AlreadyOk, ok.Status);
+        Assert.False(ok.IsSelected);
+        Assert.Same(ok, vm.Items.Last());
+
+        var review = vm.Items.Single(i => i.Candidate.Key == "c");
+        Assert.Equal(StandardNameStatus.Review, review.Status);
+        Assert.False(review.IsSelected);
+
+        Assert.Equal(new[] { changed }, vm.GetChanges());
+    }
+
+    [Fact]
+    public void Name_missing_in_file_is_taken_from_current_description()
+    {
+        var item = new StandardNameItem(new StandardNameCandidate("a", "ГОСТ 7798-70 M12x60", "Болт ГОСТ 7798-70", false));
+
+        Assert.Equal("Болт М12х60 ГОСТ 7798-70", item.Proposed);
+        Assert.Equal(StandardNameStatus.Change, item.Status);
+    }
+
+    [Fact]
+    public void Manual_edit_selects_item()
+    {
+        var vm = new StandardNamesViewModel(new[] { new StandardNameCandidate("c", "ГОСТ 5915-70 М12", "", false) });
+        var item = vm.Items[0];
+
+        item.Proposed = "Гайка М12 ГОСТ 5915-70";
+
+        Assert.True(item.IsSelected);
+        Assert.Single(vm.GetChanges());
+    }
+
+    [Fact]
+    public void Preselection_from_assembly_limits_default_selection()
+    {
+        var vm = new StandardNamesViewModel(new[]
+        {
+            new StandardNameCandidate("a", "Болт ГОСТ 7798-70 M12x60", "x", true),
+            new StandardNameCandidate("b", "Болт ГОСТ 7798-70 M8x20", "y", false),
+        });
+
+        Assert.True(vm.Items.Single(i => i.Candidate.Key == "a").IsSelected);
+        Assert.False(vm.Items.Single(i => i.Candidate.Key == "b").IsSelected);
+
+        vm.SelectAllCommand.Execute(null);
+        Assert.Equal(2, vm.GetChanges().Count);
+        vm.SelectNoneCommand.Execute(null);
+        Assert.Empty(vm.GetChanges());
+    }
+}

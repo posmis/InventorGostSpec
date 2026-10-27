@@ -6,6 +6,7 @@
 |---|---|
 | `assign-section` | Раздел компонента |
 | `auto-assign` | Разделы автоматически |
+| `standard-names` | Наименования стандартных изделий |
 | `specification` | Спецификация |
 | `write-positions` | Позиции в BOM |
 

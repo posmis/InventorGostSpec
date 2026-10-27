@@ -20,6 +20,7 @@ global using ControlDefinitions = Inventor.ControlDefinitions;
 global using Document = Inventor.Document;
 global using DocumentTypeEnum = Inventor.DocumentTypeEnum;
 global using DrawingDocument = Inventor.DrawingDocument;
+global using DocumentsEnumerator = Inventor.DocumentsEnumerator;
 global using PartDocument = Inventor.PartDocument;
 global using Property = Inventor.Property;
 global using PropertySet = Inventor.PropertySet;

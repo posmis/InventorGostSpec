@@ -20,6 +20,17 @@ internal static class PropertyAccess
 
     public static string GetCustom(PropertySets sets, string propertyName) => Get(sets, UserDefinedSet, propertyName);
 
+    /// <summary>Записывает существующее стандартное свойство (например, Description).</summary>
+    public static void Set(PropertySets sets, string setName, string propertyName, string value)
+    {
+        var property = Find(sets[setName], propertyName)
+                       ?? throw new InvalidOperationException($"Свойство «{propertyName}» не найдено.");
+        if (property.Value?.ToString() != value)
+        {
+            property.Value = value;
+        }
+    }
+
     /// <summary>Записывает пользовательское свойство. Пустое значение удаляет свойство.</summary>
     public static void SetCustom(PropertySets sets, string propertyName, string value)
     {

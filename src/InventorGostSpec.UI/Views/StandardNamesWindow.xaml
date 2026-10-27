@@ -1,0 +1,68 @@
+<Window x:Class="InventorGostSpec.UI.Views.StandardNamesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Наименования стандартных изделий"
+        Width="1100"
+        Height="620"
+        MinWidth="700"
+        MinHeight="300"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <DockPanel Margin="12">
+        <Border DockPanel.Dock="Top" Background="#FFF4CC" BorderBrush="#E0C25A" BorderThickness="1" Padding="10,8" Margin="0,0,0,10">
+            <TextBlock TextWrapping="Wrap">
+                <Run FontWeight="SemiBold" Text="Внимание. " />
+                <Run Text="Наименование (Description) записывается в файлы стандартных изделий и изменится во всех сборках, где они используются. Новое наименование строится из имени файла. Проверьте колонку «Станет» — её можно исправить вручную. Изменения можно отменить через «Отменить» (Ctrl+Z) до сохранения сборки." />
+            </TextBlock>
+        </Border>
+
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                <Button Content="Отметить все" Padding="10,3" Command="{Binding SelectAllCommand}" />
+                <Button Content="Снять все" Padding="10,3" Margin="6,0,0,0" Command="{Binding SelectNoneCommand}" />
+                <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Foreground="#555" Text="{Binding Summary}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Переименовать" Width="120" IsDefault="True" Click="OnApply" />
+                <Button Content="Отмена" Width="90" Margin="8,0,0,0" IsCancel="True" />
+            </StackPanel>
+        </DockPanel>
+
+        <DataGrid x:Name="Grid" ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False"
+                  CanUserDeleteRows="False" HeadersVisibility="Column" RowHeaderWidth="0" SelectionMode="Single"
+                  GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E5E5E5">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Status}" Value="AlreadyOk">
+                            <Setter Property="Foreground" Value="#888" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding Status}" Value="Review">
+                            <Setter Property="Background" Value="#FBE1E1" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.Columns>
+                <DataGridTemplateColumn Header="" Width="32">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center"
+                                      IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Файл" Binding="{Binding FileName}" IsReadOnly="True" Width="2*" />
+                <DataGridTextColumn Header="Было (Description)" Binding="{Binding Current}" IsReadOnly="True" Width="2*" />
+                <DataGridTextColumn Header="Станет" Binding="{Binding Proposed, UpdateSourceTrigger=LostFocus}" Width="2*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Статус" Binding="{Binding StatusText}" IsReadOnly="True" Width="120" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

@@ -390,6 +390,75 @@ public class SpecificationViewModelTests
     }
 
     [Fact]
+    public void Several_rows_move_to_group_together_in_order()
+    {
+        var vm = Open();
+        _dialogs.OnGroup = g => g.Title = "Устанавливают по МЭ";
+        vm.AddGroupCommand.Execute(null);
+        var groupId = vm.GroupOptions[1].Id;
+
+        vm.SelectedRow = RowByName(vm, "Корпус");
+        vm.SetSelectedRows(new[] { RowByName(vm, "Болт М8х20 ГОСТ 7798-70"), RowByName(vm, "Корпус") });
+        Assert.False(vm.MoveUpCommand.CanExecute(null));
+        vm.MoveToGroupCommand.Execute(groupId);
+
+        Assert.Equal(groupId, RowByName(vm, "Корпус").GroupId);
+        Assert.Equal(groupId, RowByName(vm, "Болт М8х20 ГОСТ 7798-70").GroupId);
+        Assert.Equal("", RowByName(vm, "Ось").GroupId);
+        // Выбор сохраняется после перестроения таблицы.
+        Assert.Equal(new[] { "Корпус", "Болт М8х20 ГОСТ 7798-70" }, vm.SelectedRows.Select(r => r.Name));
+        Assert.StartsWith("Выбрано: 2", vm.StatusText);
+    }
+
+    [Fact]
+    public void Several_rows_move_to_section()
+    {
+        var vm = Open();
+        vm.SetSelectedRows(new[] { RowByName(vm, "Корпус"), RowByName(vm, "Ось") });
+
+        vm.MoveToSectionCommand.Execute(SectionIds.OtherProducts);
+
+        Assert.Equal(new[] { "Прочие изделия", "Корпус", "Ось" }, vm.Rows.Select(r => r.Name).TakeLast(3));
+    }
+
+    [Fact]
+    public void Properties_of_several_components_show_common_values_and_write_to_all()
+    {
+        var vm = Open();
+        _host.Properties["А.001.ipt"] = new() { [PropertyNames.Format] = "А4", [PropertyNames.Unit] = "шт" };
+        _host.Properties["А.002.ipt"] = new() { [PropertyNames.Format] = "А3", [PropertyNames.Unit] = "шт" };
+        vm.SetSelectedRows(new[] { RowByName(vm, "Корпус"), RowByName(vm, "Ось") });
+        _dialogs.OnComponentProperties = props =>
+        {
+            Assert.True(props.Format.IsMixed);
+            Assert.Equal("шт", props.Unit.Value);
+            props.SelectedSection = props.Sections.Single(s => s.Id == SectionIds.OtherProducts);
+        };
+
+        vm.EditComponentCommand.Execute(null);
+
+        Assert.Equal(SectionIds.OtherProducts, _host.Properties["А.001.ipt"][PropertyNames.Section]);
+        Assert.Equal(SectionIds.OtherProducts, _host.Properties["А.002.ipt"][PropertyNames.Section]);
+        Assert.Equal("А4", _host.Properties["А.001.ipt"][PropertyNames.Format]); // формат не тронут
+        Assert.Equal(SectionIds.OtherProducts, RowByName(vm, "Ось").SectionId);
+    }
+
+    [Fact]
+    public void Delete_several_skips_component_rows()
+    {
+        var vm = Open();
+        vm.SelectedRow = vm.Rows.First(r => r.IsReserve);
+        vm.AddItemCommand.Execute(null);
+        var manual = vm.SelectedRow!;
+        vm.SetSelectedRows(new[] { manual, RowByName(vm, "Ось") });
+
+        vm.DeleteRowCommand.Execute(null);
+
+        Assert.DoesNotContain(vm.Rows, r => r.RowId == manual.RowId);
+        Assert.Contains(vm.Rows, r => r.Name == "Ось");
+    }
+
+    [Fact]
     public void Search_shows_matching_rows_with_their_headers()
     {
         var vm = Open();

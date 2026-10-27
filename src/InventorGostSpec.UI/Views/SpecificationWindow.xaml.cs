@@ -18,6 +18,7 @@ public partial class SpecificationWindow : Window, IDialogService
 
     private readonly ISpecificationHost _host;
     private SpecificationViewModel? _viewModel;
+    private bool _restoringSelection;
 
     private SpecificationWindow(ISpecificationHost host)
     {
@@ -29,6 +30,13 @@ public partial class SpecificationWindow : Window, IDialogService
         Grid.DragOver += OnDragOver;
         Grid.Drop += OnDrop;
         Grid.PreviewMouseRightButtonDown += OnPreviewRightButtonDown;
+        Grid.SelectionChanged += (_, _) =>
+        {
+            if (!_restoringSelection)
+            {
+                _viewModel?.SetSelectedRows(Grid.SelectedItems.OfType<SpecRowViewModel>());
+            }
+        };
         Grid.ContextMenuOpening += (_, _) => ClearOverrideItem.CommandParameter = Grid.CurrentColumn?.SortMemberPath;
 
         PreviewKeyDown += OnPreviewKeyDown;
@@ -96,6 +104,21 @@ public partial class SpecificationWindow : Window, IDialogService
         _viewModel = viewModel;
         DataContext = viewModel;
         viewModel.EditRequested += OnEditRequested;
+        viewModel.SelectionRestored += rows =>
+        {
+            _restoringSelection = true;
+            try
+            {
+                foreach (var row in rows.Where(r => !Grid.SelectedItems.Contains(r)))
+                {
+                    Grid.SelectedItems.Add(row);
+                }
+            }
+            finally
+            {
+                _restoringSelection = false;
+            }
+        };
         viewModel.PropertyChanged += (_, e) =>
         {
             // Выделенная строка (после перехода к изменению, переноса, добавления) должна быть видна.
@@ -313,7 +336,12 @@ public partial class SpecificationWindow : Window, IDialogService
             return;
         }
 
-        Grid.SelectedItem = row.Item;
+        // Правый щелчок по уже выбранной строке не сбрасывает множественный выбор.
+        if (!row.IsSelected)
+        {
+            Grid.SelectedItem = row.Item;
+        }
+
         if (cell is not null)
         {
             Grid.CurrentCell = new DataGridCellInfo(row.Item, cell.Column);

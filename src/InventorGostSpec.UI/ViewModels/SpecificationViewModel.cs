@@ -23,6 +23,7 @@ public sealed class SpecificationViewModel : ObservableObject
     private bool _isDirty;
     private string _statusText = "";
     private string _searchText = "";
+    private List<SpecRowViewModel> _selectedRows = new();
 
     /// <param name="isNew">Спецификация только что сформирована и ещё не сохранена: закрытие без сохранения её потеряет.</param>
     /// <param name="post">
@@ -48,19 +49,19 @@ public sealed class SpecificationViewModel : ObservableObject
         AcceptChangesCommand = new RelayCommand(AcceptChanges, () => Specification.Rows.Any(r => r.Status != RowStatus.None));
         AddNoteCommand = new RelayCommand(AddNote, () => SelectedRow is not null);
         AddItemCommand = new RelayCommand(AddItem, () => SelectedRow is not null);
-        DeleteRowCommand = new RelayCommand(DeleteRow, () => SelectedRow?.Row is not null);
-        MoveUpCommand = new RelayCommand(() => MoveBy(-1), () => SelectedRow?.CanMove == true);
-        MoveDownCommand = new RelayCommand(() => MoveBy(+1), () => SelectedRow?.CanMove == true);
-        ClearOverrideCommand = new RelayCommand(ClearOverride, p => SelectedRow?.Row is { Kind: RowKind.Component } row && ParseColumn(p) is { } c && row.IsOverridden(c));
-        MoveToSectionCommand = new RelayCommand(MoveToSection, p => SelectedRow?.Row is { Kind: not RowKind.Note } && p is string);
+        DeleteRowCommand = new RelayCommand(DeleteRow, () => TargetRows.Any());
+        MoveUpCommand = new RelayCommand(() => MoveBy(-1), () => IsSingleSelection && SelectedRow?.CanMove == true);
+        MoveDownCommand = new RelayCommand(() => MoveBy(+1), () => IsSingleSelection && SelectedRow?.CanMove == true);
+        ClearOverrideCommand = new RelayCommand(ClearOverride, p => ParseColumn(p) is { } c && TargetRows.Any(r => r.Kind == RowKind.Component && r.IsOverridden(c)));
+        MoveToSectionCommand = new RelayCommand(MoveToSection, p => p is string && TargetRows.Any(r => r.Kind != RowKind.Note));
         AddSectionCommand = new RelayCommand(AddSection);
         AddGroupCommand = new RelayCommand(AddGroup);
         DeleteGroupCommand = new RelayCommand(DeleteGroup, () => SelectedRow?.IsGroupHeader == true);
-        MoveToGroupCommand = new RelayCommand(MoveToGroup, p => SelectedRow?.Row is not null && p is string);
+        MoveToGroupCommand = new RelayCommand(MoveToGroup, p => p is string && TargetRows.Any());
         ReservesCommand = new RelayCommand(EditReserves);
         SaveCommand = new RelayCommand(Save, () => IsDirty);
         WritePositionsCommand = new RelayCommand(WritePositions);
-        EditComponentCommand = new RelayCommand(EditComponent, () => CanEditComponent(SelectedRow?.Row));
+        EditComponentCommand = new RelayCommand(EditComponent, () => TargetRows.Any(CanEditComponent));
         NextChangeCommand = new RelayCommand(GoToNextChange, () => Specification.Rows.Any(r => r.Status != RowStatus.None));
         ClearSearchCommand = new RelayCommand(() => SearchText = "", () => IsSearching);
 
@@ -73,6 +74,19 @@ public sealed class SpecificationViewModel : ObservableObject
     /// таблицу нельзя перестраивать, пока ячейка редактируется.
     /// </summary>
     public Action? CommitEdits { get; set; }
+
+    /// <summary>После перестроения таблицы — восстановить множественный выбор строк.</summary>
+    public event Action<IReadOnlyList<SpecRowViewModel>>? SelectionRestored;
+
+    /// <summary>Выбранные строки (Ctrl/Shift). Пусто — действует только <see cref="SelectedRow"/>.</summary>
+    public IReadOnlyList<SpecRowViewModel> SelectedRows => _selectedRows;
+
+    /// <summary>Вызывается окном при изменении выбора в таблице.</summary>
+    public void SetSelectedRows(IEnumerable<SpecRowViewModel> rows)
+    {
+        _selectedRows = rows.OrderBy(r => Rows.IndexOf(r)).ToList();
+        UpdateStatus();
+    }
 
     /// <summary>Запрос начать редактирование ячейки (например, у только что добавленной строки).</summary>
     public event Action<SpecRowViewModel, SpecColumn>? EditRequested;
@@ -318,22 +332,34 @@ public sealed class SpecificationViewModel : ObservableObject
 
     private void DeleteRow()
     {
-        var row = SelectedRow!.Row!;
-        if (row.Kind == RowKind.Component && !row.IsRemoved)
+        var targets = TargetRows.ToList();
+        var deletable = targets.Where(r => r.Kind != RowKind.Component || r.IsRemoved).ToList();
+        if (deletable.Count == 0)
         {
             _dialogs.Warning("Строку компонента удалить нельзя: компонент есть в сборке и вернётся при обновлении.");
             return;
         }
 
-        if (!_dialogs.Confirm($"Удалить строку «{Describe(row)}»?"))
+        var question = deletable.Count == 1 ? $"Удалить строку «{Describe(deletable[0])}»?" : $"Удалить строки: {deletable.Count}?";
+        if (deletable.Count < targets.Count)
+        {
+            question += $"\n\nСтроки компонентов, которые есть в сборке, не удаляются (пропущено: {targets.Count - deletable.Count}).";
+        }
+
+        if (!_dialogs.Confirm(question))
         {
             return;
         }
 
-        var index = Rows.IndexOf(SelectedRow);
-        SpecificationEditor.DeleteRow(Specification, row.Id);
+        var index = SelectedRow is null ? 0 : Rows.IndexOf(SelectedRow);
+        foreach (var row in deletable)
+        {
+            SpecificationEditor.DeleteRow(Specification, row.Id);
+        }
+
+        _selectedRows.Clear();
         Changed(rebuild: true);
-        SelectedRow = Rows.Count == 0 ? null : Rows[Math.Min(index, Rows.Count - 1)];
+        SelectedRow = Rows.Count == 0 ? null : Rows[Math.Clamp(index, 0, Rows.Count - 1)];
     }
 
     private void MoveBy(int direction)
@@ -347,20 +373,33 @@ public sealed class SpecificationViewModel : ObservableObject
 
     private void ClearOverride(object? parameter)
     {
-        if (SelectedRow?.Row is { } row && ParseColumn(parameter) is { } column)
+        if (ParseColumn(parameter) is not { } column)
+        {
+            return;
+        }
+
+        foreach (var row in TargetRows.Where(r => r.Kind == RowKind.Component).ToList())
         {
             SpecificationEditor.ClearOverride(Specification, _context, row, column);
-            Changed(rebuild: true, selectRowId: row.Id);
         }
+
+        Changed(rebuild: true);
     }
 
     private void MoveToSection(object? parameter)
     {
-        if (SelectedRow?.Row is { } row && parameter is string sectionId)
+        if (parameter is not string sectionId)
+        {
+            return;
+        }
+
+        // В порядке таблицы: строки встают в конец нового раздела в том же порядке.
+        foreach (var row in TargetRows.Where(r => r.Kind != RowKind.Note).ToList())
         {
             SpecificationEditor.SetCell(Specification, _context, row, SpecColumn.Section, sectionId);
-            Changed(rebuild: true, selectRowId: row.Id);
         }
+
+        Changed(rebuild: true);
     }
 
     private void AddSection()
@@ -477,12 +516,26 @@ public sealed class SpecificationViewModel : ObservableObject
 
     private void MoveToGroup(object? parameter)
     {
-        if (SelectedRow?.Row is { } row && parameter is string groupId && row.GroupId != groupId)
+        if (parameter is not string groupId)
+        {
+            return;
+        }
+
+        foreach (var row in TargetRows.Where(r => r.GroupId != groupId).ToList())
         {
             SpecificationEditor.MoveToGroup(Specification, _context, row, groupId);
-            Changed(rebuild: true, selectRowId: row.Id);
         }
+
+        Changed(rebuild: true);
     }
+
+    /// <summary>Строки, к которым применяется команда: выбранные (Ctrl/Shift) или текущая.</summary>
+    private IEnumerable<SpecRow> TargetRows =>
+        (_selectedRows.Count > 0 ? _selectedRows : SelectedRow is null ? Enumerable.Empty<SpecRowViewModel>() : new[] { SelectedRow })
+        .Select(r => r.Row)
+        .OfType<SpecRow>();
+
+    private bool IsSingleSelection => _selectedRows.Count <= 1;
 
     /// <summary>Раздел для новой строки: раздел выбранной строки, у заголовка группы — «Прочие изделия».</summary>
     private static string SectionFor(SpecRowViewModel selected) =>
@@ -525,6 +578,9 @@ public sealed class SpecificationViewModel : ObservableObject
         CommitEdits?.Invoke();
         var keep = selectRowId ?? SelectedRow?.RowId;
         var keepHeader = SelectedRow?.IsHeader == true ? SelectedRow : null;
+        var keepMany = selectRowId is null
+            ? _selectedRows.Select(r => r.RowId).OfType<string>().ToHashSet()
+            : new HashSet<string>();
 
         Rows.Clear();
         foreach (var display in Filter(SpecificationViewBuilder.Build(Specification, _context)))
@@ -537,6 +593,18 @@ public sealed class SpecificationViewModel : ObservableObject
         SelectedRow = Rows.FirstOrDefault(r => keep is not null && r.RowId == keep)
                       ?? Rows.FirstOrDefault(r => keepHeader is not null && r.Kind == keepHeader.Kind &&
                                                   r.GroupId == keepHeader.GroupId && r.SectionId == keepHeader.SectionId);
+
+        // Множественный выбор переживает перестроение (например, после переноса нескольких строк).
+        _selectedRows = keepMany.Count > 1 ? Rows.Where(r => r.RowId is not null && keepMany.Contains(r.RowId)).ToList() : new();
+        if (_selectedRows.Count > 1)
+        {
+            if (SelectedRow is null || !_selectedRows.Contains(SelectedRow))
+            {
+                SelectedRow = _selectedRows[0];
+            }
+
+            SelectionRestored?.Invoke(_selectedRows);
+        }
 
         SectionOptions.Clear();
         foreach (var section in _context.Catalog.Sections)
@@ -586,24 +654,39 @@ public sealed class SpecificationViewModel : ObservableObject
 
     private void EditComponent()
     {
-        var row = SelectedRow?.Row;
-        if (!CanEditComponent(row))
+        var rows = TargetRows.Where(CanEditComponent).ToList();
+        if (rows.Count == 0)
         {
             return;
         }
 
-        var key = row!.ComponentKey!;
-        var current = _host.ReadComponentProperties(key);
-        if (current is null)
+        var current = new List<IReadOnlyDictionary<string, string?>>();
+        foreach (var row in rows)
         {
-            _dialogs.Warning("Компонент не найден в сборке. Обновите спецификацию из сборки.");
-            return;
+            if (_host.ReadComponentProperties(row.ComponentKey!) is not { } values)
+            {
+                _dialogs.Warning($"Компонент «{Describe(row)}» не найден в сборке. Обновите спецификацию из сборки.");
+                return;
+            }
+
+            current.Add(values);
         }
+
+        // Общие значения; если у выбранных компонентов они различаются — null («разные значения»).
+        var initial = current.SelectMany(v => v.Keys).Distinct().ToDictionary(
+            name => name,
+            name =>
+            {
+                var distinct = current.Select(v => v.TryGetValue(name, out var value) ? value ?? "" : "").Distinct().ToList();
+                return distinct.Count == 1 ? distinct[0] : null;
+            });
 
         // Только общий справочник разделов: раздел записывается в файл детали и должен быть понятен в других сборках.
         var sections = SpecificationContext.Create(_settings, new Specification()).Catalog.Sections;
-        var title = string.Join(" ", new[] { row.Get(SpecColumn.Designation), row.Get(SpecColumn.Name) }.Where(s => s.Length > 0));
-        var viewModel = new AssignSectionViewModel(sections, current, $"{title}\nСвойства записываются в файл компонента и действуют во всех сборках.");
+        var title = rows.Count == 1
+            ? Describe(rows[0])
+            : $"Выбрано компонентов: {rows.Count}. Меняются только изменённые поля.";
+        var viewModel = new AssignSectionViewModel(sections, initial, $"{title}\nСвойства записываются в файлы компонентов и действуют во всех сборках.");
         if (!_dialogs.EditComponentProperties(viewModel))
         {
             return;
@@ -615,9 +698,13 @@ public sealed class SpecificationViewModel : ObservableObject
             return;
         }
 
-        var data = _host.WriteComponentProperties(key, changes);
-        SpecificationEditor.RefreshComponent(Specification, _context, row, data);
-        Changed(rebuild: true, selectRowId: row.Id);
+        foreach (var row in rows)
+        {
+            var data = _host.WriteComponentProperties(row.ComponentKey!, changes);
+            SpecificationEditor.RefreshComponent(Specification, _context, row, data);
+        }
+
+        Changed(rebuild: true, selectRowId: rows.Count == 1 ? rows[0].Id : null);
     }
 
     /// <summary>Выделяет следующую подсвеченную строку (новую, изменённую или удалённую), по кругу.</summary>
@@ -669,6 +756,11 @@ public sealed class SpecificationViewModel : ObservableObject
         if (IsSearching)
         {
             parts.Insert(0, $"Найдено: {Rows.Count(r => r.Row is not null)}");
+        }
+
+        if (_selectedRows.Count > 1)
+        {
+            parts.Insert(0, $"Выбрано: {_selectedRows.Count(r => r.Row is not null)}");
         }
 
         StatusText = string.Join(" · ", parts);

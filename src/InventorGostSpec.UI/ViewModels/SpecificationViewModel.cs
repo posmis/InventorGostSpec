@@ -88,6 +88,7 @@ public sealed class SpecificationViewModel : ObservableObject
         HideSectionCommand = new RelayCommand(HideSection, () => SelectedEmptyInsertedSection() is not null);
         DrawingFormatsCommand = new RelayCommand(FindDrawingFormats, () => Specification.Rows.Any(IsPartWithModel));
         SetDocumentTypeCommand = new RelayCommand(SetDocumentType, p => p is string && TargetRows.Any(IsDocumentRow));
+        ResetSectionsCommand = new RelayCommand(ResetSections, p => ResetSectionRows(p).Any());
 
         Rebuild();
         _isDirty = isNew;
@@ -243,6 +244,13 @@ public sealed class SpecificationViewModel : ObservableObject
     /// записываются в iProperty SPEC_Format детали.
     /// </summary>
     public ICommand DrawingFormatsCommand { get; }
+
+    /// <summary>
+    /// Разделы по умолчанию: у компонентов удаляется SPEC_Section и ручной перенос — раздел определяется по типу.
+    /// Стандартные изделия не трогаются. Параметр «selected» (контекстное меню) — только выбранные строки,
+    /// без параметра (панель) — выбранные, если их несколько, иначе все компоненты.
+    /// </summary>
+    public ICommand ResetSectionsCommand { get; }
 
     /// <summary>Тип документа (параметр — код «СБ», «ТУ»…) выбранных строк «Документации»: код в обозначении и наименование.</summary>
     public ICommand SetDocumentTypeCommand { get; }
@@ -539,6 +547,83 @@ public sealed class SpecificationViewModel : ObservableObject
         _context = CreateContext();
         Changed(rebuild: true);
         SelectedRow = Rows.FirstOrDefault(r => r.IsHeader && r.SectionId == section.Id);
+    }
+
+    /// <summary>Строка компонента-модели, кроме стандартных изделий (их раздел не сбрасывается).</summary>
+    private static bool CanResetSection(SpecRow row) =>
+        CanEditComponent(row) && SpecificationEditor.IsModelRow(row) &&
+        !IsStandard(row.SectionId) && !IsStandard(row.Source.SectionId);
+
+    private static bool IsStandard(string? sectionId) =>
+        string.Equals(sectionId, Core.Sections.SectionIds.StandardProducts, StringComparison.OrdinalIgnoreCase);
+
+    private IEnumerable<SpecRow> ResetSectionRows(object? parameter) =>
+        (parameter is "selected" || _selectedRows.Count > 1 ? TargetRows : Specification.Rows).Where(CanResetSection);
+
+    private void ResetSections(object? parameter)
+    {
+        CommitEdits?.Invoke();
+        var rows = ResetSectionRows(parameter).ToList();
+        if (rows.Count == 0)
+        {
+            _dialogs.Info("Среди выбранных строк нет компонентов, у которых можно сбросить раздел (стандартные изделия не трогаются).");
+            return;
+        }
+
+        var scope = parameter is "selected" || _selectedRows.Count > 1 ? "выбранных компонентов" : "всех компонентов спецификации";
+        if (!_dialogs.Confirm(
+                $"Сбросить разделы {scope} ({rows.Count}) к разделам по умолчанию?\n\n" +
+                "Свойство SPEC_Section удаляется из файлов компонентов, ручной перенос в спецификации снимается — " +
+                "раздел определяется по типу: сборка — «Сборочные единицы», деталь — «Детали», виртуальный компонент — " +
+                "«Прочие изделия». Стандартные изделия не трогаются. Изменятся файлы компонентов — сохраните сборку."))
+        {
+            return;
+        }
+
+        var written = 0;
+        var failed = new List<string>();
+        foreach (var row in rows)
+        {
+            try
+            {
+                // Изделия Content Center по типу — стандартные: их не трогаем, даже если перенесены в другой раздел.
+                if (IsStandard(_host.GetAutoSectionId(row.ComponentKey!)))
+                {
+                    continue;
+                }
+
+                SpecificationEditor.ClearOverride(Specification, _context, row, SpecColumn.Section);
+                var properties = _host.ReadComponentProperties(row.ComponentKey!);
+                if (properties is null)
+                {
+                    continue;
+                }
+
+                var section = properties.TryGetValue(PropertyNames.Section, out var value) ? value ?? "" : "";
+                if (section.Trim().Length == 0 || IsStandard(section.Trim()))
+                {
+                    continue;
+                }
+
+                var data = _host.WriteComponentProperties(row.ComponentKey!, new Dictionary<string, string> { [PropertyNames.Section] = "" });
+                SpecificationEditor.RefreshComponent(Specification, _context, row, data);
+                written++;
+            }
+            catch (Exception ex)
+            {
+                _host.ReportError(ex);
+                failed.Add($"{Describe(row)}: {ex.Message}");
+            }
+        }
+
+        Changed(rebuild: true);
+        var report = $"Разделы сброшены. Изменено файлов: {written} из {rows.Count} (у остальных раздел и так не был задан).";
+        if (failed.Count > 0)
+        {
+            report += $"\n\nНе удалось записать ({failed.Count}):\n" + string.Join("\n", failed.Take(10));
+        }
+
+        _dialogs.Info(report);
     }
 
     private static bool IsDocumentRow(SpecRow row) => row.Kind != RowKind.Note && ComponentSnapshot.IsDocument(row.SectionId);

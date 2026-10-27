@@ -148,6 +148,8 @@
                         <StackPanel Orientation="Horizontal">
                             <controls:IconButton Icon="{StaticResource Icon.Section}" Text="Раздел ▾" Click="OnSectionMenuClick"
                                                  ToolTip="Вставить раздел, которого нет (например, «Документация»): он показывается заголовком и резервными строками. «Новый раздел…» — свой раздел для этой спецификации или общего справочника." />
+                            <controls:IconButton Icon="{StaticResource Icon.RestoreValue}" Text="Разделы по умолчанию" Command="{Binding ResetSectionsCommand}"
+                                                 ToolTip="Сбросить разделы компонентов (выбранных строк или всех) к разделам по умолчанию: удалить SPEC_Section из файлов и ручной перенос — раздел по типу компонента. Стандартные изделия не трогаются." />
                             <controls:IconButton Icon="{StaticResource Icon.Group}" Text="Группа" Command="{Binding AddGroupCommand}"
                                                  ToolTip="Добавить группу «Изделия, устанавливаемые по …» (например, по электромонтажному чертежу)" />
                         </StackPanel>
@@ -350,6 +352,8 @@
                                 </Style>
                             </MenuItem.ItemContainerStyle>
                         </MenuItem>
+                        <MenuItem Header="Раздел по умолчанию" Command="{Binding ResetSectionsCommand}" CommandParameter="selected"
+                                  ToolTip="Сбросить раздел выбранных компонентов к разделу по типу (стандартные изделия не трогаются)" />
                         <MenuItem Header="Удалить группу" Command="{Binding DeleteGroupCommand}" />
                         <MenuItem Header="Убрать пустой раздел" Command="{Binding HideSectionCommand}"
                                   ToolTip="Убрать вставленный раздел, в котором нет строк (выберите его заголовок)" />

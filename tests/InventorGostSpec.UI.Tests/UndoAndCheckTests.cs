@@ -386,3 +386,79 @@ public class DocumentRowTests
         Assert.False(vm.SetDocumentTypeCommand.CanExecute("СБ")); // не документ
     }
 }
+
+public class ResetSectionsTests
+{
+    private readonly FakeHost _host = new();
+    private readonly FakeDialogs _dialogs = new();
+
+    public ResetSectionsTests()
+    {
+        _host.Components.AddRange(new[]
+        {
+            new ComponentData { Key = "u.iam", Kind = ComponentKind.Assembly, SectionId = SectionIds.OtherProducts, Designation = "Б.001", Name = "Узел", Quantity = 1 },
+            new ComponentData { Key = "a.ipt", Kind = ComponentKind.Part, SectionId = SectionIds.Materials, Name = "Пластина", Quantity = 1 },
+            new ComponentData { Key = "b.ipt", Kind = ComponentKind.Part, Designation = "А.002", Name = "Ось", Quantity = 1 },
+            new ComponentData { Key = "s.ipt", Kind = ComponentKind.Part, SectionId = SectionIds.StandardProducts, Name = "Шайба 8 ГОСТ 11371-78", Quantity = 1 },
+            new ComponentData { Key = "c.ipt", Kind = ComponentKind.Part, IsContentCenter = true, SectionId = SectionIds.OtherProducts, Name = "Болт М8 ГОСТ 7798-70", Quantity = 1 },
+        });
+        _host.Properties["u.iam"] = new() { [Core.Storage.PropertyNames.Section] = SectionIds.OtherProducts };
+        _host.Properties["a.ipt"] = new() { [Core.Storage.PropertyNames.Section] = SectionIds.Materials };
+        _host.Properties["s.ipt"] = new() { [Core.Storage.PropertyNames.Section] = SectionIds.StandardProducts };
+        _host.Properties["c.ipt"] = new() { [Core.Storage.PropertyNames.Section] = SectionIds.OtherProducts };
+    }
+
+    private SpecificationViewModel Open()
+    {
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, _host.Components, SpecificationContext.Create(_host.Settings, spec), DateTime.UtcNow);
+        return new SpecificationViewModel(_host, _dialogs, spec, post: action => action());
+    }
+
+    private static string Section(SpecificationViewModel vm, string name) => vm.Rows.Single(r => r.Name == name).SectionId;
+
+    [Fact]
+    public void All_sections_are_reset_except_standard_products()
+    {
+        var vm = Open();
+        var oseRow = vm.Specification.Rows.Single(r => r.Get(SpecColumn.Name) == "Ось");
+        Core.Editing.SpecificationEditor.SetCell(vm.Specification, SpecificationContext.Create(_host.Settings, vm.Specification),
+            oseRow, SpecColumn.Section, SectionIds.Kits); // ручной перенос в этой спецификации
+        vm.SearchText = "";
+
+        vm.ResetSectionsCommand.Execute(null);
+
+        Assert.Equal(SectionIds.AssemblyUnits, Section(vm, "Узел"));
+        Assert.Equal(SectionIds.Parts, Section(vm, "Пластина"));
+        Assert.Equal(SectionIds.Parts, Section(vm, "Ось"));
+        Assert.Equal("", _host.Properties["u.iam"][Core.Storage.PropertyNames.Section]);
+
+        // Стандартные изделия не тронуты.
+        Assert.Equal(SectionIds.StandardProducts, _host.Properties["s.ipt"][Core.Storage.PropertyNames.Section]);
+        Assert.Equal(SectionIds.StandardProducts, Section(vm, "Шайба 8 ГОСТ 11371-78"));
+
+        // Изделие Content Center — стандартное по типу: не трогается, даже если перенесено в прочие.
+        Assert.Equal(SectionIds.OtherProducts, Section(vm, "Болт М8 ГОСТ 7798-70"));
+        Assert.Equal(SectionIds.OtherProducts, _host.Properties["c.ipt"][Core.Storage.PropertyNames.Section]);
+        Assert.Contains("Изменено файлов: 2", _dialogs.Infos.Single());
+    }
+
+    [Fact]
+    public void Context_menu_resets_only_selected_row_and_cancel_changes_nothing()
+    {
+        var vm = Open();
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Узел");
+
+        _dialogs.ConfirmAnswer = false;
+        vm.ResetSectionsCommand.Execute("selected");
+        Assert.Equal(SectionIds.OtherProducts, Section(vm, "Узел"));
+
+        _dialogs.ConfirmAnswer = true;
+        vm.ResetSectionsCommand.Execute("selected");
+        Assert.Equal(SectionIds.AssemblyUnits, Section(vm, "Узел"));
+        Assert.Equal(SectionIds.Materials, Section(vm, "Пластина"));
+
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Шайба 8 ГОСТ 11371-78");
+        Assert.False(vm.ResetSectionsCommand.CanExecute("selected"));
+    }
+}

@@ -19,6 +19,8 @@ public partial class SpecificationWindow : Window, IDialogService
     private readonly ISpecificationHost _host;
     private SpecificationViewModel? _viewModel;
     private bool _restoringSelection;
+    private bool _rebuilding;
+    private double _savedOffset;
 
     private SpecificationWindow(ISpecificationHost host)
     {
@@ -104,6 +106,28 @@ public partial class SpecificationWindow : Window, IDialogService
         _viewModel = viewModel;
         DataContext = viewModel;
         viewModel.EditRequested += OnEditRequested;
+        // Перестроение таблицы не должно сбивать прокрутку: после «По ГОСТ», «Перенумеровать», обновления
+        // таблица остаётся на месте; к строке прокручиваем, только если операция касалась её.
+        viewModel.Rebuilding += () =>
+        {
+            _rebuilding = true;
+            _savedOffset = FindScrollViewer()?.VerticalOffset ?? 0;
+        };
+        viewModel.Rebuilt += target =>
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+            {
+                _rebuilding = false;
+                if (target is not null)
+                {
+                    Grid.ScrollIntoView(target);
+                }
+                else
+                {
+                    FindScrollViewer()?.ScrollToVerticalOffset(_savedOffset);
+                }
+            });
+        };
         viewModel.SelectionRestored += rows =>
         {
             _restoringSelection = true;
@@ -122,7 +146,7 @@ public partial class SpecificationWindow : Window, IDialogService
         viewModel.PropertyChanged += (_, e) =>
         {
             // Выделенная строка (после перехода к изменению, переноса, добавления) должна быть видна.
-            if (e.PropertyName == nameof(SpecificationViewModel.SelectedRow) && viewModel.SelectedRow is { } row)
+            if (!_rebuilding && e.PropertyName == nameof(SpecificationViewModel.SelectedRow) && viewModel.SelectedRow is { } row)
             {
                 Dispatcher.BeginInvoke(DispatcherPriority.Background, () => Grid.ScrollIntoView(row));
             }
@@ -292,6 +316,28 @@ public partial class SpecificationWindow : Window, IDialogService
     }
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
+    private ScrollViewer? FindScrollViewer() => FindDescendant<ScrollViewer>(Grid);
+
+    private static T? FindDescendant<T>(DependencyObject parent)
+        where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T found)
+            {
+                return found;
+            }
+
+            if (FindDescendant<T>(child) is { } nested)
+            {
+                return nested;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>Ctrl+F — к поиску, Esc в поиске — очистить.</summary>
     private void OnPreviewKeyDown(object sender, KeyEventArgs e)

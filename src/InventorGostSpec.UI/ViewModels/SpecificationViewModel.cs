@@ -75,6 +75,15 @@ public sealed class SpecificationViewModel : ObservableObject
     /// </summary>
     public Action? CommitEdits { get; set; }
 
+    /// <summary>Таблица сейчас будет перестроена (окно запоминает положение прокрутки).</summary>
+    public event Action? Rebuilding;
+
+    /// <summary>
+    /// Таблица перестроена. Аргумент — строка, к которой нужно прокрутить (операция касалась её);
+    /// <c>null</c> — сохранить прежнее положение прокрутки.
+    /// </summary>
+    public event Action<SpecRowViewModel?>? Rebuilt;
+
     /// <summary>После перестроения таблицы — восстановить множественный выбор строк.</summary>
     public event Action<IReadOnlyList<SpecRowViewModel>>? SelectionRestored;
 
@@ -582,6 +591,7 @@ public sealed class SpecificationViewModel : ObservableObject
             ? _selectedRows.Select(r => r.RowId).OfType<string>().ToHashSet()
             : new HashSet<string>();
 
+        Rebuilding?.Invoke();
         Rows.Clear();
         foreach (var display in Filter(SpecificationViewBuilder.Build(Specification, _context)))
         {
@@ -620,6 +630,7 @@ public sealed class SpecificationViewModel : ObservableObject
         }
 
         UpdateStatus();
+        Rebuilt?.Invoke(selectRowId is null ? null : SelectedRow);
     }
 
     /// <summary>

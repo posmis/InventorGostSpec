@@ -19,6 +19,11 @@ public class CheckerTests
         Quantity = 1,
     };
 
+    private static readonly ComponentData Drawing = new()
+    {
+        Key = "drawing:Привод.idw", Kind = ComponentKind.Document, Designation = "А.000СБ", Name = "Сборочный чертеж", Format = "А1",
+    };
+
     private static (Specification Spec, SpecificationContext Context) Build(params ComponentData[] components)
     {
         var spec = new Specification();
@@ -33,11 +38,11 @@ public class CheckerTests
     [Fact]
     public void Correct_specification_has_no_issues()
     {
-        var (spec, context) = Build(Part("А.001", "Корпус"), Part("А.002", "Ось"));
+        var (spec, context) = Build(Drawing, Part("А.001", "Корпус"), Part("А.002", "Ось"));
 
         Assert.Empty(Issues(spec, context, new CheckInput
         {
-            Components = new[] { Part("А.001", "Корпус"), Part("А.002", "Ось") },
+            Components = new[] { Drawing, Part("А.001", "Корпус"), Part("А.002", "Ось") },
             BomItemNumbers = new Dictionary<string, string> { ["А.001.ipt"] = "1", ["а.002.IPT"] = "2" },
             TitleBlock = new TitleBlock { Designation = "А.000", Name = "Узел", Developer = "Иванов", Checker = "Петров" },
         }));
@@ -129,9 +134,9 @@ public class CheckerTests
     public void Components_without_section_property_are_noted()
     {
         var auto = new ComponentData { Key = "a.ipt", Kind = ComponentKind.Part, Designation = "А.001", Name = "Корпус", Format = "А4", Quantity = 1 };
-        var (spec, context) = Build(auto);
+        var (spec, context) = Build(Drawing, auto);
 
-        var issue = Assert.Single(Issues(spec, context, new CheckInput { Components = new[] { auto } }));
+        var issue = Assert.Single(Issues(spec, context, new CheckInput { Components = new[] { Drawing, auto } }));
 
         Assert.Equal(IssueSeverity.Info, issue.Severity);
         Assert.Contains("определён автоматически — «Детали»", issue.Message);

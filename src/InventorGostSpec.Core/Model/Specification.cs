@@ -35,6 +35,12 @@ public sealed class Specification
     /// <summary>Разделы, добавленные только в эту спецификацию.</summary>
     public List<SectionDefinition> CustomSections { get; set; } = new();
 
+    /// <summary>
+    /// Разделы, вставленные вручную и показываемые даже без строк (заголовок и резервные строки),
+    /// например «Документация», когда чертежа ещё нет.
+    /// </summary>
+    public List<ShownSection> ShownSections { get; set; } = new();
+
     /// <summary>Резервы позиций этой спецификации, важнее глобальных настроек.</summary>
     public Dictionary<string, ReserveSettings> ReserveOverrides { get; set; } = new();
 

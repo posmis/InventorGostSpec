@@ -84,6 +84,8 @@ public sealed class SpecificationViewModel : ObservableObject
         UndoCommand = new RelayCommand(Undo, () => _undo.Count > 0);
         RedoCommand = new RelayCommand(Redo, () => _redo.Count > 0);
         CheckCommand = new RelayCommand(Check, () => !IsEmpty);
+        InsertSectionCommand = new RelayCommand(InsertSection, p => p is string id && InsertableSections().Any(o => o.Id == id));
+        HideSectionCommand = new RelayCommand(HideSection, () => SelectedEmptyInsertedSection() is not null);
 
         Rebuild();
         _isDirty = isNew;
@@ -224,6 +226,28 @@ public sealed class SpecificationViewModel : ObservableObject
 
     /// <summary>Проверка перед выпуском: позиции, обязательные графы, повторы, расхождения с BOM.</summary>
     public ICommand CheckCommand { get; }
+
+    /// <summary>
+    /// Вставить раздел (параметр — id) в часть выбранной строки (основную или группу): показывается заголовком
+    /// и резервными строками, пока в нём нет строк.
+    /// </summary>
+    public ICommand InsertSectionCommand { get; }
+
+    /// <summary>Убрать пустой вставленный раздел (выбран его заголовок).</summary>
+    public ICommand HideSectionCommand { get; }
+
+    /// <summary>Резерв, который получает вставленный раздел, если у него резерва нет.</summary>
+    public const int InsertedSectionReserve = 3;
+
+    /// <summary>Разделы, которых нет в части выбранной строки (основной или группе), — для меню «Раздел».</summary>
+    public IReadOnlyList<Option> InsertableSections()
+    {
+        var groupId = SelectedRow?.GroupId ?? "";
+        return _context.Catalog.Sections
+            .Where(s => !SpecBlocks.IsVisible(Specification, new SpecBlock(groupId, s)))
+            .Select(s => new Option(s.Id, s.Name))
+            .ToList();
+    }
 
     /// <summary>Подсказки кнопок отмены: что будет отменено.</summary>
     public string UndoToolTip => _undo.Count > 0 ? $"Отменить (Ctrl+Z). Можно отменить шагов: {_undo.Count}" : "Отменить (Ctrl+Z): нечего отменять";
@@ -499,9 +523,67 @@ public sealed class SpecificationViewModel : ObservableObject
         SelectedRow = Rows.FirstOrDefault(r => r.IsHeader && r.SectionId == section.Id);
     }
 
+    private void InsertSection(object? parameter)
+    {
+        if (parameter is not string sectionId)
+        {
+            return;
+        }
+
+        var groupId = SelectedRow?.GroupId ?? "";
+        SpecificationEditor.ShowSection(Specification, _context, groupId, sectionId);
+
+        // Вставленный раздел — это его резервные строки: если резерва нет, задаём его в этой спецификации.
+        var section = _context.Catalog.GetOrCreate(sectionId);
+        var hint = "";
+        if (_context.GetReserve(groupId, sectionId).Count <= 0)
+        {
+            var reserve = new ReserveSettings { Count = InsertedSectionReserve, RoundStartTo = _context.GetReserve(groupId, sectionId).RoundStartTo };
+            if (_context.FindGroup(groupId) is { } group)
+            {
+                group.Reserves[section.Id] = reserve;
+            }
+            else
+            {
+                Specification.ReserveOverrides[section.Id] = reserve;
+            }
+
+            _context = CreateContext();
+            hint = $" Резерв раздела: {InsertedSectionReserve} (изменить — «Резерв»).";
+        }
+
+        ShowReserveRows = true;
+        Changed(rebuild: true);
+        SelectedRow = Rows.FirstOrDefault(r => r.Kind == SpecRowKind.Header && r.GroupId == groupId && r.SectionId == section.Id);
+
+        if (section.HasPositions && PositionAllocator.GetReservedNumbers(Specification, _context, groupId, section.Id).Count == 0)
+        {
+            hint += " Свободных номеров под резерв нет — они появятся после «Перенумеровать».";
+        }
+
+        StatusText = $"Вставлен раздел «{section.Name}».{hint}";
+    }
+
+    private void HideSection()
+    {
+        if (SelectedEmptyInsertedSection() is { } header)
+        {
+            SpecificationEditor.HideSection(Specification, header.GroupId, header.SectionId);
+            Changed(rebuild: true);
+        }
+    }
+
+    /// <summary>Выбран заголовок вставленного раздела, в котором нет строк.</summary>
+    private SpecRowViewModel? SelectedEmptyInsertedSection() =>
+        SelectedRow is { Kind: SpecRowKind.Header } header &&
+        Specification.ShownSections.Any(s => s.Matches(header.GroupId, header.SectionId)) &&
+        !Specification.Rows.Any(r => r.GroupId == header.GroupId && string.Equals(r.SectionId, header.SectionId, StringComparison.OrdinalIgnoreCase))
+            ? header
+            : null;
+
     private void EditReserves()
     {
-        var sections = _context.Catalog.Sections.Where(s => s.HasPositions).ToList();
+        var sections = _context.Catalog.Sections.ToList();
         var parts = new[] { new ReservePart("", "Основная часть", sections.Select(s => new ReserveItem(s, _context.GetReserve(s.Id)))) }
             .Concat(_context.Groups.Select(g => new ReservePart(
                 g.Id,

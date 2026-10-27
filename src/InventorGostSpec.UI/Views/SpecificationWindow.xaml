@@ -144,8 +144,8 @@
 
                     <HeaderedContentControl Style="{StaticResource CommandGroup}" Header="Структура">
                         <StackPanel Orientation="Horizontal">
-                            <controls:IconButton Icon="{StaticResource Icon.Section}" Text="Раздел" Command="{Binding AddSectionCommand}"
-                                                 ToolTip="Добавить раздел в эту спецификацию или в общий справочник" />
+                            <controls:IconButton Icon="{StaticResource Icon.Section}" Text="Раздел ▾" Click="OnSectionMenuClick"
+                                                 ToolTip="Вставить раздел, которого нет (например, «Документация»): он показывается заголовком и резервными строками. «Новый раздел…» — свой раздел для этой спецификации или общего справочника." />
                             <controls:IconButton Icon="{StaticResource Icon.Group}" Text="Группа" Command="{Binding AddGroupCommand}"
                                                  ToolTip="Добавить группу «Изделия, устанавливаемые по …» (например, по электромонтажному чертежу)" />
                         </StackPanel>
@@ -340,6 +340,8 @@
                             </MenuItem.ItemContainerStyle>
                         </MenuItem>
                         <MenuItem Header="Удалить группу" Command="{Binding DeleteGroupCommand}" />
+                        <MenuItem Header="Убрать пустой раздел" Command="{Binding HideSectionCommand}"
+                                  ToolTip="Убрать вставленный раздел, в котором нет строк (выберите его заголовок)" />
                         <MenuItem Header="Примечание из детали" Command="{Binding InsertComponentNoteCommand}"
                                   ToolTip="Вставить в графу «Примечание» примечание из свойств детали (пользовательское свойство «Примечание» или «Комментарии»)">
                             <MenuItem.Icon><Image Style="{StaticResource MenuIcon}" Source="{StaticResource Icon.AddText}" /></MenuItem.Icon>

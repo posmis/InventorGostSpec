@@ -60,6 +60,13 @@ public static class SpecificationSerializer
         spec.Groups ??= new List<SpecGroup>();
         spec.CustomSections ??= new List<Sections.SectionDefinition>();
         spec.ReserveOverrides ??= new Dictionary<string, ReserveSettings>();
+        spec.ShownSections ??= new List<ShownSection>();
+        spec.ShownSections.RemoveAll(s => s is null || string.IsNullOrWhiteSpace(s.SectionId));
+        foreach (var shown in spec.ShownSections)
+        {
+            shown.GroupId ??= "";
+        }
+
         spec.Rows.RemoveAll(r => r is null);
         spec.Groups.RemoveAll(g => g is null);
         spec.CustomSections.RemoveAll(s => s is null || string.IsNullOrWhiteSpace(s.Id));

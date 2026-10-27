@@ -155,6 +155,10 @@ public class UndoAndCheckTests
     [Fact]
     public void Check_without_issues_says_so()
     {
+        _host.Components.Add(new ComponentData
+        {
+            Key = "drawing:Привод.idw", Kind = ComponentKind.Document, Designation = "А.000СБ", Name = "Сборочный чертеж", Format = "А1",
+        });
         var vm = Open();
         _host.BomItemNumbers = new() { ["a.ipt"] = "1", ["b.ipt"] = "2" };
         _host.Title = () => new TitleBlock { Designation = "А.000", Name = "Узел", Developer = "Иванов", Checker = "Петров" };
@@ -211,5 +215,72 @@ public class UndoAndCheckTests
         vm.ExportPdfCommand.Execute(null);
 
         Assert.Empty(_host.PdfCalls);
+    }
+}
+
+public class InsertSectionTests
+{
+    private readonly FakeHost _host = new();
+    private readonly FakeDialogs _dialogs = new();
+
+    private SpecificationViewModel Open()
+    {
+        _host.Components.Add(new ComponentData { Key = "a.ipt", Kind = ComponentKind.Part, Designation = "А.001", Name = "Корпус", Quantity = 1 });
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, _host.Components, SpecificationContext.Create(_host.Settings, spec), DateTime.UtcNow);
+        return new SpecificationViewModel(_host, _dialogs, spec, post: action => action());
+    }
+
+    [Fact]
+    public void Missing_sections_are_offered_and_inserted_with_reserve()
+    {
+        var vm = Open();
+        vm.ShowReserveRows = false;
+        var offered = vm.InsertableSections().Select(o => o.Id).ToList();
+        Assert.Contains(SectionIds.Documentation, offered);
+        Assert.DoesNotContain(SectionIds.Parts, offered);
+
+        vm.InsertSectionCommand.Execute(SectionIds.Documentation);
+
+        Assert.True(vm.ShowReserveRows);
+        Assert.Equal("Документация", vm.SelectedRow!.Name);
+        Assert.Equal(SpecificationViewModel.InsertedSectionReserve, vm.Rows.Count(r => r.IsReserve && r.SectionId == SectionIds.Documentation));
+        Assert.Contains("Вставлен раздел «Документация»", vm.StatusText);
+        Assert.DoesNotContain(SectionIds.Documentation, vm.InsertableSections().Select(o => o.Id));
+        Assert.False(vm.InsertSectionCommand.CanExecute(SectionIds.Documentation));
+    }
+
+    [Fact]
+    public void Drawing_row_is_added_into_inserted_documentation_and_empty_section_can_be_removed()
+    {
+        var vm = Open();
+        vm.InsertSectionCommand.Execute(SectionIds.Documentation);
+        Assert.True(vm.HideSectionCommand.CanExecute(null));
+
+        vm.AddItemCommand.Execute(null);
+        var drawing = vm.SelectedRow!;
+        Assert.Equal(SectionIds.Documentation, drawing.SectionId);
+        Assert.Equal("", drawing.Position);
+
+        vm.SelectedRow = vm.Rows.First(r => r.IsHeader && r.SectionId == SectionIds.Documentation);
+        Assert.False(vm.HideSectionCommand.CanExecute(null)); // в разделе уже есть строка
+
+        vm.UndoCommand.Execute(null);
+        vm.SelectedRow = vm.Rows.First(r => r.IsHeader && r.SectionId == SectionIds.Documentation);
+        vm.HideSectionCommand.Execute(null);
+        Assert.DoesNotContain(vm.Rows, r => r.SectionId == SectionIds.Documentation);
+    }
+
+    [Fact]
+    public void Existing_reserve_is_kept_and_numbers_hint_is_given()
+    {
+        _host.Settings.DefaultReserves[SectionIds.StandardProducts] = new ReserveSettings { Count = 2 };
+        var vm = Open();
+
+        vm.InsertSectionCommand.Execute(SectionIds.StandardProducts);
+
+        Assert.Equal(2, vm.Specification.ReserveOverrides.TryGetValue(SectionIds.StandardProducts, out var r) ? r.Count : 2);
+        Assert.Equal(2, vm.Rows.Count(x => x.IsReserve && x.SectionId == SectionIds.StandardProducts));
+        Assert.DoesNotContain("Перенумеровать", vm.StatusText);
     }
 }

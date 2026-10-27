@@ -85,7 +85,8 @@ public sealed class ReserveItem : ObservableObject
     public ReserveItem(SectionDefinition section, ReserveSettings settings)
     {
         SectionId = section.Id;
-        SectionName = section.Name;
+        // У разделов без позиций («Документация») резерв — свободные строки без номера.
+        SectionName = section.HasPositions ? section.Name : $"{section.Name} (свободные строки)";
         _count = settings.Count;
         _roundStartTo = settings.RoundStartTo;
     }

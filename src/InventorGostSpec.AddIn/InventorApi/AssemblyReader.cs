@@ -44,18 +44,19 @@ internal static class AssemblyReader
     };
 
     /// <summary>
-    /// Сборочный чертёж — чертёж с тем же именем рядом со сборкой.
-    /// Обозначение — обозначение сборки с кодом «СБ» (если в обозначении сборки «СБ» уже есть, второй не добавляется).
+    /// Сборочный чертёж — см. <see cref="DrawingAccess.FindAssemblyDrawing"/> (по имени сборки, по обозначению,
+    /// открытый чертёж этой сборки). Обозначение — обозначение сборки с кодом «СБ»
+    /// (если в обозначении сборки «СБ» уже есть, второй не добавляется).
     /// </summary>
     private static ComponentData? ReadAssemblyDrawing(Inventor.Application application, AssemblyDocument assembly)
     {
-        var path = DrawingAccess.FindDrawing(assembly.FullFileName);
+        var partNumber = PropertyAccess.Get(assembly.PropertySets, PropertyAccess.DesignTrackingSet, PropertyAccess.PartNumber);
+        var path = DrawingAccess.FindAssemblyDrawing(application, assembly.FullFileName, partNumber);
         if (path is null)
         {
             return null;
         }
 
-        var partNumber = PropertyAccess.Get(assembly.PropertySets, PropertyAccess.DesignTrackingSet, PropertyAccess.PartNumber);
         return new ComponentData
         {
             Key = "drawing:" + System.IO.Path.GetRelativePath(BomAccess.AssemblyFolder(assembly), path),

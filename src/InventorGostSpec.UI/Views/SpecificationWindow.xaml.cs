@@ -394,6 +394,43 @@ public partial class SpecificationWindow : Window, IDialogService
         }
     }
 
+    /// <summary>Меню кнопки «Раздел»: разделы, которых нет в части выбранной строки, и «Новый раздел…».</summary>
+    private void OnSectionMenuClick(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel is not { } viewModel)
+        {
+            return;
+        }
+
+        var menu = new ContextMenu
+        {
+            PlacementTarget = (UIElement)sender,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+        };
+        var part = viewModel.SelectedRow is { GroupId.Length: > 0 } ? "в группу выбранной строки" : "в основную часть";
+        menu.Items.Add(new MenuItem { Header = $"Вставить раздел {part}:", IsEnabled = false, FontWeight = FontWeights.SemiBold });
+
+        var sections = viewModel.InsertableSections();
+        foreach (var option in sections)
+        {
+            menu.Items.Add(new MenuItem
+            {
+                Header = "    " + option.Name,
+                Command = viewModel.InsertSectionCommand,
+                CommandParameter = option.Id,
+            });
+        }
+
+        if (sections.Count == 0)
+        {
+            menu.Items.Add(new MenuItem { Header = "    все разделы уже есть", IsEnabled = false });
+        }
+
+        menu.Items.Add(new Separator());
+        menu.Items.Add(new MenuItem { Header = "Новый раздел…", Command = viewModel.AddSectionCommand });
+        menu.IsOpen = true;
+    }
+
     private void OnSortGroupClick(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { DataContext: Option option } && _viewModel?.SetSortGroupCommand is { } command &&

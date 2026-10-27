@@ -51,9 +51,7 @@ public static class SpecificationViewBuilder
             }
 
             var rows = spec.Rows.Where(block.Contains).ToList();
-            var isCustom = block.GroupId.Length == 0 &&
-                           spec.CustomSections.Any(s => string.Equals(s.Id, section.Id, StringComparison.OrdinalIgnoreCase));
-            if (rows.Count == 0 && !isCustom)
+            if (rows.Count == 0 && !SpecBlocks.IsShownWhenEmpty(spec, block))
             {
                 continue;
             }
@@ -61,10 +59,22 @@ public static class SpecificationViewBuilder
             result.Add(new DisplayRow(DisplayRowKind.SectionHeader, block.GroupId, section.Id, section.Name, null, null));
             result.AddRange(rows.Select(r => new DisplayRow(DisplayRowKind.Row, block.GroupId, section.Id, section.Name, r, null)));
 
-            if (spec.ShowReserveRows && section.HasPositions)
+            if (!spec.ShowReserveRows)
+            {
+                continue;
+            }
+
+            if (section.HasPositions)
             {
                 result.AddRange(PositionAllocator.GetReservedNumbers(spec, context, block.GroupId, section.Id)
                     .Select(n => new DisplayRow(DisplayRowKind.Reserve, block.GroupId, section.Id, section.Name, null, n)));
+            }
+            else
+            {
+                // Раздел без позиций («Документация»): резерв — свободные строки без номера.
+                var count = Math.Max(0, context.GetReserve(block.GroupId, section.Id).Count);
+                result.AddRange(Enumerable.Range(0, count)
+                    .Select(_ => new DisplayRow(DisplayRowKind.Reserve, block.GroupId, section.Id, section.Name, null, null)));
             }
         }
 

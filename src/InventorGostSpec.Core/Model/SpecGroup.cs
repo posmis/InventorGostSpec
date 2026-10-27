@@ -18,6 +18,18 @@ public sealed class SpecGroup
     public Dictionary<string, ReserveSettings> Reserves { get; set; } = new();
 }
 
+/// <summary>Раздел, вставленный вручную (в основную часть или в группу): показывается и без строк.</summary>
+public sealed class ShownSection
+{
+    /// <summary>Группа; пусто — основная часть.</summary>
+    public string GroupId { get; set; } = "";
+
+    public string SectionId { get; set; } = "";
+
+    public bool Matches(string groupId, string sectionId) =>
+        GroupId == groupId && string.Equals(SectionId, sectionId, StringComparison.OrdinalIgnoreCase);
+}
+
 /// <summary>Блок строк спецификации: раздел основной части или раздел группы.</summary>
 /// <param name="GroupId">Пусто — основная часть.</param>
 public sealed record SpecBlock(string GroupId, SectionDefinition Section)
@@ -46,6 +58,19 @@ public static class SpecBlocks
     /// <summary>Порядковый номер блока строки (для сортировки).</summary>
     public static int Order(SpecRow row, SpecificationContext context) =>
         context.GroupIndex(row.GroupId) * 100_000 + context.Catalog.IndexOf(row.SectionId);
+
+    /// <summary>
+    /// Раздел показывается и без строк: вставлен вручную или это пользовательский раздел этой спецификации
+    /// (в основной части).
+    /// </summary>
+    public static bool IsShownWhenEmpty(Specification spec, SpecBlock block) =>
+        spec.ShownSections.Any(s => s.Matches(block.GroupId, block.Section.Id)) ||
+        (block.GroupId.Length == 0 &&
+         spec.CustomSections.Any(s => string.Equals(s.Id, block.Section.Id, StringComparison.OrdinalIgnoreCase)));
+
+    /// <summary>Есть ли у блока строки или он показывается и пустым.</summary>
+    public static bool IsVisible(Specification spec, SpecBlock block) =>
+        spec.Rows.Any(block.Contains) || IsShownWhenEmpty(spec, block);
 
     public static bool Same(SpecRow a, SpecRow b) =>
         a.GroupId == b.GroupId && string.Equals(a.SectionId, b.SectionId, StringComparison.OrdinalIgnoreCase);

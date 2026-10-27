@@ -64,6 +64,7 @@ public static class SpecificationChecker
         CheckDuplicateDesignations(active, issues);
         CheckBom(active, input.BomItemNumbers, issues);
         CheckComponentSections(active, input.Components, context, issues);
+        CheckDocumentation(active, input.Components, issues);
         CheckGroups(spec, issues);
         CheckTitleBlock(input.TitleBlock, issues);
 
@@ -221,6 +222,20 @@ public static class SpecificationChecker
                 $"{Describe(row)}: раздел не задан в iProperties, определён автоматически — «{section}». Задайте командой «Свойства» или «Авторазделы».",
                 row.Id));
         }
+    }
+
+    /// <summary>Нет ни одного документа: скорее всего, сборочный чертёж не найден рядом со сборкой.</summary>
+    private static void CheckDocumentation(List<SpecRow> active, IReadOnlyList<ComponentData>? components, List<SpecIssue> issues)
+    {
+        if (components is null || components.Count == 0 ||
+            active.Any(r => string.Equals(r.SectionId, SectionIds.Documentation, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        issues.Add(new SpecIssue(IssueSeverity.Warning,
+            "Нет раздела «Документация»: сборочный чертёж не найден рядом со сборкой (имя файла как у сборки или по её " +
+            "обозначению, либо чертёж открыт в Inventor). Его можно добавить вручную: «Раздел» → «Документация», затем «Изделие»."));
     }
 
     private static void CheckGroups(Specification spec, List<SpecIssue> issues)

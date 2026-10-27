@@ -25,6 +25,22 @@ public static class Designations
             : trimmed;
     }
 
+    /// <summary>
+    /// Имя файла относится к документу с этим обозначением (или именем): начинается с него, а дальше конец, пробел, «_»
+    /// или код «СБ». Другой номер не подходит: «…001» — не «…0010» и не исполнение «…001-01».
+    /// </summary>
+    public static bool IsFileOfDocument(string fileName, string designation)
+    {
+        designation = designation.Trim();
+        if (designation.Length == 0 || !fileName.StartsWith(designation, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var rest = fileName[designation.Length..];
+        return rest.Length == 0 || rest[0] is ' ' or '_' || Regex.IsMatch(rest, @"^[СC]Б", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+    }
+
     /// <summary>Обозначение сборочного чертежа: «АБВГ.301234.001» и «АБВГ.301234.001СБ» → «АБВГ.301234.001СБ».</summary>
     public static string AssemblyDrawing(string? assemblyDesignation)
     {

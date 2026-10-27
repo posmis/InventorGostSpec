@@ -215,6 +215,37 @@ public static class SpecificationEditor
         spec.CustomSections.Add(copy);
     }
 
+    /// <summary>
+    /// Вставляет раздел в основную часть или в группу: он показывается и без строк — заголовком и резервными строками.
+    /// Номера позиций не меняются; под резерв пустого раздела отводятся свободные номера после резерва предыдущего раздела
+    /// (если их нет — после «Перенумеровать»).
+    /// </summary>
+    public static void ShowSection(Specification spec, SpecificationContext context, string groupId, string sectionId)
+    {
+        if (string.IsNullOrWhiteSpace(sectionId))
+        {
+            throw new ArgumentException("Section must be specified.", nameof(sectionId));
+        }
+
+        if (groupId.Length > 0 && context.FindGroup(groupId) is null)
+        {
+            throw new ArgumentException($"Group '{groupId}' not found.", nameof(groupId));
+        }
+
+        context.Catalog.GetOrCreate(sectionId);
+        if (!spec.ShownSections.Any(s => s.Matches(groupId, sectionId)))
+        {
+            spec.ShownSections.Add(new ShownSection { GroupId = groupId, SectionId = sectionId.Trim() });
+        }
+    }
+
+    /// <summary>
+    /// Убирает вставленный раздел: пустой раздел перестаёт показываться (строки раздела, если они есть, остаются).
+    /// </summary>
+    /// <returns><c>false</c> — раздел не был вставлен вручную.</returns>
+    public static bool HideSection(Specification spec, string groupId, string sectionId) =>
+        spec.ShownSections.RemoveAll(s => s.Matches(groupId, sectionId)) > 0;
+
     /// <summary>Снимает подсветку новых и изменённых строк и удаляет строки компонентов, которых нет в сборке.</summary>
     public static void AcceptChanges(Specification spec)
     {
@@ -269,9 +300,11 @@ public static class SpecificationEditor
             .ToList();
     }
 
-    /// <summary>Строки удалённых групп возвращаются в основную часть.</summary>
+    /// <summary>Строки удалённых групп возвращаются в основную часть; вставленные разделы удалённых групп забываются.</summary>
     public static void NormalizeGroups(Specification spec)
     {
+        spec.ShownSections.RemoveAll(s => s.GroupId.Length > 0 && spec.Groups.All(g => g.Id != s.GroupId));
+
         foreach (var row in spec.Rows.Where(r => r.GroupId.Length > 0 && spec.Groups.All(g => g.Id != r.GroupId)))
         {
             row.GroupId = "";

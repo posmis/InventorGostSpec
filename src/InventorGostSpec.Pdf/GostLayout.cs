@@ -44,13 +44,25 @@ public static class GostLayout
     public const int NoteColumn = 6;
 
     /// <summary>
-    /// Высота прописных букв (ГОСТ 2.304, шрифт 3,5): строки таблицы, все надписи и данные основной надписи,
+    /// Высота прописных букв (ГОСТ 2.304, шрифт 3,5): все надписи и данные основной надписи,
     /// графы на поле подшивки, вертикальные заголовки граф — как в бланке КОМПАС-3D.
     /// </summary>
     public const double TextHeight = 3.5;
 
     /// <summary>Горизонтальные заголовки граф таблицы («Обозначение», «Наименование», «Примечание») — шрифт 5.</summary>
     public const double HeaderTextHeight = 5;
+
+    /// <summary>
+    /// Текст строк таблицы спецификации — изделия, заголовки разделов, текстовые строки, формат — шрифт 5.
+    /// Не помещается — сжимается по ширине до 80 %, затем переносится.
+    /// </summary>
+    public const double RowTextHeight = 5;
+
+    /// <summary>Расстояние между базовыми линиями соседних строк текста в одной графе — 1,2 высоты букв (как в КОМПАС-3D).</summary>
+    public const double LineSpacing = 1.2;
+
+    /// <summary>Отступ в узкой графе «Формат», чтобы сжатый шрифт 5 был читаемым.</summary>
+    public const double NarrowPadding = 0.3;
 
     /// <summary>Наименование изделия в основной надписи — шрифт 5 (3,5, если не помещается в две строки).</summary>
     public const double NameTextHeight = 5;
@@ -69,6 +81,9 @@ public static class GostLayout
     /// в графе основной надписи 5 мм — почти на линии.
     /// </summary>
     public static double BaselineGap(double cellHeight, double capHeight) => Math.Max(0.3, (cellHeight - capHeight) / 2 - 0.75);
+
+    /// <summary>Базовая линия в строке таблицы — на 1,5 мм выше нижней линии (как в КОМПАС-3D), с местом для подчёркивания.</summary>
+    public const double RowBaselineGap = 1.5;
 
     /// <summary>Отступ текста от линий графы.</summary>
     public const double Padding = 1;

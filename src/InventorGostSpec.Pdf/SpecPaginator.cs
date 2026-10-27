@@ -191,14 +191,15 @@ public static class SpecPaginator
     /// Если текст чуть-чуть не помещается и сжатие до 80 % по ширине экономит строку — не переносим, при выводе он сжимается.
     /// Слово длиннее графы остаётся целым и тоже сжимается.
     /// </summary>
-    public static List<string> Wrap(string text, double width, Func<string, double, double> measure)
+    /// <param name="capHeight">Высота букв; по умолчанию — шрифт строк таблицы (5).</param>
+    public static List<string> Wrap(string text, double width, Func<string, double, double> measure, double capHeight = GostLayout.RowTextHeight)
     {
-        var normal = WrapAt(text, width, measure);
-        var compressed = WrapAt(text, width / MinCompression, measure);
+        var normal = WrapAt(text, width, measure, capHeight);
+        var compressed = WrapAt(text, width / MinCompression, measure, capHeight);
         return compressed.Count < normal.Count ? compressed : normal;
     }
 
-    private static List<string> WrapAt(string text, double width, Func<string, double, double> measure)
+    private static List<string> WrapAt(string text, double width, Func<string, double, double> measure, double capHeight)
     {
         var result = new List<string>();
         foreach (var paragraph in text.Replace("\r", "").Split('\n'))
@@ -208,7 +209,7 @@ public static class SpecPaginator
             foreach (var word in words)
             {
                 var candidate = line.Length == 0 ? word.TrimStart() : line + word;
-                if (line.Length > 0 && measure(candidate.TrimEnd(), GostLayout.TextHeight) > width)
+                if (line.Length > 0 && measure(candidate.TrimEnd(), capHeight) > width)
                 {
                     result.Add(line.TrimEnd());
                     line = word.TrimStart();
@@ -241,7 +242,9 @@ public static class SpecPaginator
         var start = 0;
         for (var i = 1; i < text.Length; i++)
         {
-            var breakBefore = text[i] == ' ' && text[i - 1] != ' ' && !StandardPrefixes.Contains(text[start..i].Trim().Split(' ')[^1]);
+            // Перед отдельно стоящим тире строку не переносим: «DIN 315 -» / «M8 - St - C», а не «DIN 315» / «- M8».
+            var dashNext = i + 1 < text.Length && text[i + 1] is '-' or '–' or '—' && (i + 2 == text.Length || text[i + 2] == ' ');
+            var breakBefore = text[i] == ' ' && text[i - 1] != ' ' && !dashNext && !StandardPrefixes.Contains(text[start..i].Trim().Split(' ')[^1]);
             var breakAfterHyphen = text[i - 1] == '-' && text[i] != ' ' && i >= 2 && char.IsLetter(text[i - 2]);
             if (breakBefore || breakAfterHyphen)
             {

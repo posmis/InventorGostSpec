@@ -161,12 +161,17 @@ public static class GostPdfWriter
                 var heading = line.Style != LineStyle.Normal;
                 var align = column is DesignationColumn or NoteColumn || (column == NameColumn && !heading) ? TextAlign.Left : TextAlign.Center;
                 var x = ColumnLeft(column);
-                var width = _text.DrawInBox(_gfx, value, x, y, ColumnWidths[column], height, TextHeight, align);
 
-                if (line.Style == LineStyle.Section && column == NameColumn)
+                // Весь текст строк — шрифт 5; в узкой графе «Формат» он сжимается по ширине.
+                var section = line.Style == LineStyle.Section && column == NameColumn;
+                var padding = column == FormatColumn ? NarrowPadding : (double?)null;
+                var gap = RowBaselineGap;
+                var width = _text.DrawInBox(_gfx, value, x, y, ColumnWidths[column], height, RowTextHeight, align, padding, gap);
+
+                if (section)
                 {
                     var left = x + (ColumnWidths[column] - width) / 2;
-                    var underline = y + height - BaselineGap(height, TextHeight) + 0.8;
+                    var underline = y + height - gap + 0.7;
                     _gfx.DrawLine(Thin, left, underline, left + width, underline);
                 }
             }
@@ -218,7 +223,7 @@ public static class GostPdfWriter
             }
 
             _text.DrawInBox(_gfx, _count.ToString(), 185, top + 20, 20, 5, TextHeight, TextAlign.Center);
-            var organization = SpecPaginator.Wrap(_title.Organization, 48, _text.Measure).Take(3).ToList();
+            var organization = SpecPaginator.Wrap(_title.Organization, 48, _text.Measure, TextHeight).Take(3).ToList();
             _text.DrawLines(_gfx, organization, 155, top + 25, 50, 15, TextHeight, TextAlign.Center);
             _gfx.DrawLine(Thick, FrameLeft, top, FrameRight, top);
         }

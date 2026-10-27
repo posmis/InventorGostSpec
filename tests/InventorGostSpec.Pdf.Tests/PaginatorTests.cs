@@ -42,6 +42,14 @@ public class PaginatorTests
     }
 
     [Fact]
+    public void Line_does_not_start_with_a_dash()
+    {
+        var lines = SpecPaginator.Wrap("Гайка барашек DIN 315 - M8 - St - C", 24 * 2, Measure);
+
+        Assert.Equal(new[] { "Гайка барашек DIN 315 -", "M8 - St - C" }, lines);
+    }
+
+    [Fact]
     public void Long_words_stay_whole_and_explicit_line_breaks_are_kept()
     {
         Assert.Equal(new[] { "АБВГ.301234.001-01АБВГ.301234.001" }, SpecPaginator.Wrap("АБВГ.301234.001-01АБВГ.301234.001", 20, Measure));

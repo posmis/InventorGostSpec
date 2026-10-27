@@ -93,16 +93,19 @@ internal sealed class GostText
     /// Текст в графе: базовая линия ниже середины (<see cref="GostLayout.BaselineGap"/>),
     /// по горизонтали — с отступом <see cref="GostLayout.Padding"/>.
     /// </summary>
-    public double DrawInBox(XGraphics gfx, string text, double x, double y, double width, double height, double capHeight, TextAlign align)
+    /// <param name="baselineGap">Расстояние от нижней линии до базовой линии; по умолчанию — <see cref="GostLayout.BaselineGap"/>.</param>
+    public double DrawInBox(XGraphics gfx, string text, double x, double y, double width, double height, double capHeight, TextAlign align,
+        double? padding = null, double? baselineGap = null)
     {
-        var padding = Math.Min(GostLayout.Padding, width / 4);
-        return Draw(gfx, text, x + padding, y + height - GostLayout.BaselineGap(height, capHeight), capHeight, width - 2 * padding, align);
+        var pad = padding ?? Math.Min(GostLayout.Padding, width / 4);
+        var gap = baselineGap ?? GostLayout.BaselineGap(height, capHeight);
+        return Draw(gfx, text, x + pad, y + height - gap, capHeight, width - 2 * pad, align);
     }
 
-    /// <summary>Несколько строк по центру прямоугольника (межстрочный интервал — 1,6 высоты букв).</summary>
+    /// <summary>Несколько строк по центру прямоугольника (межстрочный интервал — <see cref="GostLayout.LineSpacing"/>).</summary>
     public void DrawLines(XGraphics gfx, IReadOnlyList<string> lines, double x, double y, double width, double height, double capHeight, TextAlign align)
     {
-        var step = capHeight * 1.6;
+        var step = capHeight * GostLayout.LineSpacing;
         var top = y + (height - (lines.Count - 1) * step - capHeight) / 2;
         for (var i = 0; i < lines.Count; i++)
         {

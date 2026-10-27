@@ -57,7 +57,7 @@ public class PdfWriterTests : IDisposable
         var ratio = CapHeightReader.Read(font.Path)!.Value;
 
         Assert.InRange(ratio, 0.66, 0.70);
-        var text = new GostText(GostFontResolver.Register(font.Path), false);
+        var text = new GostText(GostFontResolver.Register(font.Path));
         Assert.Equal(3.5 / ratio, text.Font(3.5).Size, 3);
     }
 

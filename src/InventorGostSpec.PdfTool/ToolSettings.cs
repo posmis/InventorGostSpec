@@ -12,8 +12,6 @@ public sealed class ToolSettings
     /// <summary>Семейство шрифта или путь к .ttf; пусто — первый найденный шрифт ГОСТ.</summary>
     public string Font { get; set; } = "";
 
-    public bool Italic { get; set; }
-
     public bool OpenAfter { get; set; } = true;
 
     public static ToolSettings Load()

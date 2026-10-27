@@ -19,7 +19,7 @@ public static class GostPdfWriter
             ?? throw new InvalidOperationException(string.IsNullOrWhiteSpace(options.Font)
                 ? "Не найден ни шрифт ГОСТ, ни Arial."
                 : $"Шрифт «{options.Font}» не найден. Укажите установленный шрифт TrueType или путь к файлу .ttf.");
-        var text = new GostText(GostFontResolver.Register(font.Path), options.Italic);
+        var text = new GostText(GostFontResolver.Register(font.Path));
         var pages = SpecPaginator.Paginate(file.Rows, text.Measure);
 
         using var document = new PdfDocument();
@@ -166,7 +166,7 @@ public static class GostPdfWriter
                 if (line.Style == LineStyle.Section && column == NameColumn)
                 {
                     var left = x + (ColumnWidths[column] - width) / 2;
-                    var underline = y + (height + TextHeight) / 2 + 0.8;
+                    var underline = y + height - BaselineGap(height, TextHeight) + 0.8;
                     _gfx.DrawLine(Thin, left, underline, left + width, underline);
                 }
             }

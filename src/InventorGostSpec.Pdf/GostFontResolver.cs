@@ -33,9 +33,9 @@ internal sealed class GostFontResolver : IFontResolver
         }
     }
 
-    // Наклон по запросу имитируется: у шрифтов ГОСТ обычно нет отдельного курсивного файла.
+    // Наклон делает GostText сам (как в КОМПАС-3D), поэтому шрифт всегда прямой.
     public FontResolverInfo? ResolveTypeface(string familyName, bool isBold, bool isItalic) =>
-        _fonts.ContainsKey(familyName) ? new FontResolverInfo(familyName, false, isItalic) : null;
+        _fonts.ContainsKey(familyName) ? new FontResolverInfo(familyName) : null;
 
     public byte[]? GetFont(string faceName)
     {

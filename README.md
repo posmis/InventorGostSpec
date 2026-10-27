@@ -147,7 +147,7 @@
   «Изменения» файла «‹обозначение› Спецификация.xlsx» рядом со сборкой, если он есть.
 - **Без Inventor** — запустите `PdfTool\InventorGostSpec.PdfTool.exe` из папки аддина (или перетащите на него файл Excel):
   в окне выберите поправленный вручную Excel, файл PDF и шрифт.
-- **Командная строка:** `InventorGostSpec.PdfTool.exe файл.xlsx --output файл.pdf [--font "GOST type B"] [--italic] [--open]`.
+- **Командная строка:** `InventorGostSpec.PdfTool.exe файл.xlsx --output файл.pdf [--font "GOST type B"] [--open]`.
   Код возврата 0 — успех, иначе текст ошибки в stderr.
 
 Что выводится:
@@ -174,7 +174,8 @@
 
 **Шрифт.** По умолчанию — «Gost merged», он поставляется с утилитой (`PdfTool\Fonts\gost_merged.ttf`, исходник —
 `src/InventorGostSpec.Pdf/Fonts`). Если файла нет — первый установленный шрифт ГОСТ 2.304 («GOST type B»,
-«GOST type A», ISOCPEUR, OpenGost), иначе Arial. Выбор шрифта и наклона в окне утилиты сохраняется в
+«GOST type A», ISOCPEUR, OpenGost), иначе Arial. Текст всегда наклонный, как в КОМПАС-3D (наклон около 20°, шрифт в файле может быть прямым).
+Выбор шрифта в окне утилиты сохраняется в
 `%APPDATA%\InventorGostSpec\pdf.json` и действует и при вызове из Inventor. Можно указать путь к файлу `.ttf`.
 Подходят только шрифты TrueType (`.ttf`).
 

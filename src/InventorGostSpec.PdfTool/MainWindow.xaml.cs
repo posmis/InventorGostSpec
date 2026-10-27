@@ -37,7 +37,6 @@ public partial class MainWindow : Window
             : installed.Count > 0
                 ? $"Найдены шрифты ГОСТ: {string.Join(", ", installed)}."
                 : "Шрифты ГОСТ не найдены — будет использован Arial. Укажите путь к .ttf.";
-        ItalicBox.IsChecked = _settings.Italic;
         OpenBox.IsChecked = _settings.OpenAfter;
 
         if (input is not null)
@@ -123,14 +122,13 @@ public partial class MainWindow : Window
 
         var font = FontBox.Text.Trim();
         _settings.Font = font == AutoFont ? "" : font;
-        _settings.Italic = ItalicBox.IsChecked == true;
         _settings.OpenAfter = OpenBox.IsChecked == true;
         _settings.Save();
 
         try
         {
             Cursor = System.Windows.Input.Cursors.Wait;
-            var options = new PdfOptions { Font = _settings.Font.Length > 0 ? _settings.Font : null, Italic = _settings.Italic };
+            var options = new PdfOptions { Font = _settings.Font.Length > 0 ? _settings.Font : null };
             var pages = Program.Convert(input, output, options);
             var usedFont = FontLocator.Find(options.Font)?.Family ?? "";
             ShowStatus($"Готово: {pages} {SheetWord(pages)}, шрифт {usedFont}.\n{output}", error: false);

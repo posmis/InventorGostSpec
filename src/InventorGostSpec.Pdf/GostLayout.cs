@@ -58,6 +58,18 @@ public static class GostLayout
     /// <summary>Обозначение документа в основной надписи — шрифт 7.</summary>
     public const double DesignationTextHeight = 7;
 
+    /// <summary>
+    /// Наклон шрифта: сдвиг вправо на единицу высоты, как у текста в КОМПАС-3D (≈20°).
+    /// Шрифт в файле прямой, наклон делается при выводе.
+    /// </summary>
+    public const double ItalicShear = 0.364;
+
+    /// <summary>
+    /// Базовая линия текста в графе — ниже середины, как в КОМПАС-3D: в строке 8 мм — на 1,5 мм выше нижней линии,
+    /// в графе основной надписи 5 мм — почти на линии.
+    /// </summary>
+    public static double BaselineGap(double cellHeight, double capHeight) => Math.Max(0.3, (cellHeight - capHeight) / 2 - 0.75);
+
     /// <summary>Отступ текста от линий графы.</summary>
     public const double Padding = 1;
 

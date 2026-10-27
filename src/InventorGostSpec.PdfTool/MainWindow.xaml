@@ -54,9 +54,7 @@
             <TextBlock x:Name="FontHint" Grid.Row="5" Grid.Column="1" Foreground="#6B7280" Margin="0,4,0,0" TextWrapping="Wrap" />
         </Grid>
 
-        <CheckBox x:Name="ItalicBox" Margin="0,12,0,0"
-                  Content="Наклонный шрифт (если у шрифта нет своего наклона)" />
-        <CheckBox x:Name="OpenBox" Margin="0,6,0,0" Content="Открыть PDF после создания" />
+        <CheckBox x:Name="OpenBox" Margin="0,12,0,0" Content="Открыть PDF после создания" />
 
         <Border Margin="0,14,0,0" Padding="10,8" Background="White" BorderBrush="#E5E7EB" BorderThickness="1" CornerRadius="3"
                 x:Name="StatusPanel" Visibility="Collapsed">

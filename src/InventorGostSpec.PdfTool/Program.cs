@@ -10,7 +10,7 @@ namespace InventorGostSpec.PdfTool;
 /// Запуск:
 /// <list type="bullet">
 /// <item><c>InventorGostSpec.PdfTool.exe</c> — окно (можно перетащить на exe файл Excel);</item>
-/// <item><c>InventorGostSpec.PdfTool.exe файл.xlsx --output файл.pdf [--font "GOST type B"] [--italic] [--open]</c> —
+/// <item><c>InventorGostSpec.PdfTool.exe файл.xlsx --output файл.pdf [--font "GOST type B"] [--open]</c> —
 /// без окна, для вызова из аддина: код возврата 0 — успех, иначе текст ошибки в stderr.</item>
 /// </list>
 /// </summary>
@@ -41,7 +41,6 @@ public static class Program
             var options = new PdfOptions
             {
                 Font = arguments.Font ?? (settings.Font.Length > 0 ? settings.Font : null),
-                Italic = arguments.Italic || settings.Italic,
             };
             Convert(arguments.Input!, arguments.Output, options);
             if (arguments.Open)
@@ -79,7 +78,6 @@ public static class Program
         public string? Input { get; private set; }
         public string? Output { get; private set; }
         public string? Font { get; private set; }
-        public bool Italic { get; private set; }
         public bool Open { get; private set; }
         public string? Error { get; private set; }
 
@@ -106,9 +104,6 @@ public static class Program
                         break;
                     case "--font":
                         result.Font = Next();
-                        break;
-                    case "--italic":
-                        result.Italic = true;
                         break;
                     case "--open":
                         result.Open = true;

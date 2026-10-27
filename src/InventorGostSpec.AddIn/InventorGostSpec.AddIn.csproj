@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>InventorGostSpec.AddIn</RootNamespace>
+    <!-- Аддин загружается в процесс Inventor: зависимости копируются рядом с dll. -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Пути можно переопределить: dotnet build -p:InventorInstallDir="D:\Autodesk\Inventor 2025\" -->
+    <InventorInstallDir Condition="'$(InventorInstallDir)' == ''">C:\Program Files\Autodesk\Inventor 2025\</InventorInstallDir>
+    <InventorInteropPath Condition="'$(InventorInteropPath)' == ''">$(InventorInstallDir)Bin\Public Assemblies\Autodesk.Inventor.Interop.dll</InventorInteropPath>
+    <!-- Папка, из которой Inventor загружает аддин. -->
+    <InventorPluginDir Condition="'$(InventorPluginDir)' == ''">$(APPDATA)\Autodesk\ApplicationPlugins\InventorGostSpec\</InventorPluginDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Autodesk.Inventor.Interop">
+      <HintPath>$(InventorInteropPath)</HintPath>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InventorGostSpec.Core\InventorGostSpec.Core.csproj" />
+    <ProjectReference Include="..\InventorGostSpec.UI\InventorGostSpec.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="InventorGostSpec.addin" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- В Debug на Windows аддин сразу копируется в папку плагинов Inventor. Inventor должен быть закрыт. -->
+  <Target Name="DeployToInventor" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(OS)' == 'Windows_NT' And '$(DeployToInventor)' != 'false'">
+    <ItemGroup>
+      <DeployFiles Include="$(OutDir)**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DeployFiles)" DestinationFiles="@(DeployFiles->'$(InventorPluginDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" ContinueOnError="true" />
+    <Message Importance="high" Text="InventorGostSpec deployed to $(InventorPluginDir)" />
+  </Target>
+
+</Project>

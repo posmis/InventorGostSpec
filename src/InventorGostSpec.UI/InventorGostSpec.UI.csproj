@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- Позволяет собирать WPF-проект не только на Windows (CI, проверка компиляции). -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>InventorGostSpec.UI</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InventorGostSpec.Core\InventorGostSpec.Core.csproj" />
+  </ItemGroup>
+
+</Project>

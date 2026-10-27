@@ -12,6 +12,13 @@ public sealed class ComponentSnapshot
 {
     private static readonly CultureInfo RuCulture = CultureInfo.GetCultureInfo("ru-RU");
 
+    private static readonly HashSet<string> SectionsWithoutDesignation = new(StringComparer.OrdinalIgnoreCase)
+    {
+        SectionIds.StandardProducts,
+        SectionIds.OtherProducts,
+        SectionIds.Materials,
+    };
+
     public string SectionId { get; set; } = "";
     public string Format { get; set; } = "";
     public string Designation { get; set; } = "";
@@ -40,6 +47,18 @@ public sealed class ComponentSnapshot
             Parameters = Clean(component.Parameters),
             MaterialKind = Clean(component.MaterialKind),
         };
+
+        // ГОСТ 2.106: в разделах стандартных, прочих изделий и материалов графа «Обозначение» не заполняется.
+        // Если наименования нет (у Content Center оно часто только в Part Number), берём его из обозначения.
+        if (SectionsWithoutDesignation.Contains(snapshot.SectionId))
+        {
+            if (snapshot.Name.Length == 0)
+            {
+                snapshot.Name = snapshot.Designation;
+            }
+
+            snapshot.Designation = "";
+        }
 
         // Если поля для сортировки не заполнены, пытаемся разобрать наименование,
         // например «Болт М12х60 ГОСТ 7798-70».

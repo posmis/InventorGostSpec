@@ -686,7 +686,13 @@ public sealed class SpecificationViewModel : ObservableObject
         var title = rows.Count == 1
             ? Describe(rows[0])
             : $"Выбрано компонентов: {rows.Count}. Меняются только изменённые поля.";
-        var viewModel = new AssignSectionViewModel(sections, initial, $"{title}\nСвойства записываются в файлы компонентов и действуют во всех сборках.");
+        var autoSections = rows.Select(r => _host.GetAutoSectionId(r.ComponentKey!)).Distinct().ToList();
+        var viewModel = new AssignSectionViewModel(
+            sections,
+            initial,
+            $"{title}\nСвойства записываются в файлы компонентов и действуют во всех сборках.",
+            autoSections.FirstOrDefault(),
+            autoSectionVaries: autoSections.Count > 1);
         if (!_dialogs.EditComponentProperties(viewModel))
         {
             return;

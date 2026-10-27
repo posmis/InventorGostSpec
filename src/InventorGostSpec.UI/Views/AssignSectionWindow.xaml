@@ -65,10 +65,23 @@
         <ContentControl Content="{Binding Format}" ContentTemplate="{StaticResource FieldTemplate}" />
         <ContentControl Content="{Binding Unit}" ContentTemplate="{StaticResource FieldTemplate}" />
 
-        <GroupBox Header="Сортировка по ГОСТ" Margin="0,8,0,0" Padding="6"
-                  Visibility="{Binding ShowProductFields, Converter={StaticResource BoolToVisibility}}">
+        <!-- Блок всегда на месте (размер окна не меняется), неактивен, если разделу не нужен. -->
+        <GroupBox Header="Сортировка по ГОСТ" Margin="0,8,0,0" Padding="6" IsEnabled="{Binding ShowProductFields}">
             <StackPanel>
-                <Grid Visibility="{Binding ShowMaterialFields, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,0,0,4"
+                           Text="Нужны только стандартным, прочим изделиям и материалам.">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Hidden" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowProductFields}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <Grid IsEnabled="{Binding ShowMaterialFields}">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="148" />
                         <ColumnDefinition Width="*" />

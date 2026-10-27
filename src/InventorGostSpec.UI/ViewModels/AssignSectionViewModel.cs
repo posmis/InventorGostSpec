@@ -56,6 +56,7 @@ public sealed class AssignSectionViewModel : ObservableObject
 
     private static readonly Option MixedSection = new("\u0000mixed", "(разные значения)");
 
+    private readonly string? _autoSectionId;
     private Option _selectedSection;
     private Option _selectedMaterialKind;
     private bool _sectionChanged;
@@ -66,15 +67,30 @@ public sealed class AssignSectionViewModel : ObservableObject
     /// Текущие значения свойств: имя свойства → значение; <c>null</c> — у выбранных компонентов значения различаются.
     /// </param>
     /// <param name="targetDescription">Что выбрано, например «Выбрано компонентов: 3».</param>
+    /// <param name="autoSectionId">
+    /// Раздел, который компонент получит автоматически (по типу). <c>null</c> — неизвестен
+    /// или у выбранных компонентов разный (<paramref name="autoSectionVaries"/>).
+    /// </param>
     public AssignSectionViewModel(
         IEnumerable<SectionDefinition> sections,
         IReadOnlyDictionary<string, string?> initialValues,
-        string targetDescription)
+        string targetDescription,
+        string? autoSectionId = null,
+        bool autoSectionVaries = false)
     {
         TargetDescription = targetDescription;
+        var sectionList = sections.ToList();
+        _autoSectionId = autoSectionVaries ? null : autoSectionId;
 
-        Sections = new[] { AutoSection }
-            .Concat(sections.Select(s => new Option(s.Id, s.Name)))
+        // В пункте «Автоматически» сразу видно, какой раздел получится.
+        var autoName = _autoSectionId is not null && sectionList.FirstOrDefault(s => s.Id == _autoSectionId) is { } auto
+            ? $"Автоматически — {auto.Name}"
+            : autoSectionVaries
+                ? "Автоматически — по типу каждого компонента"
+                : AutoSection.Name;
+
+        Sections = new[] { new Option("", autoName) }
+            .Concat(sectionList.Select(s => new Option(s.Id, s.Name)))
             .ToList();
         var section = Initial(initialValues, PropertyNames.Section);
         _selectedSection = section is null
@@ -150,11 +166,14 @@ public sealed class AssignSectionViewModel : ObservableObject
         }
     }
 
-    /// <summary>Поля сортировки нужны стандартным и прочим изделиям.</summary>
-    public bool ShowProductFields => SelectedSection.Id is SectionIds.StandardProducts or SectionIds.OtherProducts or SectionIds.Materials
-                                     || ReferenceEquals(SelectedSection, MixedSection);
+    /// <summary>Раздел, который получится: выбранный или автоматический. <c>null</c> — разные значения.</summary>
+    private string? EffectiveSectionId =>
+        ReferenceEquals(SelectedSection, MixedSection) ? null : SelectedSection.Id.Length > 0 ? SelectedSection.Id : _autoSectionId;
 
-    public bool ShowMaterialFields => SelectedSection.Id is SectionIds.Materials || ReferenceEquals(SelectedSection, MixedSection);
+    /// <summary>Поля сортировки нужны стандартным и прочим изделиям и материалам (при разных значениях — доступны).</summary>
+    public bool ShowProductFields => EffectiveSectionId is null or SectionIds.StandardProducts or SectionIds.OtherProducts or SectionIds.Materials;
+
+    public bool ShowMaterialFields => EffectiveSectionId is null or SectionIds.Materials;
 
     /// <summary>
     /// Изменения для записи: имя свойства → значение. Пустое значение означает удаление свойства.

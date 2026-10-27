@@ -533,6 +533,47 @@ public class SpecificationViewModelTests
 public class AssignSectionViewModelTests
 {
     [Fact]
+    public void Auto_option_shows_resulting_section_and_enables_fields_for_it()
+    {
+        var vm = new AssignSectionViewModel(
+            SectionCatalog.CreateBuiltIn(), new Dictionary<string, string?>(), "", SectionIds.StandardProducts);
+
+        Assert.Equal("Автоматически — Стандартные изделия", vm.SelectedSection.Name);
+        Assert.True(vm.ShowProductFields);
+        Assert.False(vm.ShowMaterialFields);
+
+        vm.SelectedSection = vm.Sections.Single(s => s.Id == SectionIds.Parts);
+        Assert.False(vm.ShowProductFields);
+    }
+
+    [Fact]
+    public void Auto_option_for_components_with_different_defaults()
+    {
+        var vm = new AssignSectionViewModel(
+            SectionCatalog.CreateBuiltIn(), new Dictionary<string, string?>(), "", SectionIds.Parts, autoSectionVaries: true);
+
+        Assert.Equal("Автоматически — по типу каждого компонента", vm.Sections[0].Name);
+    }
+
+    [Fact]
+    public void Component_properties_dialog_shows_auto_section_of_component()
+    {
+        var host = new FakeHost();
+        var dialogs = new FakeDialogs();
+        host.Components.Add(new ComponentData { Key = "b.ipt", Kind = ComponentKind.Part, IsContentCenter = true, Name = "Болт М8 ГОСТ 7798-70", Quantity = 1 });
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, host.Components, SpecificationContext.Create(null, spec), DateTime.UtcNow);
+        var vm = new SpecificationViewModel(host, dialogs, spec, post: a => a());
+        vm.SelectedRow = vm.Rows.Single(r => r.Row is not null);
+        string? autoName = null;
+        dialogs.OnComponentProperties = p => autoName = p.Sections[0].Name;
+
+        vm.EditComponentCommand.Execute(null);
+
+        Assert.Equal("Автоматически — Стандартные изделия", autoName);
+    }
+
+    [Fact]
     public void Only_changed_fields_are_written()
     {
         var initial = new Dictionary<string, string?>

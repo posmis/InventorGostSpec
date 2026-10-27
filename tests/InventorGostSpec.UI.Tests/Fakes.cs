@@ -37,6 +37,12 @@ internal sealed class FakeHost : ISpecificationHost
 
     public void ReportError(Exception exception) => throw exception;
 
+    public string GetAutoSectionId(string componentKey)
+    {
+        var component = Components.Single(c => c.Key == componentKey);
+        return SectionResolver.GetDefault(component.Kind, component.IsContentCenter);
+    }
+
     /// <summary>iProperties SPEC_* компонентов по ключу.</summary>
     public Dictionary<string, Dictionary<string, string>> Properties { get; } = new();
 

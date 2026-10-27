@@ -33,6 +33,9 @@ public interface ISpecificationHost
     /// </summary>
     ComponentData WriteComponentProperties(string componentKey, IReadOnlyDictionary<string, string> changes);
 
+    /// <summary>Раздел, который компонент получает автоматически, по типу (если SPEC_Section не задан).</summary>
+    string GetAutoSectionId(string componentKey);
+
     /// <summary>Записывает непредвиденную ошибку окна в журнал.</summary>
     void ReportError(Exception exception);
 }

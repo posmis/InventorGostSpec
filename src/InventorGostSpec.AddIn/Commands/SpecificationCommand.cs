@@ -104,6 +104,11 @@ internal sealed class SpecificationCommand : AddInCommand
             return AssemblyReader.ToComponentData(item.Target, item.Key, AssemblyReader.Quantity(item.Row));
         }
 
+        public string GetAutoSectionId(string componentKey) =>
+            FindItem(componentKey) is { } item
+                ? SectionResolver.GetDefault(item.Target.Kind, item.Target.IsContentCenter)
+                : "";
+
         public void ReportError(Exception exception) => Log.Error("SpecificationWindow", exception);
 
         private BomItem? FindItem(string componentKey) =>

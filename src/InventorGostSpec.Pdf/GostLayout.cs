@@ -43,8 +43,20 @@ public static class GostLayout
     public const int QuantityColumn = 5;
     public const int NoteColumn = 6;
 
-    /// <summary>Высота прописных букв основного текста (ГОСТ 2.304, шрифт 3,5).</summary>
+    /// <summary>
+    /// Высота прописных букв (ГОСТ 2.304, шрифт 3,5): строки таблицы, все надписи и данные основной надписи,
+    /// графы на поле подшивки, вертикальные заголовки граф — как в бланке КОМПАС-3D.
+    /// </summary>
     public const double TextHeight = 3.5;
+
+    /// <summary>Горизонтальные заголовки граф таблицы («Обозначение», «Наименование», «Примечание») — шрифт 5.</summary>
+    public const double HeaderTextHeight = 5;
+
+    /// <summary>Наименование изделия в основной надписи — шрифт 5 (3,5, если не помещается в две строки).</summary>
+    public const double NameTextHeight = 5;
+
+    /// <summary>Обозначение документа в основной надписи — шрифт 7.</summary>
+    public const double DesignationTextHeight = 7;
 
     /// <summary>Отступ текста от линий графы.</summary>
     public const double Padding = 1;

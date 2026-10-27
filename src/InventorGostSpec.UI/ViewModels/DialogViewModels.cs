@@ -114,12 +114,11 @@ public sealed class ReserveItem : ObservableObject
 /// <summary>Резерв позиций одной большой части спецификации: основной части или группы.</summary>
 public sealed class ReservePart
 {
-    public ReservePart(string groupId, string title, IEnumerable<ReserveItem> items, int? firstPosition = null)
+    public ReservePart(string groupId, string title, IEnumerable<ReserveItem> items)
     {
         GroupId = groupId;
         Title = title;
         Items = items.ToList();
-        FirstPositionText = firstPosition?.ToString() ?? "";
     }
 
     /// <summary>Пусто — основная часть.</summary>
@@ -130,11 +129,6 @@ public sealed class ReservePart
     public List<ReserveItem> Items { get; }
 
     public bool IsGroup => GroupId.Length > 0;
-
-    /// <summary>Номер первой позиции группы; пусто — сразу после предыдущей части.</summary>
-    public string FirstPositionText { get; set; }
-
-    public int? FirstPosition => int.TryParse(FirstPositionText.Trim(), out var value) && value > 0 ? value : null;
 }
 
 /// <summary>Резерв номеров позиций по разделам, отдельно для основной части и каждой группы.</summary>
@@ -188,20 +182,5 @@ public sealed class GroupViewModel : ObservableObject
         set => SetField(ref _title, value ?? "");
     }
 
-    /// <summary>Номер первой позиции группы; пусто — сразу после основной части с учётом резерва.</summary>
-    public string FirstPositionText { get; set; } = "";
-
-    public int? FirstPosition => int.TryParse(FirstPositionText.Trim(), out var value) && value > 0 ? value : null;
-
-    public string? Validate()
-    {
-        if (string.IsNullOrWhiteSpace(Title))
-        {
-            return "Введите заголовок группы.";
-        }
-
-        return FirstPositionText.Trim().Length > 0 && FirstPosition is null
-            ? "Номер первой позиции должен быть целым положительным числом."
-            : null;
-    }
+    public string? Validate() => string.IsNullOrWhiteSpace(Title) ? "Введите заголовок группы." : null;
 }

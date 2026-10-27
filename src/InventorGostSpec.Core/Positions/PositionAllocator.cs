@@ -18,20 +18,19 @@ public sealed class PositionAssignmentResult
 
 /// <summary>
 /// Нумерация позиций с резервом номеров между разделами. Сначала нумеруется основная часть,
-/// затем группы «устанавливаемые по …» — номера в них продолжаются.
+/// затем группы «устанавливаемые по …» — номера в них продолжаются подряд.
 /// </summary>
 public static class PositionAllocator
 {
     /// <summary>
     /// Перенумеровывает все позиции в текущем порядке строк.
-    /// После каждого раздела пропускается резерв, начало раздела при необходимости округляется,
-    /// группа начинается не раньше своей первой позиции. Строки удалённых компонентов номер теряют.
+    /// После каждого раздела пропускается резерв, начало раздела при необходимости округляется.
+    /// Строки удалённых компонентов номер теряют.
     /// </summary>
     public static void RenumberAll(Specification spec, SpecificationContext context)
     {
         var next = 1;
         var first = true;
-        string? currentGroup = null;
 
         foreach (var row in spec.Rows.Where(r => !IsNumbered(r, context)))
         {
@@ -50,15 +49,6 @@ public static class PositionAllocator
             if (!first)
             {
                 next = RoundUp(next, reserve.RoundStartTo);
-            }
-
-            if (block.GroupId != currentGroup)
-            {
-                currentGroup = block.GroupId;
-                if (context.FindGroup(block.GroupId)?.FirstPosition is { } start)
-                {
-                    next = Math.Max(next, start);
-                }
             }
 
             foreach (var row in rows)
@@ -86,9 +76,8 @@ public static class PositionAllocator
         var used = new HashSet<int>(ordered.Where(x => x.Row.Position.HasValue).Select(x => x.Row.Position!.Value));
         var previousMax = 0;
         SpecBlock? currentBlock = null;
-        string? currentGroup = null;
+        SpecBlock? lastNumberedBlock = null;
         var blockHasNumbers = false;
-        var groupHasNumbers = false;
 
         for (var i = 0; i < ordered.Count; i++)
         {
@@ -99,16 +88,11 @@ public static class PositionAllocator
                 blockHasNumbers = false;
             }
 
-            if (block.GroupId != currentGroup)
-            {
-                currentGroup = block.GroupId;
-                groupHasNumbers = false;
-            }
-
             if (row.Position is { } existing)
             {
                 previousMax = Math.Max(previousMax, existing);
-                blockHasNumbers = groupHasNumbers = true;
+                lastNumberedBlock = block;
+                blockHasNumbers = true;
                 continue;
             }
 
@@ -127,14 +111,16 @@ public static class PositionAllocator
             }
 
             var lower = previousMax + 1;
-            if (!blockHasNumbers && previousMax > 0)
+            if (!blockHasNumbers && lastNumberedBlock is not null)
             {
-                lower = RoundUpWithin(lower, context.GetReserve(block.GroupId, block.Section.Id).RoundStartTo, upper);
-            }
+                // Первая строка раздела: резерв предыдущего раздела не занимаем — как при перенумерации.
+                var reserve = Math.Max(0, context.GetReserve(lastNumberedBlock.GroupId, lastNumberedBlock.Section.Id).Count);
+                if (lower + reserve <= upper)
+                {
+                    lower += reserve;
+                }
 
-            if (!groupHasNumbers && context.FindGroup(block.GroupId)?.FirstPosition is { } start && start > lower && start <= upper)
-            {
-                lower = start;
+                lower = RoundUpWithin(lower, context.GetReserve(block.GroupId, block.Section.Id).RoundStartTo, upper);
             }
 
             var candidate = lower;
@@ -162,7 +148,8 @@ public static class PositionAllocator
             row.Position = candidate;
             used.Add(candidate);
             previousMax = candidate;
-            blockHasNumbers = groupHasNumbers = true;
+            lastNumberedBlock = block;
+            blockHasNumbers = true;
         }
 
         foreach (var row in spec.Rows.Where(r => !IsNumbered(r, context)))

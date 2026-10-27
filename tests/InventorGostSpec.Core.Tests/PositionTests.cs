@@ -83,6 +83,23 @@ public class PositionTests
     }
 
     [Fact]
+    public void First_row_of_new_section_does_not_take_previous_reserve()
+    {
+        var newRow = TestData.Row(SectionIds.StandardProducts, name: "Болт");
+        var spec = Spec(
+            TestData.Row(SectionIds.Parts, "А.1"),
+            TestData.Row(SectionIds.Parts, "А.2"),
+            newRow);
+        spec.Rows[0].Position = 1;
+        spec.Rows[1].Position = 2;
+
+        PositionAllocator.AssignMissing(spec, TestData.Context(spec, (SectionIds.Parts, 2, 0)));
+
+        // Номера 3–4 — резерв деталей.
+        Assert.Equal(5, newRow.Position);
+    }
+
+    [Fact]
     public void Exhausted_reserve_is_reported_and_numbers_are_kept()
     {
         var newRow = TestData.Row(SectionIds.AssemblyUnits, "А.3");

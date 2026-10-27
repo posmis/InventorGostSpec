@@ -22,13 +22,13 @@ public class GroupTests
     };
 
     /// <summary>Основная часть + группа МЭ: шина, винты и клеммы устанавливаются по электромонтажному чертежу.</summary>
-    private static (Specification Spec, SpecificationContext Context, SpecGroup Group) Build(int? firstPosition = null)
+    private static (Specification Spec, SpecificationContext Context, SpecGroup Group) Build()
     {
         var spec = new Specification();
         var context = TestData.Context(spec, (SectionIds.AssemblyUnits, 1, 0), (SectionIds.Parts, 1, 0));
         SpecificationUpdater.Update(spec, Components(), context, TestData.Now);
 
-        var group = SpecificationEditor.AddGroup(spec, "Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ", firstPosition);
+        var group = SpecificationEditor.AddGroup(spec, "Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ");
         foreach (var name in new[] { "Шина", "Винт М4х10 ГОСТ 17473-80", "Клемма WAGO 2002-1201" })
         {
             SpecificationEditor.MoveToGroup(spec, context, TestData.ByName(spec, name), group.Id);
@@ -73,24 +73,25 @@ public class GroupTests
     }
 
     [Fact]
-    public void Group_first_position_and_own_reserve()
+    public void Group_has_own_reserve()
     {
-        var (spec, context, group) = Build(firstPosition: 101);
+        var (spec, context, group) = Build();
         group.Reserves[SectionIds.Parts] = new ReserveSettings { Count = 3 };
 
         PositionAllocator.RenumberAll(spec, context);
 
-        Assert.Equal(new int?[] { 1, 3, 4, 6, 101, 105, 106 }, spec.Rows.Select(r => r.Position));
-        Assert.Equal(new[] { 102, 103, 104 }, PositionAllocator.GetReservedNumbers(spec, context, group.Id, SectionIds.Parts));
+        // Группа продолжает нумерацию подряд: шина 7, резерв группы 8–10, винт 11, клемма 12.
+        Assert.Equal(new int?[] { 1, 3, 4, 6, 7, 11, 12 }, spec.Rows.Select(r => r.Position));
+        Assert.Equal(new[] { 8, 9, 10 }, PositionAllocator.GetReservedNumbers(spec, context, group.Id, SectionIds.Parts));
     }
 
     [Fact]
     public void Moving_to_group_assigns_position_in_group_and_keeps_other_numbers()
     {
-        var (spec, context, group) = Build(firstPosition: 101);
+        var (spec, context, group) = Build();
 
         var shina = TestData.ByName(spec, "Шина");
-        Assert.Equal(101, shina.Position);
+        Assert.Equal(10, shina.Position);
         Assert.Equal(group.Id, shina.GroupId);
         // Выданные номера основной части не сдвигаются: освободившиеся номера уходят в резерв.
         Assert.Equal(new int?[] { 1, 3, 4, 7 }, spec.Rows.Where(r => r.GroupId == "").Select(r => r.Position));
@@ -154,13 +155,12 @@ public class GroupTests
     [Fact]
     public void Groups_survive_serialization()
     {
-        var (spec, _, group) = Build(firstPosition: 101);
+        var (spec, _, group) = Build();
         group.Reserves[SectionIds.Parts] = new ReserveSettings { Count = 3 };
 
         var copy = SpecificationSerializer.Deserialize(SpecificationSerializer.Serialize(spec));
 
         Assert.Equal(group.Title, copy.Groups.Single().Title);
-        Assert.Equal(101, copy.Groups[0].FirstPosition);
         Assert.Equal(3, copy.Groups[0].Reserves[SectionIds.Parts].Count);
         Assert.Equal(group.Id, copy.Rows.Single(r => r.Get(SpecColumn.Name) == "Шина").GroupId);
     }

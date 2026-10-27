@@ -273,11 +273,7 @@ public class SpecificationViewModelTests
     public void Group_is_added_rows_moved_and_positions_continue()
     {
         var vm = Open();
-        _dialogs.OnGroup = g =>
-        {
-            g.Title = "Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ";
-            g.FirstPositionText = "101";
-        };
+        _dialogs.OnGroup = g => g.Title = "Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ";
 
         vm.AddGroupCommand.Execute(null);
         var header = vm.SelectedRow!;
@@ -292,7 +288,8 @@ public class SpecificationViewModelTests
         Assert.Equal(
             new[] { "Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ", "Стандартные изделия", "Болт М8х20 ГОСТ 7798-70" },
             names.Skip(names.IndexOf("Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ")));
-        Assert.Equal("101", RowByName(vm, "Болт М8х20 ГОСТ 7798-70").Position);
+        // Основная часть: корпус 1, ось 2, резерв деталей 3–4. Группа начинается после резерва — болт 5.
+        Assert.Equal("5", RowByName(vm, "Болт М8х20 ГОСТ 7798-70").Position);
     }
 
     [Fact]
@@ -345,16 +342,15 @@ public class SpecificationViewModelTests
         {
             Assert.Equal(2, reserves.Parts.Count);
             Assert.Same(reserves.Parts[1], reserves.SelectedPart); // выбрана строка группы
-            reserves.SelectedPart.FirstPositionText = "50";
             reserves.Items.Single(i => i.SectionId == SectionIds.Parts).Count = 5;
         };
         vm.ReservesCommand.Execute(null);
 
         var group = vm.Specification.Groups.Single();
-        Assert.Equal(50, group.FirstPosition);
         Assert.Equal(5, group.Reserves[SectionIds.Parts].Count);
         Assert.Equal(2, vm.Specification.ReserveOverrides[SectionIds.Parts].Count); // основная часть не изменилась
-        Assert.Equal("50", RowByName(vm, "Ось").Position);
+        // После перенумерации: основная часть 1 (Корпус), резерв 2–3, болт 4; группа подряд — ось 5.
+        Assert.Equal("5", RowByName(vm, "Ось").Position);
     }
 
     private SpecificationViewModel Open()

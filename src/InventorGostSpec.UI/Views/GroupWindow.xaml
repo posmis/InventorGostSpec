@@ -9,14 +9,9 @@
         ShowInTaskbar="False">
     <StackPanel Margin="12">
         <TextBlock TextWrapping="Wrap" Foreground="#555" Margin="0,0,0,8"
-                   Text="Составные части, устанавливаемые по отдельному документу (например, электромонтажному чертежу), записываются после основной части спецификации под этим заголовком, со своими разделами. Номера позиций продолжаются." />
+                   Text="Составные части, устанавливаемые по отдельному документу (например, электромонтажному чертежу), записываются после основной части спецификации под этим заголовком, со своими разделами. Номера позиций продолжаются подряд после основной части." />
         <TextBlock Text="Заголовок (графа «Наименование»)" />
         <TextBox x:Name="TitleBox" Margin="0,4,0,8" Padding="2" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
-        <StackPanel Orientation="Horizontal">
-            <TextBlock VerticalAlignment="Center" Text="Первая позиция группы" />
-            <TextBox Width="70" Margin="8,0,0,0" Padding="2" Text="{Binding FirstPositionText, UpdateSourceTrigger=PropertyChanged}" />
-            <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Foreground="#888" Text="пусто — сразу после основной части" />
-        </StackPanel>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
             <Button Content="ОК" Width="90" IsDefault="True" Click="OnOk" />
             <Button Content="Отмена" Width="90" Margin="8,0,0,0" IsCancel="True" />

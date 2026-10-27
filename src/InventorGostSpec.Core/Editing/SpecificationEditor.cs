@@ -243,9 +243,9 @@ public static class SpecificationEditor
     }
 
     /// <summary>Добавляет группу «устанавливаемые по …» в конец спецификации.</summary>
-    public static SpecGroup AddGroup(Specification spec, string title, int? firstPosition = null)
+    public static SpecGroup AddGroup(Specification spec, string title)
     {
-        var group = new SpecGroup { Title = title.Trim(), FirstPosition = firstPosition };
+        var group = new SpecGroup { Title = title.Trim() };
         spec.Groups.Add(group);
         return group;
     }

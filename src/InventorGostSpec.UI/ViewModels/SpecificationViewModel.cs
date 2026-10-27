@@ -364,8 +364,7 @@ public sealed class SpecificationViewModel : ObservableObject
             .Concat(_context.Groups.Select(g => new ReservePart(
                 g.Id,
                 g.Title,
-                sections.Select(s => new ReserveItem(s, _context.GetReserve(g.Id, s.Id))),
-                g.FirstPosition)));
+                sections.Select(s => new ReserveItem(s, _context.GetReserve(g.Id, s.Id))))));
         var viewModel = new ReserveSettingsViewModel(parts);
         if (SelectedRow is { GroupId.Length: > 0 } selected)
         {
@@ -381,11 +380,6 @@ public sealed class SpecificationViewModel : ObservableObject
         foreach (var part in viewModel.Parts)
         {
             var group = _context.FindGroup(part.GroupId);
-            if (group is not null)
-            {
-                group.FirstPosition = part.FirstPosition;
-            }
-
             foreach (var item in part.Items)
             {
                 if (group is not null)
@@ -435,7 +429,7 @@ public sealed class SpecificationViewModel : ObservableObject
             return;
         }
 
-        var group = SpecificationEditor.AddGroup(Specification, viewModel.Title, viewModel.FirstPosition);
+        var group = SpecificationEditor.AddGroup(Specification, viewModel.Title);
         Changed(rebuild: true);
         SelectedRow = Rows.FirstOrDefault(r => r.IsGroupHeader && r.GroupId == group.Id);
     }

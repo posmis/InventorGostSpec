@@ -457,6 +457,22 @@ public class StandardNamesViewModelTests
     }
 
     [Fact]
+    public void Foreign_standard_is_marked_and_skipped()
+    {
+        var vm = new StandardNamesViewModel(new[]
+        {
+            new StandardNameCandidate("a", "Гайка барашек DIN 315 - M8 - St - C", "Гайка барашек DIN 315 - M8 - St - C", false),
+            new StandardNameCandidate("b", "Гайка барашек DIN 315 - M8 - St - C", "Гайка", false),
+        });
+
+        Assert.All(vm.Items, i => Assert.Equal(StandardNameStatus.Foreign, i.Status));
+        Assert.All(vm.Items, i => Assert.Equal(i.Current, i.Proposed));
+        Assert.Empty(vm.GetChanges());
+        vm.SelectAllCommand.Execute(null);
+        Assert.Empty(vm.GetChanges());
+    }
+
+    [Fact]
     public void Manual_edit_selects_item()
     {
         var vm = new StandardNamesViewModel(new[] { new StandardNameCandidate("c", "ГОСТ 5915-70 М12", "", false) });

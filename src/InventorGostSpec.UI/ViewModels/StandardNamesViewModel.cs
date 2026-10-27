@@ -20,6 +20,9 @@ public enum StandardNameStatus
 
     /// <summary>Текущее наименование уже в нужном виде — пропускается.</summary>
     AlreadyOk,
+
+    /// <summary>Изделие по зарубежному стандарту (DIN, ISO): наименование не меняется.</summary>
+    Foreign,
 }
 
 public sealed class StandardNameItem : ObservableObject
@@ -36,9 +39,17 @@ public sealed class StandardNameItem : ObservableObject
         var result = StandardNameFormatter.FromFileName(candidate.FileName, fallback);
         _proposed = result.Text;
 
-        Status = IsAlreadyOk(candidate.CurrentName, result.Text)
-            ? StandardNameStatus.AlreadyOk
-            : result.IsComplete ? StandardNameStatus.Change : StandardNameStatus.Review;
+        var currentIsForeign = StandardNameFormatter.FromFileName(candidate.CurrentName).IsForeign;
+        Status = currentIsForeign || (result.IsForeign && candidate.CurrentName.Trim().Length > 0)
+            ? StandardNameStatus.Foreign
+            : IsAlreadyOk(candidate.CurrentName, result.Text)
+                ? StandardNameStatus.AlreadyOk
+                : result.IsComplete ? StandardNameStatus.Change : StandardNameStatus.Review;
+        if (Status == StandardNameStatus.Foreign)
+        {
+            // Зарубежный стандарт: оставляем текущее наименование как есть.
+            _proposed = candidate.CurrentName.Trim();
+        }
     }
 
     public StandardNameCandidate Candidate { get; }
@@ -53,6 +64,7 @@ public sealed class StandardNameItem : ObservableObject
     {
         StandardNameStatus.Change => "Будет изменено",
         StandardNameStatus.Review => "Проверьте",
+        StandardNameStatus.Foreign => "Не ГОСТ — без изменений",
         _ => "Уже в норме",
     };
 
@@ -83,6 +95,9 @@ public sealed class StandardNameItem : ObservableObject
         current.Trim() == proposed ||
         (StandardNameFormatter.IsWellFormed(current) && StandardNameFormatter.FromFileName(current).Parts.Parameters.Length > 0);
 
+    /// <summary>Наименование не меняется: уже в норме или изделие не по ГОСТ.</summary>
+    public bool IsSkipped => Status is StandardNameStatus.AlreadyOk or StandardNameStatus.Foreign;
+
     /// <summary>Будет ли запись действительно что-то менять.</summary>
     public bool WillChange => IsSelected && Proposed.Length > 0 && Proposed != Current.Trim();
 }
@@ -94,7 +109,7 @@ public sealed class StandardNamesViewModel : ObservableObject
     {
         Items = candidates
             .Select(c => new StandardNameItem(c))
-            .OrderBy(i => i.Status == StandardNameStatus.AlreadyOk)
+            .OrderBy(i => i.IsSkipped)
             .ThenBy(i => i.FileName, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
 
@@ -106,7 +121,7 @@ public sealed class StandardNamesViewModel : ObservableObject
             item.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Summary));
         }
 
-        SelectAllCommand = new RelayCommand(() => SetSelection(i => i.Status != StandardNameStatus.AlreadyOk));
+        SelectAllCommand = new RelayCommand(() => SetSelection(i => !i.IsSkipped));
         SelectNoneCommand = new RelayCommand(() => SetSelection(_ => false));
     }
 
@@ -121,7 +136,7 @@ public sealed class StandardNamesViewModel : ObservableObject
         get
         {
             var toChange = Items.Count(i => i.WillChange);
-            var ok = Items.Count(i => i.Status == StandardNameStatus.AlreadyOk);
+            var ok = Items.Count(i => i.IsSkipped);
             var review = Items.Count(i => i.Status == StandardNameStatus.Review);
             return $"Всего: {Items.Count} · будет изменено: {toChange} · уже в норме (пропущено): {ok}" +
                    (review > 0 ? $" · требуют проверки: {review}" : "");

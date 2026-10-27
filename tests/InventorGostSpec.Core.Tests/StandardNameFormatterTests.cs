@@ -26,6 +26,28 @@ public class StandardNameFormatterTests
         Assert.True(result.IsComplete);
     }
 
+    [Theory]
+    [InlineData("Гайка барашек DIN 315 - M8 - St - C")]
+    [InlineData("Винт ISO 4762 - M6 x 20 - 8.8")]
+    [InlineData("Гайка_барашек_DIN 315 - M8 - St - C")]
+    public void Foreign_standard_names_are_kept_as_is(string fileName)
+    {
+        var result = StandardNameFormatter.FromFileName(fileName);
+
+        Assert.True(result.IsForeign);
+        Assert.Equal(fileName.Replace('_', ' '), result.Text);
+        Assert.True(StandardNameFormatter.IsWellFormed(result.Text));
+    }
+
+    [Fact]
+    public void Gost_with_iso_is_not_foreign()
+    {
+        var result = StandardNameFormatter.FromFileName("Болт ГОСТ ISO 4014-2013 M12x60");
+
+        Assert.False(result.IsForeign);
+        Assert.Equal("Болт М12х60 ГОСТ ISO 4014-2013", result.Text);
+    }
+
     [Fact]
     public void Missing_name_is_taken_from_fallback()
     {

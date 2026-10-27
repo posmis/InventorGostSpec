@@ -6,7 +6,10 @@ namespace InventorGostSpec.Core.Parsing;
 /// <param name="Text">Наименование для спецификации: «Болт М12х60 ГОСТ 7798-70».</param>
 /// <param name="Parts">Части наименования (для полей сортировки).</param>
 /// <param name="IsComplete">Найдены и наименование изделия, и обозначение стандарта.</param>
-public sealed record StandardName(string Text, StandardDesignation Parts, bool IsComplete);
+/// <param name="IsForeign">
+/// Изделие по зарубежному стандарту (DIN, ISO, EN): наименование не перестраивается, остаётся как в источнике.
+/// </param>
+public sealed record StandardName(string Text, StandardDesignation Parts, bool IsComplete, bool IsForeign = false);
 
 /// <summary>
 /// Приведение наименования стандартного изделия к виду, принятому в спецификации по ГОСТ 2.106:
@@ -41,6 +44,12 @@ public static class StandardNameFormatter
 
         var standard = "";
         var match = Standard.Match(text);
+        if (match.Success && IsForeignStandard(match.Value))
+        {
+            // «Гайка барашек DIN 315 - M8 - St - C» — принятая запись для DIN/ISO, её не трогаем.
+            return new StandardName(text, StandardDesignationParser.Parse(text), true, IsForeign: true);
+        }
+
         if (match.Success)
         {
             standard = NormalizeStandard(match.Value);
@@ -94,8 +103,12 @@ public static class StandardNameFormatter
         }
 
         var formatted = FromFileName(description);
-        return formatted.IsComplete && formatted.Text == Clean(description);
+        return formatted.IsForeign || (formatted.IsComplete && formatted.Text == Clean(description));
     }
+
+    /// <summary>Зарубежный стандарт без ГОСТ: «DIN 315», «ISO 4762», «EN 14399» (но не «ГОСТ ISO 4014»).</summary>
+    private static bool IsForeignStandard(string standard) =>
+        Regex.IsMatch(standard.TrimStart(), @"^(?:DIN|ISO|ИСО|EN)(?![\p{L}])", RegexOptions.CultureInvariant);
 
     private static string NormalizeStandard(string standard)
     {

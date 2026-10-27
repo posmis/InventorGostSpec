@@ -16,8 +16,26 @@ public sealed class PdfSettings
 
     public bool OpenAfter { get; set; } = true;
 
+    /// <summary>Высота шрифтов, мм.</summary>
+    public FontSizes Sizes { get; set; } = new();
+
+    /// <summary>Допустимое сужение текста, % ширины (0 — не переносить автоматически). См. <see cref="PdfOptions.MinWidthPercent"/>.</summary>
+    public int MinWidthPercent { get; set; } = PdfOptions.DefaultMinWidthPercent;
+
     /// <summary>Параметры вывода по этим настройкам.</summary>
-    public PdfOptions ToOptions() => new() { Font = Font.Length > 0 ? Font : null };
+    public PdfOptions ToOptions() => new()
+    {
+        Font = Font.Length > 0 ? Font : null,
+        Sizes = (Sizes ?? new FontSizes()).Normalized(),
+        MinWidthPercent = Math.Clamp(MinWidthPercent, 0, 100),
+    };
+
+    /// <summary>Размеры шрифтов и сужение — по умолчанию (шрифт не меняется).</summary>
+    public void ResetSizes()
+    {
+        Sizes = new FontSizes();
+        MinWidthPercent = PdfOptions.DefaultMinWidthPercent;
+    }
 
     public static PdfSettings Load()
     {

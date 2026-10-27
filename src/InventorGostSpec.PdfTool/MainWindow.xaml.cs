@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using InventorGostSpec.Pdf;
 
@@ -38,6 +39,8 @@ public partial class MainWindow : Window
                 ? $"Найдены шрифты ГОСТ: {string.Join(", ", installed)}."
                 : "Шрифты ГОСТ не найдены — будет использован Arial. Укажите путь к .ttf.";
         OpenBox.IsChecked = _settings.OpenAfter;
+        CreateSizeFields();
+        ShowSizes();
 
         if (input is not null)
         {
@@ -45,7 +48,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnInputChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    private void OnInputChanged(object sender, TextChangedEventArgs e)
     {
         // PDF по умолчанию — рядом с Excel, пока пользователь не выбрал другой.
         if (OutputBox.Text.Length == 0 || OutputBox.Text == _suggestedOutput)
@@ -120,7 +123,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        SaveSettings();
+        if (!SaveSettings())
+        {
+            return;
+        }
+
         try
         {
             Cursor = System.Windows.Input.Cursors.Wait;
@@ -152,7 +159,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        SaveSettings();
+        if (!SaveSettings())
+        {
+            return;
+        }
+
         try
         {
             Cursor = System.Windows.Input.Cursors.Wait;
@@ -173,13 +184,86 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SaveSettings()
+    /// <summary>Сохраняет настройки окна; <c>false</c> — в размерах ошибка (показана в строке состояния).</summary>
+    private bool SaveSettings()
     {
+        var sizes = new FontSizes();
+        foreach (var (box, _, set) in _sizeFields)
+        {
+            if (!TryParseNumber(box.Text, out var value) || value <= 0 || value >= 100)
+            {
+                ShowStatus($"Неверный размер шрифта: «{box.Text}». Укажите число мм, например 3,5.", error: true);
+                box.Focus();
+                return false;
+            }
+
+            set(sizes, value);
+        }
+
+        if (!TryParseNumber(MinWidthBox.Text, out var percent) || percent < 0 || percent > 100)
+        {
+            ShowStatus("Допустимое сужение — число от 0 до 100 %.", error: true);
+            MinWidthBox.Focus();
+            return false;
+        }
+
         var font = FontBox.Text.Trim();
         _settings.Font = font == AutoFont ? "" : font;
         _settings.OpenAfter = OpenBox.IsChecked == true;
+        _settings.Sizes = sizes;
+        _settings.MinWidthPercent = (int)Math.Round(percent);
         _settings.Save();
+        return true;
     }
+
+    /// <summary>Поля размеров: поле ввода, чтение из настроек, запись в настройки.</summary>
+    private readonly List<(TextBox Box, Func<FontSizes, double> Get, Action<FontSizes, double> Set)> _sizeFields = new();
+
+    private void CreateSizeFields()
+    {
+        void Add(string label, Func<FontSizes, double> get, Action<FontSizes, double> set)
+        {
+            var panel = new DockPanel { Margin = new Thickness(0, 2, 12, 2) };
+            var box = new TextBox { Width = 50 };
+            DockPanel.SetDock(box, Dock.Right);
+            panel.Children.Add(box);
+            panel.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, Foreground = new SolidColorBrush(Color.FromRgb(0x37, 0x41, 0x51)) });
+            SizesGrid.Children.Add(panel);
+            _sizeFields.Add((box, get, set));
+        }
+
+        Add("Строки таблицы", s => s.TableRows, (s, v) => s.TableRows = v);
+        Add("Заголовки граф", s => s.ColumnTitles, (s, v) => s.ColumnTitles = v);
+        Add("Вертикальные заголовки", s => s.VerticalTitles, (s, v) => s.VerticalTitles = v);
+        Add("Обозначение документа", s => s.Designation, (s, v) => s.Designation = v);
+        Add("Наименование изделия", s => s.Name, (s, v) => s.Name = v);
+        Add("Организация", s => s.Organization, (s, v) => s.Organization = v);
+        Add("Основная надпись", s => s.TitleBlock, (s, v) => s.TitleBlock = v);
+        Add("Поле подшивки, «Копировал»", s => s.Margin, (s, v) => s.Margin = v);
+    }
+
+    private void ShowSizes()
+    {
+        var sizes = (_settings.Sizes ?? new FontSizes()).Normalized();
+        foreach (var (box, get, _) in _sizeFields)
+        {
+            box.Text = get(sizes).ToString("0.##", Russian);
+        }
+
+        MinWidthBox.Text = Math.Clamp(_settings.MinWidthPercent, 0, 100).ToString(Russian);
+    }
+
+    private void OnResetSizes(object sender, RoutedEventArgs e)
+    {
+        _settings.ResetSizes();
+        ShowSizes();
+        ShowStatus("Размеры шрифтов и сужение — по умолчанию. Сохранятся при создании PDF или разметке листов.", error: false);
+    }
+
+    private static readonly System.Globalization.CultureInfo Russian = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+
+    private static bool TryParseNumber(string text, out double value) =>
+        double.TryParse(text.Trim().Replace('.', ','), System.Globalization.NumberStyles.Float, Russian, out value);
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();
 

@@ -16,7 +16,7 @@ public static class GostPdfWriter
     public static int Write(SpecificationFile file, PdfOptions options, string outputPath)
     {
         var text = CreateText(options);
-        var pages = SpecPaginator.Paginate(file.Rows, text.Measure);
+        var pages = SpecPaginator.Paginate(file.Rows, text.Measure, options);
 
         using var document = new PdfDocument();
         var title = file.TitleBlock;
@@ -30,7 +30,7 @@ public static class GostPdfWriter
             page.Height = XUnit.FromMillimeter(PageHeight);
             using var gfx = XGraphics.FromPdfPage(page);
             gfx.ScaleTransform(72 / 25.4);
-            new SheetPainter(gfx, text, title, i, pages.Count).Draw(pages[i]);
+            new SheetPainter(gfx, text, title, options, i, pages.Count).Draw(pages[i]);
         }
 
         document.Save(outputPath);
@@ -39,7 +39,7 @@ public static class GostPdfWriter
 
     /// <summary>Раскладка строк по листам — как в PDF (для разметки листов в Excel).</summary>
     public static List<List<PrintLine>> Paginate(SpecificationFile file, PdfOptions options) =>
-        SpecPaginator.Paginate(file.Rows, CreateText(options).Measure);
+        SpecPaginator.Paginate(file.Rows, CreateText(options).Measure, options);
 
     private static GostText CreateText(PdfOptions options)
     {
@@ -83,11 +83,15 @@ public static class GostPdfWriter
         private readonly XGraphics _gfx;
         private readonly GostText _text;
         private readonly TitleBlock _title;
+        private readonly FontSizes _sizes;
+        private readonly int _minWidthPercent;
         private readonly int _index;
         private readonly int _count;
 
-        public SheetPainter(XGraphics gfx, GostText text, TitleBlock title, int index, int count)
+        public SheetPainter(XGraphics gfx, GostText text, TitleBlock title, PdfOptions options, int index, int count)
         {
+            _sizes = options.Sizes;
+            _minWidthPercent = options.MinWidthPercent;
             _gfx = gfx;
             _text = text;
             _title = title;
@@ -115,8 +119,8 @@ public static class GostPdfWriter
             DrawMarginGraphs();
             _gfx.DrawRectangle(Thick, FrameLeft, FrameTop, FrameRight - FrameLeft, FrameBottom - FrameTop);
 
-            _text.Draw(_gfx, "Копировал", 110, 296, TextHeight, 30, TextAlign.Left);
-            _text.Draw(_gfx, "Формат А4", 165, 296, TextHeight, 40, TextAlign.Right);
+            _text.Draw(_gfx, "Копировал", 110, 296, _sizes.Margin, 30, TextAlign.Left);
+            _text.Draw(_gfx, "Формат А4", 165, 296, _sizes.Margin, 40, TextAlign.Right);
         }
 
         private void DrawTable(List<PrintLine> lines)
@@ -143,11 +147,11 @@ public static class GostPdfWriter
                 var titleLines = ColumnTitles[column].Split('\n');
                 if (VerticalTitles[column])
                 {
-                    _text.DrawVertical(_gfx, titleLines, ColumnLeft(column), FrameTop, ColumnWidths[column], HeaderHeight, TextHeight);
+                    _text.DrawVertical(_gfx, titleLines, ColumnLeft(column), FrameTop, ColumnWidths[column], HeaderHeight, _sizes.VerticalTitles);
                 }
                 else
                 {
-                    _text.DrawLines(_gfx, titleLines, ColumnLeft(column), FrameTop, ColumnWidths[column], HeaderHeight, HeaderTextHeight, TextAlign.Center);
+                    _text.DrawLines(_gfx, titleLines, ColumnLeft(column), FrameTop, ColumnWidths[column], HeaderHeight, _sizes.ColumnTitles, TextAlign.Center);
                 }
             }
 
@@ -176,7 +180,7 @@ public static class GostPdfWriter
                 var section = line.Style != LineStyle.Normal && column == NameColumn;
                 var padding = column == FormatColumn ? NarrowPadding : (double?)null;
                 var gap = RowBaselineGap;
-                var width = _text.DrawInBox(_gfx, value, x, y, ColumnWidths[column], height, RowTextHeight, align, padding, gap);
+                var width = _text.DrawInBox(_gfx, value, x, y, ColumnWidths[column], height, _sizes.TableRows, align, padding, gap);
 
                 if (section)
                 {
@@ -195,14 +199,14 @@ public static class GostPdfWriter
 
             // Обозначение документа (графа 2).
             _gfx.DrawLine(Thick, 85, top + 15, FrameRight, top + 15);
-            _text.DrawInBox(_gfx, _title.Designation, 85, top, 120, 15, DesignationTextHeight, TextAlign.Center);
+            _text.DrawInBox(_gfx, _title.Designation, 85, top, 120, 15, _sizes.Designation, TextAlign.Center);
 
             // Наименование (графа 1), литера, лист, листов, организация.
             _gfx.DrawLine(Thick, 155, top + 15, 155, FrameBottom);
             // Высота шрифта наименования — из файла (задаёт пользователь), по умолчанию 5.
             // Строк — сколько поместится по высоте графы; лишнее дописывается в последнюю строку со сжатием.
-            var nameHeight = _title.NameTextHeight ?? NameTextHeight;
-            var nameLines = SpecPaginator.Wrap(_title.Name, 66, _text.Measure, nameHeight);
+            var nameHeight = _title.NameTextHeight ?? _sizes.Name;
+            var nameLines = SpecPaginator.Wrap(_title.Name, 66, _text.Measure, nameHeight, _minWidthPercent);
             var maxLines = Math.Max(1, (int)((25 - 2 - nameHeight) / (nameHeight * LineSpacing)) + 1);
             if (nameLines.Count > maxLines)
             {
@@ -217,26 +221,26 @@ public static class GostPdfWriter
             _gfx.DrawLine(Thick, 185, top + 15, 185, top + 25);
             _gfx.DrawLine(Thin, 160, top + 20, 160, top + 25);
             _gfx.DrawLine(Thin, 165, top + 20, 165, top + 25);
-            _text.DrawInBox(_gfx, "Лит.", 155, top + 15, 15, 5, TextHeight, TextAlign.Center);
-            _text.DrawInBox(_gfx, "Лист", 170, top + 15, 15, 5, TextHeight, TextAlign.Center);
-            _text.DrawInBox(_gfx, "Листов", 185, top + 15, 20, 5, TextHeight, TextAlign.Center);
+            _text.DrawInBox(_gfx, "Лит.", 155, top + 15, 15, 5, _sizes.TitleBlock, TextAlign.Center);
+            _text.DrawInBox(_gfx, "Лист", 170, top + 15, 15, 5, _sizes.TitleBlock, TextAlign.Center);
+            _text.DrawInBox(_gfx, "Листов", 185, top + 15, 20, 5, _sizes.TitleBlock, TextAlign.Center);
 
             var letters = _title.Letter.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             for (var i = 0; i < Math.Min(3, letters.Length); i++)
             {
-                _text.DrawInBox(_gfx, letters[i], 155 + 5 * i, top + 20, 5, 5, TextHeight, TextAlign.Center);
+                _text.DrawInBox(_gfx, letters[i], 155 + 5 * i, top + 20, 5, 5, _sizes.TitleBlock, TextAlign.Center);
             }
 
             // На документе из одного листа графу «Лист» не заполняют.
             if (_count > 1)
             {
-                _text.DrawInBox(_gfx, "1", 170, top + 20, 15, 5, TextHeight, TextAlign.Center);
+                _text.DrawInBox(_gfx, "1", 170, top + 20, 15, 5, _sizes.TitleBlock, TextAlign.Center);
             }
 
-            _text.DrawInBox(_gfx, _count.ToString(), 185, top + 20, 20, 5, TextHeight, TextAlign.Center);
+            _text.DrawInBox(_gfx, _count.ToString(), 185, top + 20, 20, 5, _sizes.TitleBlock, TextAlign.Center);
             // Организация — шрифт 10, одной строкой, при необходимости сжимается по ширине.
             var organization = string.Join(" ", _title.Organization.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
-            _text.DrawLines(_gfx, new[] { organization }, 155, top + 25, 50, 15, OrganizationTextHeight, TextAlign.Center);
+            _text.DrawLines(_gfx, new[] { organization }, 155, top + 25, 50, 15, _sizes.Organization, TextAlign.Center);
             _gfx.DrawLine(Thick, FrameLeft, top, FrameRight, top);
         }
 
@@ -245,11 +249,11 @@ public static class GostPdfWriter
         {
             var top = TitleTop;
             DrawChangeGrid(top, signatureRows: false);
-            _text.DrawInBox(_gfx, _title.Designation, 85, top, 110, 15, DesignationTextHeight, TextAlign.Center);
+            _text.DrawInBox(_gfx, _title.Designation, 85, top, 110, 15, _sizes.Designation, TextAlign.Center);
             _gfx.DrawLine(Thick, 195, top, 195, FrameBottom);
             _gfx.DrawLine(Thick, 195, top + 7, FrameRight, top + 7);
-            _text.DrawInBox(_gfx, "Лист", 195, top, 10, 7, TextHeight, TextAlign.Center);
-            _text.DrawInBox(_gfx, (_index + 1).ToString(), 195, top + 7, 10, 8, TextHeight, TextAlign.Center);
+            _text.DrawInBox(_gfx, "Лист", 195, top, 10, 7, _sizes.TitleBlock, TextAlign.Center);
+            _text.DrawInBox(_gfx, (_index + 1).ToString(), 195, top + 7, 10, 8, _sizes.TitleBlock, TextAlign.Center);
             _gfx.DrawLine(Thick, FrameLeft, top, FrameRight, top);
         }
 
@@ -271,7 +275,7 @@ public static class GostPdfWriter
             var titles = new[] { "Изм.", "Лист", "№ докум.", "Подп.", "Дата" };
             for (var i = 0; i < titles.Length; i++)
             {
-                _text.DrawInBox(_gfx, titles[i], ChangeX[i], header, ChangeX[i + 1] - ChangeX[i], 5, TextHeight, TextAlign.Center);
+                _text.DrawInBox(_gfx, titles[i], ChangeX[i], header, ChangeX[i + 1] - ChangeX[i], 5, _sizes.TitleBlock, TextAlign.Center);
             }
 
             if (!signatureRows)
@@ -298,8 +302,8 @@ public static class GostPdfWriter
                     _gfx.DrawLine(Thin, FrameLeft, rowTop, 85, rowTop);
                 }
 
-                _text.DrawInBox(_gfx, signatures[i].Item1, 20, rowTop, 17, 5, TextHeight, TextAlign.Left);
-                _text.DrawInBox(_gfx, signatures[i].Item2, 37, rowTop, 23, 5, TextHeight, TextAlign.Left);
+                _text.DrawInBox(_gfx, signatures[i].Item1, 20, rowTop, 17, 5, _sizes.TitleBlock, TextAlign.Left);
+                _text.DrawInBox(_gfx, signatures[i].Item2, 37, rowTop, 23, 5, _sizes.TitleBlock, TextAlign.Left);
             }
         }
 
@@ -320,7 +324,7 @@ public static class GostPdfWriter
                 for (var c = 0; c < values.Length; c++)
                 {
                     var align = c == 2 ? TextAlign.Left : TextAlign.Center;
-                    _text.DrawInBox(_gfx, values[c], ChangeX[c], rowTop, ChangeX[c + 1] - ChangeX[c], 5, TextHeight, align);
+                    _text.DrawInBox(_gfx, values[c], ChangeX[c], rowTop, ChangeX[c + 1] - ChangeX[c], 5, _sizes.TitleBlock, align);
                 }
             }
         }
@@ -354,10 +358,10 @@ public static class GostPdfWriter
         {
             _gfx.DrawRectangle(Thick, x, y, FrameLeft - x, height);
             _gfx.DrawLine(Thick, x + labelWidth, y, x + labelWidth, y + height);
-            _text.DrawVertical(_gfx, new[] { label }, x, y, labelWidth, height, TextHeight);
+            _text.DrawVertical(_gfx, new[] { label }, x, y, labelWidth, height, _sizes.Margin);
             if (value.Length > 0)
             {
-                _text.DrawVertical(_gfx, new[] { value }, x + labelWidth, y, FrameLeft - x - labelWidth, height, TextHeight);
+                _text.DrawVertical(_gfx, new[] { value }, x + labelWidth, y, FrameLeft - x - labelWidth, height, _sizes.Margin);
             }
         }
     }

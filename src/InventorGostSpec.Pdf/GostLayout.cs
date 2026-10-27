@@ -43,35 +43,13 @@ public static class GostLayout
     public const int QuantityColumn = 5;
     public const int NoteColumn = 6;
 
-    /// <summary>
-    /// Высота прописных букв (ГОСТ 2.304, шрифт 3,5): все надписи и данные основной надписи,
-    /// графы на поле подшивки, вертикальные заголовки граф — как в бланке КОМПАС-3D.
-    /// </summary>
-    public const double TextHeight = 3.5;
-
-    /// <summary>Горизонтальные заголовки граф таблицы («Обозначение», «Наименование», «Примечание») — шрифт 5.</summary>
-    public const double HeaderTextHeight = 5;
-
-    /// <summary>
-    /// Текст строк таблицы спецификации — изделия, заголовки разделов, текстовые строки, формат — шрифт 5.
-    /// Не помещается — сжимается по ширине до 80 %, затем переносится.
-    /// </summary>
-    public const double RowTextHeight = 5;
+    // Высота шрифтов — в FontSizes (настройки утилиты PDF).
 
     /// <summary>Расстояние между базовыми линиями соседних строк текста в одной графе — 1,2 высоты букв (как в КОМПАС-3D).</summary>
     public const double LineSpacing = 1.2;
 
-    /// <summary>Отступ в узкой графе «Формат», чтобы сжатый шрифт 5 был читаемым.</summary>
+    /// <summary>Отступ в узкой графе «Формат», чтобы сжатый крупный шрифт был читаемым.</summary>
     public const double NarrowPadding = 0.5;
-
-    /// <summary>Наименование изделия в основной надписи — по умолчанию шрифт 5; высоту задаёт пользователь в файле Excel.</summary>
-    public const double NameTextHeight = 5;
-
-    /// <summary>Организация в основной надписи — шрифт 10, одной строкой.</summary>
-    public const double OrganizationTextHeight = 10;
-
-    /// <summary>Обозначение документа в основной надписи — шрифт 7.</summary>
-    public const double DesignationTextHeight = 7;
 
     /// <summary>
     /// Наклон шрифта: сдвиг вправо на единицу высоты, как у текста в КОМПАС-3D (≈20°).

@@ -76,7 +76,7 @@ public static class ExcelFormat
         public const string Approver = "Утвердил";
         public const string FirstUse = "Перв. примен.";
 
-        /// <summary>Высота шрифта наименования, мм (2,5; 3,5; 5; 7; 10…). Пусто — 5.</summary>
+        /// <summary>Высота шрифта наименования, мм (2,5; 3,5; 5; 7; 10…). Пусто — из настроек утилиты PDF.</summary>
         public const string NameHeight = "Шрифт наименования, мм";
     }
 

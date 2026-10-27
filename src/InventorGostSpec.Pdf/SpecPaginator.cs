@@ -62,11 +62,17 @@ public sealed class PrintLine
 public static class SpecPaginator
 {
     /// <param name="measure">Ширина текста в мм при заданной высоте прописных букв.</param>
-    public static List<List<PrintLine>> Paginate(IReadOnlyList<SheetRow> rows, Func<string, double, double> measure)
+    public static List<List<PrintLine>> Paginate(IReadOnlyList<SheetRow> rows, Func<string, double, double> measure) =>
+        Paginate(rows, measure, new PdfOptions());
+
+    /// <param name="options">Высота шрифта строк и допустимое сужение текста.</param>
+    public static List<List<PrintLine>> Paginate(IReadOnlyList<SheetRow> rows, Func<string, double, double> measure, PdfOptions options)
     {
+        Func<string, double, List<string>> wrap = (text, width) =>
+            Wrap(text, width, measure, options.Sizes.TableRows, options.MinWidthPercent);
         var blocks = rows.Select((row, index) =>
         {
-            var block = ToBlock(row, measure);
+            var block = ToBlock(row, wrap);
             block.Lines.ForEach(line => line.SourceRow = index);
             return block;
         }).ToList();
@@ -166,7 +172,7 @@ public static class SpecPaginator
         return lines.Skip(skip).ToList();
     }
 
-    private static Block ToBlock(SheetRow row, Func<string, double, double> measure)
+    private static Block ToBlock(SheetRow row, Func<string, double, List<string>> wrap)
     {
         var type = row.Type.Length > 0 ? row.Type : row.IsEmpty ? "" : ExcelFormat.RowTypes.Item;
         var nameWidth = GostLayout.TextWidth(GostLayout.NameColumn);
@@ -177,14 +183,14 @@ public static class SpecPaginator
             {
                 var style = type == ExcelFormat.RowTypes.Section ? LineStyle.Section : LineStyle.Group;
                 var lines = new List<PrintLine> { PrintLine.Spacer };
-                lines.AddRange(Wrap(row.Name, nameWidth, measure).Select(text => new PrintLine { Name = text, Style = style }));
+                lines.AddRange(wrap(row.Name, nameWidth).Select(text => new PrintLine { Name = text, Style = style }));
                 lines.Add(PrintLine.Spacer);
                 return new Block(lines, true);
             }
 
             // Текстовая строка без текста — пустая строка (так её можно добавить и из окна спецификации).
             case ExcelFormat.RowTypes.Text when row.Name.Trim().Length > 0:
-                return new Block(Wrap(row.Name, nameWidth, measure).Select(text => new PrintLine { Name = text }).ToList(), false);
+                return new Block(wrap(row.Name, nameWidth).Select(text => new PrintLine { Name = text }).ToList(), false);
 
             case ExcelFormat.RowTypes.PageBreak:
                 return new Block(new List<PrintLine>(), false, PageBreak: true);
@@ -198,9 +204,9 @@ public static class SpecPaginator
 
             default:
             {
-                var designation = Wrap(row.Designation, GostLayout.TextWidth(GostLayout.DesignationColumn), measure);
-                var name = Wrap(row.Name, nameWidth, measure);
-                var note = Wrap(row.Note, GostLayout.TextWidth(GostLayout.NoteColumn), measure);
+                var designation = wrap(row.Designation, GostLayout.TextWidth(GostLayout.DesignationColumn));
+                var name = wrap(row.Name, nameWidth);
+                var note = wrap(row.Note, GostLayout.TextWidth(GostLayout.NoteColumn));
                 var count = Math.Max(1, Math.Max(designation.Count, Math.Max(name.Count, note.Count)));
                 var quantity = row.Unit.Length > 0 && row.Quantity.Length > 0 ? $"{row.Quantity} {row.Unit}" : row.Quantity;
                 var lines = Enumerable.Range(0, count).Select(i => new PrintLine
@@ -218,19 +224,24 @@ public static class SpecPaginator
         }
     }
 
-    /// <summary>Насколько можно сжать текст по ширине, чтобы не переносить его (80 %).</summary>
-    public const double MinCompression = 0.8;
-
     /// <summary>
     /// Перенос по словам (и после дефиса). Явный перенос строки в ячейке сохраняется.
-    /// Если текст чуть-чуть не помещается и сжатие до 80 % по ширине экономит строку — не переносим, при выводе он сжимается.
+    /// Если текст чуть-чуть не помещается и сжатие по ширине (до <paramref name="minWidthPercent"/> %) экономит строку —
+    /// не переносим, при выводе он сжимается.
     /// Слово длиннее графы остаётся целым и тоже сжимается.
     /// </summary>
     /// <param name="capHeight">Высота букв; по умолчанию — шрифт строк таблицы (5).</param>
-    public static List<string> Wrap(string text, double width, Func<string, double, double> measure, double capHeight = GostLayout.RowTextHeight)
+    /// <param name="minWidthPercent">Допустимое сужение, % ширины; 0 — переносить только по явному переносу строки.</param>
+    public static List<string> Wrap(string text, double width, Func<string, double, double> measure,
+        double capHeight = 5, int minWidthPercent = PdfOptions.DefaultMinWidthPercent)
     {
+        if (minWidthPercent <= 0)
+        {
+            return text.Replace("\r", "").Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
+        }
+
         var normal = WrapAt(text, width, measure, capHeight);
-        var compressed = WrapAt(text, width / MinCompression, measure, capHeight);
+        var compressed = WrapAt(text, width * 100 / Math.Min(100, minWidthPercent), measure, capHeight);
         return compressed.Count < normal.Count ? compressed : normal;
     }
 

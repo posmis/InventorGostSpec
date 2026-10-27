@@ -110,7 +110,10 @@ internal sealed class SpecificationCommand : AddInCommand
                 transaction.Commit();
             }
 
-            return AssemblyReader.ToComponentData(item.Target, item.Key, AssemblyReader.Quantity(item.Row));
+            var drawings = item.Target.Kind == ComponentKind.Assembly
+                ? new DrawingSearch(_context.Application, new[] { System.IO.Path.GetDirectoryName(item.Target.FullFileName ?? "") ?? "" })
+                : null;
+            return AssemblyReader.ToComponentData(item.Target, item.Key, AssemblyReader.Quantity(item.Row), drawings);
         }
 
         public string? ReadComponentNote(string componentKey)

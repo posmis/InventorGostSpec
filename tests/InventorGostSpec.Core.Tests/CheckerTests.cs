@@ -49,6 +49,17 @@ public class CheckerTests
     }
 
     [Fact]
+    public void Assembly_unit_without_drawing_is_only_noted()
+    {
+        var unit = new ComponentData { Key = "Узел.iam", Kind = ComponentKind.Assembly, Designation = "А.100", Name = "Узел", Quantity = 1, HasDrawing = false };
+        var (spec, context) = Build(Drawing, unit);
+
+        var issue = Assert.Single(Issues(spec, context), i => i.Message.Contains("Узел"));
+        Assert.Equal(IssueSeverity.Info, issue.Severity);
+        Assert.Contains("сборочный чертёж не найден", issue.Message);
+    }
+
+    [Fact]
     public void Missing_and_duplicate_positions_are_errors()
     {
         var (spec, context) = Build(Part("А.001", "Корпус"), Part("А.002", "Ось"), Part("А.003", "Вал"));

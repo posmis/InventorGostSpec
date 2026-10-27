@@ -10,23 +10,35 @@ internal static class AssemblyReader
     public static List<ComponentData> Read(Inventor.Application application, AssemblyDocument assembly)
     {
         var result = new List<ComponentData>();
+        var items = BomAccess.GetFirstLevel(assembly).ToList();
 
-        var drawing = ReadAssemblyDrawing(application, assembly);
+        // Один поиск на всю сборку: список чертежей и их содержимое читаются один раз.
+        var drawings = new DrawingSearch(application, items
+            .Where(i => i.Target.Kind == ComponentKind.Assembly)
+            .Select(i => System.IO.Path.GetDirectoryName(i.Target.FullFileName ?? "") ?? "")
+            .Prepend(BomAccess.AssemblyFolder(assembly))
+            .Distinct(StringComparer.OrdinalIgnoreCase));
+
+        var drawing = ReadAssemblyDrawing(application, assembly, drawings);
         if (drawing is not null)
         {
             result.Add(drawing);
         }
 
-        foreach (var item in BomAccess.GetFirstLevel(assembly))
+        foreach (var item in items)
         {
-            result.Add(ToComponentData(item.Target, item.Key, Quantity(item.Row)));
+            result.Add(ToComponentData(item.Target, item.Key, Quantity(item.Row), drawings));
         }
 
         return result;
     }
 
-    public static ComponentData ToComponentData(ComponentTarget target, string key, decimal quantity) => new()
+    /// <param name="drawings">Поиск сборочного чертежа у сборок; <c>null</c> — не искать (формат сборочной единицы — А4).</param>
+    public static ComponentData ToComponentData(ComponentTarget target, string key, decimal quantity, DrawingSearch? drawings = null) => new()
     {
+        HasDrawing = drawings is not null && target.Kind == ComponentKind.Assembly && target.FullFileName is { } file
+            ? drawings.Find(file, target.PartNumber, isAssembly: true) is not null
+            : null,
         Key = key,
         Kind = target.Kind,
         IsContentCenter = target.IsContentCenter,
@@ -48,11 +60,10 @@ internal static class AssemblyReader
     /// по содержимому чертежа). Обозначение — обозначение сборки с кодом «СБ»
     /// (если в обозначении сборки «СБ» уже есть, второй не добавляется).
     /// </summary>
-    private static ComponentData? ReadAssemblyDrawing(Inventor.Application application, AssemblyDocument assembly)
+    private static ComponentData? ReadAssemblyDrawing(Inventor.Application application, AssemblyDocument assembly, DrawingSearch drawings)
     {
         var partNumber = PropertyAccess.Get(assembly.PropertySets, PropertyAccess.DesignTrackingSet, PropertyAccess.PartNumber);
-        var path = new DrawingSearch(application, new[] { BomAccess.AssemblyFolder(assembly) })
-            .Find(assembly.FullFileName, partNumber, isAssembly: true);
+        var path = drawings.Find(assembly.FullFileName, partNumber, isAssembly: true);
         if (path is null)
         {
             return null;

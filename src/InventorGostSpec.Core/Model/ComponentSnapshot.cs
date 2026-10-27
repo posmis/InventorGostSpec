@@ -63,9 +63,10 @@ public sealed class ComponentSnapshot
 
         // У сборочной единицы (комплекса) в графе «Формат» — формат её спецификации, то есть всегда А4.
         // SPEC_Format сборки — формат её сборочного чертежа: он идёт в «Документацию» её собственной спецификации.
+        // Нет сборочного чертежа — нет и спецификации: графа пустая.
         if (SectionsWithSpecification.Contains(snapshot.SectionId))
         {
-            snapshot.Format = SpecificationFormat;
+            snapshot.Format = component.HasDrawing == false ? "" : SpecificationFormat;
         }
 
         // ГОСТ 2.106: в разделах стандартных, прочих изделий и материалов графа «Обозначение» не заполняется.

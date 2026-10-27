@@ -154,7 +154,15 @@ public static class SpecificationChecker
                 issues.Add(new SpecIssue(IssueSeverity.Warning, $"{Describe(row)}: нет обозначения.", row.Id));
             }
 
-            if (FormatRequired.Contains(row.SectionId) && row.Get(SpecColumn.Format).Length == 0)
+            if (row.Kind == RowKind.Component && row.Get(SpecColumn.Format).Length == 0 &&
+                (string.Equals(row.SectionId, SectionIds.AssemblyUnits, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(row.SectionId, SectionIds.Complexes, StringComparison.OrdinalIgnoreCase)))
+            {
+                // Формат пустой, потому что у сборки не найден сборочный чертёж.
+                issues.Add(new SpecIssue(IssueSeverity.Info,
+                    $"{Describe(row)}: сборочный чертёж не найден, графа «Формат» пустая.", row.Id));
+            }
+            else if (FormatRequired.Contains(row.SectionId) && row.Get(SpecColumn.Format).Length == 0)
             {
                 issues.Add(new SpecIssue(IssueSeverity.Warning,
                     $"{Describe(row)}: не указан формат (для детали без чертежа — «БЧ»).", row.Id));

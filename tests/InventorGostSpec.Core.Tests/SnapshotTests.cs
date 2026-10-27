@@ -41,6 +41,15 @@ public class SnapshotTests
         withFormat.Format = "А1, А2";
         Assert.Equal("А4", ComponentSnapshot.FromComponent(withFormat).Format);
 
+        // Сборочный чертёж найден — А4; не найден — спецификации нет, графа пустая.
+        var withDrawing = TestData.Assembly("А.102", "Узел");
+        withDrawing.HasDrawing = true;
+        Assert.Equal("А4", ComponentSnapshot.FromComponent(withDrawing).Format);
+        var noDrawing = TestData.Assembly("А.103", "Узел");
+        noDrawing.HasDrawing = false;
+        noDrawing.Format = "А3";
+        Assert.Equal("", ComponentSnapshot.FromComponent(noDrawing).Format);
+
         // У деталей формат не подставляется.
         Assert.Equal("", ComponentSnapshot.FromComponent(TestData.Part("А.001", "Ось")).Format);
     }

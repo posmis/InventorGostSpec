@@ -47,12 +47,16 @@ internal sealed class AssignSectionCommand : AddInCommand
             ? $"Компонент: {targets[0].DisplayName}"
             : $"Выбрано компонентов: {targets.Count}";
 
+        // Формат сборочной единицы зависит от того, есть ли сборочный чертёж (ищется только у сборок).
+        var drawings = new Lazy<DrawingSearch?>(() => targets.Any(t => t.Kind == ComponentKind.Assembly)
+            ? new DrawingSearch(context.Application, targets.Select(t => System.IO.Path.GetDirectoryName(t.FullFileName ?? "") ?? "").Distinct())
+            : null);
         var autoSections = targets.Select(t => SectionResolver.GetDefault(t.Kind, t.IsContentCenter)).Distinct().ToList();
         var viewModel = new AssignSectionViewModel(
             catalog.Sections.Where(sec => !SectionResolver.IsDocumentation(sec.Id)), initial, description,
             autoSections.FirstOrDefault(), autoSectionVaries: autoSections.Count > 1,
             currentValues: AssignSectionViewModel.CurrentValues(
-                targets.Select(t => ComponentSnapshot.FromComponent(AssemblyReader.ToComponentData(t, t.DisplayName, 1)))));
+                targets.Select(t => ComponentSnapshot.FromComponent(AssemblyReader.ToComponentData(t, t.DisplayName, 1, drawings.Value)))));
         if (WindowOwner.ShowDialog(new AssignSectionWindow(viewModel), context.MainWindowHandle) != true)
         {
             return;

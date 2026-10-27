@@ -37,6 +37,12 @@ public sealed class ComponentData
 
     public string Format { get; set; } = "";
 
+    /// <summary>
+    /// Есть ли у сборки сборочный чертёж. Нет — у сборочной единицы графа «Формат» пустая
+    /// (спецификация без сборочного чертежа не выпускается). <c>null</c> — не проверялось (считается, что есть).
+    /// </summary>
+    public bool? HasDrawing { get; set; }
+
     public decimal Quantity { get; set; }
 
     public string Unit { get; set; } = "";

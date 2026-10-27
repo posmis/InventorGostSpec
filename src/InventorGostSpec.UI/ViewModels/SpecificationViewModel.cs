@@ -564,6 +564,7 @@ public sealed class SpecificationViewModel : ObservableObject
     /// <summary>
     /// Экспорт текущего состояния окна (в том числе несохранённого) в Excel.
     /// Резервные строки выгружаются, если включено «Показывать резерв».
+    /// Лист «Изменения» переносится из заменяемого файла.
     /// </summary>
     private void ExportExcel()
     {
@@ -577,6 +578,11 @@ public sealed class SpecificationViewModel : ObservableObject
 
         try
         {
+            if (info.TitleBlock.Changes.Count == 0)
+            {
+                info.TitleBlock.Changes = ReadPreviousChanges(path);
+            }
+
             Excel.ExcelExporter.Export(Specification, _context, info.TitleBlock, path);
         }
         catch (System.IO.IOException ex)
@@ -588,6 +594,19 @@ public sealed class SpecificationViewModel : ObservableObject
         if (_dialogs.Confirm($"Спецификация выгружена:\n{path}\n\nОткрыть файл?"))
         {
             _dialogs.OpenFile(path);
+        }
+    }
+
+    /// <summary>Записи «Изменения» из заменяемого файла; файл открыт в Excel — исключение, не книга Excel — пусто.</summary>
+    private static List<ChangeRecord> ReadPreviousChanges(string path)
+    {
+        try
+        {
+            return Excel.ExcelExporter.ReadChanges(path);
+        }
+        catch (Exception ex) when (ex is not System.IO.IOException)
+        {
+            return new List<ChangeRecord>();
         }
     }
 

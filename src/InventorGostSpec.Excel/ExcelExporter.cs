@@ -6,7 +6,7 @@ using InventorGostSpec.Core.View;
 namespace InventorGostSpec.Excel;
 
 /// <summary>
-/// Экспорт спецификации в Excel: лист «Спецификация» (строки с типом), «Основная надпись» и памятка.
+/// Экспорт спецификации в Excel: лист «Спецификация» (строки с типом), «Основная надпись», «Изменения» и памятка.
 /// Файл рассчитан на ручную правку и последующую конвертацию в PDF по ГОСТ.
 /// </summary>
 public static class ExcelExporter
@@ -26,9 +26,50 @@ public static class ExcelExporter
         using var workbook = new XLWorkbook();
         FillSpecification(workbook.AddWorksheet(ExcelFormat.SpecificationSheet), specification, context);
         FillTitleBlock(workbook.AddWorksheet(ExcelFormat.TitleBlockSheet), titleBlock);
+        FillChanges(workbook.AddWorksheet(ExcelFormat.ChangesSheet), titleBlock.Changes);
         FillHelp(workbook.AddWorksheet(ExcelFormat.HelpSheet));
         workbook.Worksheet(1).SetTabActive();
         workbook.SaveAs(path);
+    }
+
+    /// <summary>
+    /// Записи листа «Изменения» из ранее выгруженного файла — чтобы повторная выгрузка в тот же файл
+    /// не стирала внесённые вручную изменения. Нет файла или листа — пустой список.
+    /// </summary>
+    public static List<ChangeRecord> ReadChanges(string path)
+    {
+        var changes = new List<ChangeRecord>();
+        if (!File.Exists(path))
+        {
+            return changes;
+        }
+
+        using var workbook = new XLWorkbook(path);
+        if (!workbook.TryGetWorksheet(ExcelFormat.ChangesSheet, out var sheet))
+        {
+            return changes;
+        }
+
+        var last = sheet.LastRowUsed()?.RowNumber() ?? 1;
+        for (var row = 2; row <= last; row++)
+        {
+            string Get(int column) => sheet.Cell(row, column).GetFormattedString().Trim();
+            var change = new ChangeRecord
+            {
+                Number = Get(ExcelFormat.ChangeNumberColumn),
+                Areas = Get(ExcelFormat.ChangeAreasColumn),
+                Sheet = Get(ExcelFormat.ChangeSheetColumn),
+                Document = Get(ExcelFormat.ChangeDocumentColumn),
+                Signature = Get(ExcelFormat.ChangeSignatureColumn),
+                Date = Get(ExcelFormat.ChangeDateColumn),
+            };
+            if (new[] { change.Number, change.Areas, change.Sheet, change.Document, change.Signature, change.Date }.Any(v => v.Length > 0))
+            {
+                changes.Add(change);
+            }
+        }
+
+        return changes;
     }
 
     private static void FillSpecification(IXLWorksheet sheet, Specification specification, SpecificationContext context)
@@ -190,6 +231,48 @@ public static class ExcelExporter
         table.Style.Border.OutsideBorderColor = XLColor.FromHtml("#D9DDE3");
     }
 
+    // Пустых строк под записи изменений (с рамкой и текстовым форматом), сверх уже внесённых.
+    private const int SpareChangeRows = 10;
+
+    private static void FillChanges(IXLWorksheet sheet, IReadOnlyList<ChangeRecord> changes)
+    {
+        var widths = new double[] { 7, 9, 12, 24, 18, 12 };
+        for (var i = 0; i < ExcelFormat.ChangeColumns.Length; i++)
+        {
+            sheet.Cell(1, i + 1).Value = ExcelFormat.ChangeColumns[i];
+            sheet.Column(i + 1).Width = widths[i];
+        }
+
+        var header = sheet.Range(1, 1, 1, ExcelFormat.ChangeColumns.Length);
+        header.Style.Font.Bold = true;
+        header.Style.Fill.BackgroundColor = HeaderFill;
+        header.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        var last = changes.Count + SpareChangeRows + 1;
+        var body = sheet.Range(2, 1, last, ExcelFormat.ChangeColumns.Length);
+
+        // Всё — текстом: иначе Excel превратит «1-3» или «05.25» в дату, а «01» — в число.
+        body.Style.NumberFormat.Format = "@";
+        body.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+        for (var i = 0; i < changes.Count; i++)
+        {
+            var change = changes[i];
+            var values = new[] { change.Number, change.Areas, change.Sheet, change.Document, change.Signature, change.Date };
+            for (var c = 0; c < values.Length; c++)
+            {
+                sheet.Cell(i + 2, c + 1).SetValue(values[c]);
+            }
+        }
+
+        var table = sheet.Range(1, 1, last, ExcelFormat.ChangeColumns.Length);
+        table.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+        table.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+        table.Style.Border.InsideBorderColor = XLColor.FromHtml("#D9DDE3");
+        table.Style.Border.OutsideBorderColor = XLColor.FromHtml("#D9DDE3");
+        sheet.SheetView.FreezeRows(1);
+    }
+
     private static void FillHelp(IXLWorksheet sheet)
     {
         var lines = new[]
@@ -207,6 +290,12 @@ public static class ExcelExporter
             "«Ед. изм.» выводится вместе с количеством (например, «2,5 м»); для штук оставьте пустым.",
             "",
             "Лист «Основная надпись» — данные для основной надписи (обозначение, наименование, подписи).",
+            "",
+            "Лист «Изменения» — графы изменений основной надписи (ГОСТ 2.503), одна строка — одна запись, по порядку внесения:",
+            "  Изм. — порядковый номер изменения; Кол. уч. — количество изменённых участков на листе;",
+            "  Лист — номер изменённого листа; № докум. — обозначение извещения об изменении; Подп. и Дата — кто и когда внёс.",
+            "При выводе в PDF запись попадает в основную надпись указанного листа (пустой «Лист» — первый лист);",
+            "если записей больше, чем граф в основной надписи, выводятся последние. Ячейки — текстовые, вводите как есть.",
             "",
             "Файл создан аддином InventorGostSpec. Изменения в нём не возвращаются в сборку Inventor.",
         };

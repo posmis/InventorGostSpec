@@ -38,10 +38,17 @@ public class ExcelExporterTests : IDisposable
         SpecificationEditor.MoveToGroup(spec, context, spec.Rows.Single(r => r.Get(SpecColumn.Name).StartsWith("Провод")), group.Id);
         PositionAllocator.RenumberAll(spec, context);
 
-        ExcelExporter.Export(spec, context, new TitleBlock { Designation = "АБВГ.301234.001", Name = "Привод", Developer = "Иванов" }, _path);
+        var titleBlock = new TitleBlock
+        {
+            Designation = "АБВГ.301234.001",
+            Name = "Привод",
+            Developer = "Иванов",
+            Changes = { new ChangeRecord { Number = "1", Sheet = "1-3", Document = "АБВГ.12-25", Signature = "Петров", Date = "05.25" } },
+        };
+        ExcelExporter.Export(spec, context, titleBlock, _path);
 
         using var workbook = new XLWorkbook(_path);
-        Assert.Equal(new[] { ExcelFormat.SpecificationSheet, ExcelFormat.TitleBlockSheet, ExcelFormat.HelpSheet },
+        Assert.Equal(new[] { ExcelFormat.SpecificationSheet, ExcelFormat.TitleBlockSheet, ExcelFormat.ChangesSheet, ExcelFormat.HelpSheet },
             workbook.Worksheets.Select(w => w.Name));
 
         var sheet = workbook.Worksheet(ExcelFormat.SpecificationSheet);
@@ -74,5 +81,38 @@ public class ExcelExporterTests : IDisposable
         Assert.Equal(ExcelFormat.TitleFields.Designation, title.Cell(2, 1).GetString());
         Assert.Equal("АБВГ.301234.001", title.Cell(2, 2).GetString());
         Assert.Equal("Иванов", title.Cell(6, 2).GetString());
+
+        // Изменения — текстом, без превращения «1-3» и «05.25» в даты.
+        var changes = workbook.Worksheet(ExcelFormat.ChangesSheet);
+        Assert.Equal(ExcelFormat.ChangeColumns, Enumerable.Range(1, ExcelFormat.ChangeColumns.Length).Select(c => changes.Cell(1, c).GetString()));
+        Assert.Equal("1", changes.Cell(2, ExcelFormat.ChangeNumberColumn).GetString());
+        Assert.Equal(XLDataType.Text, changes.Cell(2, ExcelFormat.ChangeSheetColumn).DataType);
+        Assert.Equal("1-3", changes.Cell(2, ExcelFormat.ChangeSheetColumn).GetString());
+        Assert.Equal("АБВГ.12-25", changes.Cell(2, ExcelFormat.ChangeDocumentColumn).GetString());
+        Assert.Equal("05.25", changes.Cell(2, ExcelFormat.ChangeDateColumn).GetString());
+        Assert.Equal("@", changes.Cell(5, ExcelFormat.ChangeDateColumn).Style.NumberFormat.Format);
+    }
+
+    [Fact]
+    public void Reads_changes_back_skipping_empty_rows()
+    {
+        Assert.Empty(ExcelExporter.ReadChanges(_path));
+
+        var titleBlock = new TitleBlock
+        {
+            Changes =
+            {
+                new ChangeRecord { Number = "1", Sheet = "2", Document = "АБВГ.5-25", Date = "05.25" },
+                new ChangeRecord { Number = "2", Areas = "3", Sheet = "1-3", Document = "АБВГ.9-25", Signature = "Петров", Date = "10.25" },
+            },
+        };
+        ExcelExporter.Export(new Specification(), SpecificationContext.Create(new SpecSettings(), new Specification()), titleBlock, _path);
+
+        var changes = ExcelExporter.ReadChanges(_path);
+        Assert.Equal(new[] { "1", "2" }, changes.Select(c => c.Number));
+        Assert.Equal("1-3", changes[1].Sheet);
+        Assert.Equal("3", changes[1].Areas);
+        Assert.Equal("Петров", changes[1].Signature);
+        Assert.Equal("10.25", changes[1].Date);
     }
 }

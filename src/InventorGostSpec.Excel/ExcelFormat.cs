@@ -8,6 +8,7 @@ public static class ExcelFormat
 {
     public const string SpecificationSheet = "Спецификация";
     public const string TitleBlockSheet = "Основная надпись";
+    public const string ChangesSheet = "Изменения";
     public const string HelpSheet = "Как заполнять";
 
     /// <summary>Колонки листа «Спецификация» (номер колонки — индекс + 1).</summary>
@@ -61,4 +62,17 @@ public static class ExcelFormat
         public const string Approver = "Утвердил";
         public const string FirstUse = "Перв. примен.";
     }
+
+    /// <summary>
+    /// Колонки листа «Изменения» — графы изменений основной надписи (ГОСТ 2.104, заполнение по ГОСТ 2.503).
+    /// Одна строка — одна запись, по порядку внесения; пустые строки пропускаются.
+    /// </summary>
+    public static readonly string[] ChangeColumns = { "Изм.", "Кол. уч.", "Лист", "№ докум.", "Подп.", "Дата" };
+
+    public const int ChangeNumberColumn = 1;
+    public const int ChangeAreasColumn = 2;
+    public const int ChangeSheetColumn = 3;
+    public const int ChangeDocumentColumn = 4;
+    public const int ChangeSignatureColumn = 5;
+    public const int ChangeDateColumn = 6;
 }

@@ -122,7 +122,11 @@ public sealed class SpecificationViewModel : ObservableObject
     {
         _selectedRows = rows.OrderBy(r => Rows.IndexOf(r)).ToList();
         UpdateStatus();
+        OnPropertyChanged(nameof(CanSetDocumentType));
     }
+
+    /// <summary>Пункт «Тип документа» — только для строк раздела «Документация».</summary>
+    public bool CanSetDocumentType => TargetRows.Any(IsDocumentRow);
 
     /// <summary>Запрос начать редактирование ячейки (например, у только что добавленной строки).</summary>
     public event Action<SpecRowViewModel, SpecColumn>? EditRequested;
@@ -142,7 +146,13 @@ public sealed class SpecificationViewModel : ObservableObject
     public SpecRowViewModel? SelectedRow
     {
         get => _selectedRow;
-        set => SetField(ref _selectedRow, value);
+        set
+        {
+            if (SetField(ref _selectedRow, value))
+            {
+                OnPropertyChanged(nameof(CanSetDocumentType));
+            }
+        }
     }
 
     public bool IsDirty

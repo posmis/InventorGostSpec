@@ -344,6 +344,7 @@
                             </MenuItem.ItemContainerStyle>
                         </MenuItem>
                         <MenuItem Header="Тип документа" ItemsSource="{Binding DocumentTypeOptions}"
+                                  Visibility="{Binding CanSetDocumentType, Converter={StaticResource BoolToVisibility}}"
                                   ToolTip="Для строк раздела «Документация»: код в конце обозначения (СБ, ТУ, Э3…) и наименование документа">
                             <MenuItem.ItemContainerStyle>
                                 <Style TargetType="MenuItem">

@@ -91,6 +91,12 @@ public static class SpecificationEditor
     /// </summary>
     public static void SetDocumentType(Specification spec, SpecificationContext context, SpecRow row, string code)
     {
+        // Тип документа — только у строк «Документации»: у деталей и сборок код в обозначении не меняется.
+        if (row.Kind == RowKind.Note || !ComponentSnapshot.IsDocument(row.SectionId))
+        {
+            return;
+        }
+
         var designation = Sorting.DocumentCodes.WithCode(row.Get(SpecColumn.Designation), code);
         var name = Sorting.DocumentCodes.NameOf(code);
         SetCell(spec, context, row, SpecColumn.Designation, designation);

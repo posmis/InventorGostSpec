@@ -95,6 +95,21 @@ public class DocumentTests
     }
 
     [Fact]
+    public void Document_type_is_ignored_outside_documentation()
+    {
+        var spec = new Specification();
+        var context = TestData.Context(spec);
+        SpecificationUpdater.Update(spec, new[] { TestData.Part("АБВГ.715431.001", "Корпус") }, context, TestData.Now);
+        var row = spec.Rows.Single();
+
+        SpecificationEditor.SetDocumentType(spec, context, row, "СБ");
+
+        Assert.Equal("АБВГ.715431.001", row.Get(SpecColumn.Designation));
+        Assert.Equal("Корпус", row.Get(SpecColumn.Name));
+        Assert.False(row.IsOverridden(SpecColumn.Designation));
+    }
+
+    [Fact]
     public void Part_name_is_not_touched_by_codes()
     {
         var spec = new Specification();

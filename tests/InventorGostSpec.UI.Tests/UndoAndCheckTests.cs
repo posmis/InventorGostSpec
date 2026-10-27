@@ -399,9 +399,11 @@ public class DocumentRowTests
         var updated = vm.Rows.Single(r => r.RowId == row.RowId);
         Assert.Equal("АБВГ.301234.001СБ", updated.Designation);
         Assert.Equal("Сборочный чертеж", updated.Name);
+        Assert.True(vm.CanSetDocumentType);
 
         vm.SelectedRow = vm.Rows.Single(r => r.Name == "Корпус");
         Assert.False(vm.SetDocumentTypeCommand.CanExecute("СБ")); // не документ
+        Assert.False(vm.CanSetDocumentType); // пункта меню нет
     }
 }
 

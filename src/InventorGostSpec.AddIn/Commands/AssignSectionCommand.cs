@@ -17,7 +17,7 @@ internal sealed class AssignSectionCommand : AddInCommand
 
     public override string InternalName => Id;
 
-    public override string DisplayName => "Раздел\nкомпонента";
+    public override string DisplayName => "Раздел";
 
     public override string Description => "Назначить раздел спецификации и поля для сортировки выбранным компонентам";
 

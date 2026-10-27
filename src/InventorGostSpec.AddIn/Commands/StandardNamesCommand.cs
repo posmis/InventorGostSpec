@@ -18,7 +18,7 @@ internal sealed class StandardNamesCommand : AddInCommand
 
     public override string InternalName => Id;
 
-    public override string DisplayName => "Наименования\nстандартных";
+    public override string DisplayName => "Имя из файла";
 
     public override string Description =>
         "Записать в наименование (Description) стандартных изделий сборки имя их файла. " +
@@ -76,7 +76,7 @@ internal sealed class StandardNamesCommand : AddInCommand
 
         var changed = 0;
         var failed = new List<string>();
-        using (var transaction = new InventorTransaction(context.Application, document, "Наименования стандартных изделий"))
+        using (var transaction = new InventorTransaction(context.Application, document, "Имя из файла"))
         {
             foreach (var item in viewModel.GetChanges())
             {

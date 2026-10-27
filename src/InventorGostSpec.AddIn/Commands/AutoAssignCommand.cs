@@ -17,7 +17,7 @@ internal sealed class AutoAssignCommand : AddInCommand
 
     public override string InternalName => Id;
 
-    public override string DisplayName => "Разделы\nавтоматически";
+    public override string DisplayName => "Авторазделы";
 
     public override string Description =>
         "Назначить разделы компонентам без раздела: Content Center — стандартные изделия, сборки — сборочные единицы, детали — детали. " +
@@ -42,7 +42,7 @@ internal sealed class AutoAssignCommand : AddInCommand
         var skipped = 0;
         var failed = new List<string>();
 
-        using (var transaction = new InventorTransaction(context.Application, (Document)assembly, "Разделы автоматически"))
+        using (var transaction = new InventorTransaction(context.Application, (Document)assembly, "Авторазделы"))
         {
             foreach (var item in items)
             {

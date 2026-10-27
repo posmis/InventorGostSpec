@@ -119,8 +119,10 @@ public static class GostPdfWriter
             DrawMarginGraphs();
             _gfx.DrawRectangle(Thick, FrameLeft, FrameTop, FrameRight - FrameLeft, FrameBottom - FrameTop);
 
-            _text.Draw(_gfx, "Копировал", 110, 296, _sizes.Margin, 30, TextAlign.Left);
-            _text.Draw(_gfx, "Формат А4", 165, 296, _sizes.Margin, 40, TextAlign.Right);
+            // Под рамкой — как в бланке КОМПАС-3D: «Копировал» с 95,5 мм, «Формат» с 166 мм, значение формата с 186 мм.
+            _text.Draw(_gfx, "Копировал", 95.5, 296, _sizes.Margin, 30, TextAlign.Left);
+            _text.Draw(_gfx, "Формат", 166, 296, _sizes.Margin, 18, TextAlign.Left);
+            _text.Draw(_gfx, "А4", 186, 296, _sizes.Margin, 15, TextAlign.Left);
         }
 
         private void DrawTable(List<PrintLine> lines)

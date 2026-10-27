@@ -2,26 +2,52 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:controls="clr-namespace:InventorGostSpec.UI.Controls">
 
-    <SolidColorBrush x:Key="Brush.Accent" Color="#2E7DD1" />
-    <SolidColorBrush x:Key="Brush.AccentDark" Color="#1C5F9E" />
-    <SolidColorBrush x:Key="Brush.Bar" Color="#F5F6F8" />
-    <SolidColorBrush x:Key="Brush.BarBorder" Color="#D9DDE3" />
-    <SolidColorBrush x:Key="Brush.Hover" Color="#E3ECF7" />
-    <SolidColorBrush x:Key="Brush.HoverBorder" Color="#B7CDE8" />
-    <SolidColorBrush x:Key="Brush.Muted" Color="#6B7280" />
+    <!-- Палитра окна: тёмный текст на светлом фоне, заметные границы (контраст текста не ниже 7:1). -->
+    <SolidColorBrush x:Key="Brush.Accent" Color="#1F6FD1" />
+    <SolidColorBrush x:Key="Brush.AccentDark" Color="#1558AA" />
+    <SolidColorBrush x:Key="Brush.Text" Color="#111827" />
+    <SolidColorBrush x:Key="Brush.Muted" Color="#4B5563" />
+    <SolidColorBrush x:Key="Brush.Bar" Color="#E9EDF2" />
+    <SolidColorBrush x:Key="Brush.BarBorder" Color="#B8C1CC" />
+    <SolidColorBrush x:Key="Brush.Panel" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Brush.PanelTitle" Color="#DDE3EA" />
+    <SolidColorBrush x:Key="Brush.Hover" Color="#DCE8F7" />
+    <SolidColorBrush x:Key="Brush.HoverBorder" Color="#8DB3E4" />
+
+    <!-- Таблица. -->
+    <SolidColorBrush x:Key="Brush.GridLine" Color="#D0D6DE" />
+    <SolidColorBrush x:Key="Brush.GridHeader" Color="#DFE5EC" />
+    <SolidColorBrush x:Key="Brush.GridHeaderLine" Color="#8C97A6" />
+    <SolidColorBrush x:Key="Brush.SectionRow" Color="#EEF2F6" />
+    <SolidColorBrush x:Key="Brush.GroupRow" Color="#D6E5F7" />
+    <SolidColorBrush x:Key="Brush.GroupText" Color="#0B3B7A" />
+    <SolidColorBrush x:Key="Brush.Selected" Color="#BFD6F6" />
+    <SolidColorBrush x:Key="Brush.Reserve" Color="#8A94A3" />
+    <SolidColorBrush x:Key="Brush.Overridden" Color="#1D4ED8" />
+
+    <!-- Состояние строки: фон строки и метка (фон, текст). -->
+    <SolidColorBrush x:Key="Brush.NewRow" Color="#DDF6E3" />
+    <SolidColorBrush x:Key="Brush.NewBadge" Color="#16A34A" />
+    <SolidColorBrush x:Key="Brush.ChangedRow" Color="#FFF1C7" />
+    <SolidColorBrush x:Key="Brush.ChangedBadge" Color="#C27803" />
+    <SolidColorBrush x:Key="Brush.RemovedRow" Color="#FCE1E1" />
+    <SolidColorBrush x:Key="Brush.RemovedBadge" Color="#C81E1E" />
+    <SolidColorBrush x:Key="Brush.ManualBadge" Color="#5B6472" />
+    <SolidColorBrush x:Key="Brush.Unsaved" Color="#B45309" />
 
     <!-- Кнопка со значком и подписью. -->
     <Style TargetType="controls:IconButton">
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Foreground" Value="#1F2937" />
-        <Setter Property="Padding" Value="7,4" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+        <Setter Property="Padding" Value="8,5" />
         <Setter Property="Margin" Value="1,0" />
         <Setter Property="Focusable" Value="False" />
         <Setter Property="ToolTipService.ShowOnDisabled" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="controls:IconButton">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1"
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
                             CornerRadius="3" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                         <StackPanel x:Name="Content" Orientation="Horizontal" HorizontalAlignment="Center">
                             <Image x:Name="Img" Source="{TemplateBinding Icon}" Width="16" Height="16" VerticalAlignment="Center" />
@@ -70,22 +96,39 @@
         </Setter>
     </Style>
 
-    <!-- Группа команд: кнопки, под ними подпись группы, справа разделитель. -->
+    <!-- Группа команд как панель ленты Inventor: белая карточка с кнопками, снизу полоса с названием группы. -->
     <Style x:Key="CommandGroup" TargetType="HeaderedContentControl">
         <Setter Property="Focusable" Value="False" />
+        <Setter Property="Margin" Value="3,5" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="HeaderedContentControl">
-                    <Border BorderBrush="{StaticResource Brush.BarBorder}" BorderThickness="0,0,1,0" Padding="6,4,6,2" Margin="0,4">
-                        <StackPanel>
-                            <ContentPresenter />
-                            <TextBlock Text="{TemplateBinding Header}" HorizontalAlignment="Center" Margin="0,3,0,0"
-                                       FontSize="11" Foreground="{StaticResource Brush.Muted}" />
-                        </StackPanel>
+                    <Border Background="{StaticResource Brush.Panel}" BorderBrush="{StaticResource Brush.BarBorder}" BorderThickness="1"
+                            CornerRadius="3" SnapsToDevicePixels="True">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Bottom" Background="{StaticResource Brush.PanelTitle}" CornerRadius="0,0,2,2" Padding="8,1,8,2">
+                                <TextBlock Text="{TemplateBinding Header}" HorizontalAlignment="Center"
+                                           FontSize="11.5" FontWeight="SemiBold" Foreground="{StaticResource Brush.Muted}" />
+                            </Border>
+                            <ContentPresenter Margin="3,4" VerticalAlignment="Center" />
+                        </DockPanel>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- Метка состояния строки: «новый», «изменён», «нет в сборке», «вручную». -->
+    <Style x:Key="Badge" TargetType="Border">
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="Padding" Value="7,1,7,2" />
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="BadgeText" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="White" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
     <!-- Обычная кнопка диалога. -->

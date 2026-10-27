@@ -9,6 +9,8 @@
         MinHeight="420"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
+        FontSize="13"
+        Foreground="#111827"
         Background="White">
     <Window.Resources>
         <ResourceDictionary>
@@ -17,14 +19,34 @@
                 <ResourceDictionary Source="/InventorGostSpec.UI;component/Themes/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-            <Style TargetType="Border" x:Key="Legend">
-                <Setter Property="Width" Value="12" />
-                <Setter Property="Height" Value="12" />
-                <Setter Property="Margin" Value="12,0,4,0" />
-                <Setter Property="BorderBrush" Value="#BBB" />
-                <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="2" />
-            </Style>
+            <!-- Колонка состояния: цветная метка вместо серого текста. -->
+            <DataTemplate x:Key="StatusCell">
+                <Border x:Name="Badge" Style="{StaticResource Badge}" Visibility="Collapsed">
+                    <TextBlock x:Name="BadgeText" Style="{StaticResource BadgeText}" />
+                </Border>
+                <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsManual}" Value="True">
+                        <Setter TargetName="Badge" Property="Visibility" Value="Visible" />
+                        <Setter TargetName="Badge" Property="Background" Value="{StaticResource Brush.ManualBadge}" />
+                        <Setter TargetName="BadgeText" Property="Text" Value="вручную" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsChanged}" Value="True">
+                        <Setter TargetName="Badge" Property="Visibility" Value="Visible" />
+                        <Setter TargetName="Badge" Property="Background" Value="{StaticResource Brush.ChangedBadge}" />
+                        <Setter TargetName="BadgeText" Property="Text" Value="изменён" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsNew}" Value="True">
+                        <Setter TargetName="Badge" Property="Visibility" Value="Visible" />
+                        <Setter TargetName="Badge" Property="Background" Value="{StaticResource Brush.NewBadge}" />
+                        <Setter TargetName="BadgeText" Property="Text" Value="новый" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsRemoved}" Value="True">
+                        <Setter TargetName="Badge" Property="Visibility" Value="Visible" />
+                        <Setter TargetName="Badge" Property="Background" Value="{StaticResource Brush.RemovedBadge}" />
+                        <Setter TargetName="BadgeText" Property="Text" Value="нет в сборке" />
+                    </DataTrigger>
+                </DataTemplate.Triggers>
+            </DataTemplate>
             <Style TargetType="Image" x:Key="MenuIcon">
                 <Setter Property="Width" Value="16" />
                 <Setter Property="Height" Value="16" />
@@ -161,22 +183,31 @@
         </Border>
 
         <!-- Нижняя панель: состояние, легенда, сохранение. -->
-        <Border DockPanel.Dock="Bottom" Background="{StaticResource Brush.Bar}" BorderBrush="{StaticResource Brush.BarBorder}" BorderThickness="0,1,0,0" Padding="10,6">
+        <Border DockPanel.Dock="Bottom" Background="{StaticResource Brush.Bar}" BorderBrush="{StaticResource Brush.BarBorder}" BorderThickness="0,1,0,0" Padding="10,7">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <controls:IconButton IsPrimary="True" Text="Сохранить" Padding="16,5" Command="{Binding SaveCommand}"
+                    <TextBlock VerticalAlignment="Center" Margin="0,0,12,0" FontWeight="SemiBold" Foreground="{StaticResource Brush.Unsaved}"
+                               Text="● Не сохранено" ToolTip="Есть изменения, не записанные в сборку (Ctrl+S)"
+                               Visibility="{Binding IsDirty, Converter={StaticResource BoolToVisibility}}" />
+                    <controls:IconButton IsPrimary="True" Text="Сохранить" Padding="18,6" Command="{Binding SaveCommand}"
                                          ToolTip="Записать спецификацию в файл сборки (Ctrl+S). Затем сохраните сборку." />
-                    <controls:IconButton Text="Закрыть" Padding="14,5" Margin="6,0,0,0" Click="OnCloseClick" />
+                    <controls:IconButton Text="Закрыть" Padding="14,6" Margin="6,0,0,0" Click="OnCloseClick"
+                                         BorderBrush="{StaticResource Brush.BarBorder}" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding StatusText}" Foreground="#374151" />
-                    <Border Style="{StaticResource Legend}" Background="#E3F4E6" Margin="20,0,4,0" />
-                    <TextBlock Text="новый" Foreground="{StaticResource Brush.Muted}" />
-                    <Border Style="{StaticResource Legend}" Background="#FFF4CC" />
-                    <TextBlock Text="изменён" Foreground="{StaticResource Brush.Muted}" />
-                    <Border Style="{StaticResource Legend}" Background="#FBE1E1" />
-                    <TextBlock Text="нет в сборке" Foreground="{StaticResource Brush.Muted}" />
-                    <TextBlock Margin="12,0,0,0" Foreground="#1F5FBF" FontStyle="Italic" Text="изменено вручную" />
+                    <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
+                    <Border Width="1" Background="{StaticResource Brush.BarBorder}" Margin="14,2" />
+                    <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.NewBadge}">
+                        <TextBlock Style="{StaticResource BadgeText}" Text="новый" />
+                    </Border>
+                    <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.ChangedBadge}" Margin="5,0,0,0">
+                        <TextBlock Style="{StaticResource BadgeText}" Text="изменён" />
+                    </Border>
+                    <Border Style="{StaticResource Badge}" Background="{StaticResource Brush.RemovedBadge}" Margin="5,0,0,0">
+                        <TextBlock Style="{StaticResource BadgeText}" Text="нет в сборке" />
+                    </Border>
+                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource Brush.Overridden}" FontStyle="Italic"
+                               Text="синий курсив — изменено вручную" />
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -195,51 +226,77 @@
                       SelectionUnit="FullRow"
                       HeadersVisibility="Column"
                       GridLinesVisibility="All"
-                      HorizontalGridLinesBrush="#E5E7EB"
-                      VerticalGridLinesBrush="#E5E7EB"
+                      HorizontalGridLinesBrush="{StaticResource Brush.GridLine}"
+                      VerticalGridLinesBrush="{StaticResource Brush.GridLine}"
                       BorderThickness="0"
                       RowHeaderWidth="0"
-                      MinRowHeight="24"
+                      MinRowHeight="27"
                       AllowDrop="True"
                       EnableRowVirtualization="True">
                 <DataGrid.ColumnHeaderStyle>
                     <Style TargetType="DataGridColumnHeader">
-                        <Setter Property="Background" Value="#EEF1F5" />
-                        <Setter Property="Foreground" Value="#374151" />
-                        <Setter Property="FontWeight" Value="SemiBold" />
-                        <Setter Property="Padding" Value="6,5" />
-                        <Setter Property="BorderBrush" Value="#D9DDE3" />
-                        <Setter Property="BorderThickness" Value="0,0,1,1" />
+                        <Setter Property="Background" Value="{StaticResource Brush.GridHeader}" />
+                        <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
+                        <Setter Property="FontWeight" Value="Bold" />
+                        <Setter Property="Padding" Value="6,7" />
+                        <Setter Property="BorderBrush" Value="{StaticResource Brush.GridHeaderLine}" />
+                        <Setter Property="BorderThickness" Value="0,0,1,2" />
                         <Setter Property="HorizontalContentAlignment" Value="Center" />
                     </Style>
                 </DataGrid.ColumnHeaderStyle>
                 <DataGrid.RowStyle>
                     <Style TargetType="DataGridRow">
+                        <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsNew}" Value="True">
-                                <Setter Property="Background" Value="#E3F4E6" />
+                                <Setter Property="Background" Value="{StaticResource Brush.NewRow}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding IsChanged}" Value="True">
-                                <Setter Property="Background" Value="#FFF4CC" />
+                                <Setter Property="Background" Value="{StaticResource Brush.ChangedRow}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding IsRemoved}" Value="True">
-                                <Setter Property="Background" Value="#FBE1E1" />
-                                <Setter Property="Foreground" Value="#888" />
+                                <Setter Property="Background" Value="{StaticResource Brush.RemovedRow}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding IsHeader}" Value="True">
-                                <Setter Property="Background" Value="#F7F8FA" />
-                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Setter Property="Background" Value="{StaticResource Brush.SectionRow}" />
+                                <Setter Property="FontWeight" Value="Bold" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding IsGroupHeader}" Value="True">
-                                <Setter Property="Background" Value="#E1ECF7" />
+                                <Setter Property="Background" Value="{StaticResource Brush.GroupRow}" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.GroupText}" />
                                 <Setter Property="FontWeight" Value="Bold" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding IsReserve}" Value="True">
-                                <Setter Property="Foreground" Value="#B0B6BF" />
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Reserve}" />
+                                <Setter Property="FontStyle" Value="Italic" />
                             </DataTrigger>
+                            <!-- Выделение — последним, чтобы было видно и на подсвеченных строках. -->
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="{StaticResource Brush.Selected}" />
+                            </Trigger>
                         </Style.Triggers>
                     </Style>
                 </DataGrid.RowStyle>
+                <DataGrid.CellStyle>
+                    <!-- Ячейки прозрачные: цвет строки (состояние, выделение) виден целиком, текст остаётся тёмным. -->
+                    <Style TargetType="DataGridCell">
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=DataGridRow}}" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </DataGrid.CellStyle>
 
                 <DataGrid.ContextMenu>
                     <ContextMenu x:Name="RowMenu">

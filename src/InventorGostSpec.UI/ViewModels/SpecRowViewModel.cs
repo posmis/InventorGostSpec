@@ -85,8 +85,6 @@ public sealed class SpecRowViewModel : ObservableObject
     /// <summary>Можно ли перетаскивать строку.</summary>
     public bool CanMove => Row is not null;
 
-    public string StatusMark => IsRemoved ? "удалён" : IsNew ? "новый" : IsChanged ? "изменён" : IsManual ? "вручную" : "";
-
     public string Format { get => Get(SpecColumn.Format); set => Set(SpecColumn.Format, value); }
 
     public string Zone { get => Get(SpecColumn.Zone); set => Set(SpecColumn.Zone, value); }

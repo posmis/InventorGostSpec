@@ -14,7 +14,8 @@ public partial class SpecificationWindow : Window, IDialogService
 {
     private const string DragFormat = "InventorGostSpec.RowId";
 
-    private static readonly Brush OverriddenBrush = new SolidColorBrush(Color.FromRgb(0x1F, 0x5F, 0xBF));
+    private static readonly Brush OverriddenBrush = new SolidColorBrush(Color.FromRgb(0x1D, 0x4E, 0xD8));
+    private static readonly Brush HandleBrush = new SolidColorBrush(Color.FromRgb(0x6B, 0x72, 0x80));
 
     private readonly ISpecificationHost _host;
     private SpecificationViewModel? _viewModel;
@@ -206,13 +207,13 @@ public partial class SpecificationWindow : Window, IDialogService
     private void CreateColumns()
     {
         Grid.Columns.Add(CreateHandleColumn());
-        Grid.Columns.Add(new DataGridTextColumn
+        Grid.Columns.Add(new DataGridTemplateColumn
         {
             Header = "",
-            Binding = new Binding(nameof(SpecRowViewModel.StatusMark)),
-            Width = 64,
+            Width = 96,
+            CanUserResize = false,
             IsReadOnly = true,
-            ElementStyle = CreateStatusStyle(),
+            CellTemplate = (DataTemplate)FindResource("StatusCell"),
         });
 
         AddColumn(SpecColumn.SortGroup, "Гр.", 40, center: true,
@@ -288,22 +289,13 @@ public partial class SpecificationWindow : Window, IDialogService
         return style;
     }
 
-    private static Style CreateStatusStyle()
-    {
-        var style = new Style(typeof(TextBlock));
-        style.Setters.Add(new Setter(TextBlock.ForegroundProperty, Brushes.Gray));
-        style.Setters.Add(new Setter(TextBlock.FontSizeProperty, 11.0));
-        style.Setters.Add(new Setter(VerticalAlignmentProperty, VerticalAlignment.Center));
-        style.Setters.Add(new Setter(TextBlock.PaddingProperty, new Thickness(3, 0, 3, 0)));
-        return style;
-    }
-
     /// <summary>Колонка-ручка для перетаскивания строк.</summary>
     private DataGridTemplateColumn CreateHandleColumn()
     {
         var text = new FrameworkElementFactory(typeof(TextBlock));
         text.SetValue(TextBlock.TextProperty, "⋮⋮");
-        text.SetValue(TextBlock.ForegroundProperty, Brushes.Gray);
+        text.SetValue(TextBlock.ForegroundProperty, HandleBrush);
+        text.SetValue(TextBlock.FontWeightProperty, FontWeights.Bold);
         text.SetValue(TextBlock.TextAlignmentProperty, TextAlignment.Center);
         text.SetValue(VerticalAlignmentProperty, VerticalAlignment.Center);
         text.SetValue(BackgroundProperty, Brushes.Transparent);

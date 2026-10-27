@@ -167,6 +167,27 @@ public class GostRowComparerTests
     }
 
     [Fact]
+    public void Gost_iso_goes_with_gost_even_with_stale_standard_property()
+    {
+        // SPEC_StandardNumber остался от старого наименования из Content Center.
+        var stale = TestData.Row(SectionIds.StandardProducts, name: "Винт ГОСТ ISO 7380-1-M4x8");
+        stale.Source.StandardNumber = "ISO 7380-1";
+
+        var result = Sort(
+            SortRule.StandardProducts,
+            TestData.Row(SectionIds.StandardProducts, name: "Шайба 8 ГОСТ 6402-70"),
+            stale,
+            TestData.Row(SectionIds.StandardProducts, name: "ГОСТ ISO 4762-M6x20"),
+            TestData.Row(SectionIds.StandardProducts, name: "Гайка барашек DIN 315 - M8 - St - C"),
+            TestData.Row(SectionIds.StandardProducts, name: "Болт М8х20 ГОСТ 7798-70"));
+
+        Assert.Equal("Гайка барашек DIN 315 - M8 - St - C", result.First());
+        Assert.Equal(StandardCategory.Interstate, StandardCategories.Categorize(StandardDesignationParser.Parse("ГОСТ ISO 4762-M6x20").StandardNumber));
+        Assert.DoesNotContain("ГОСТ ISO", result.First());
+        Assert.Equal(4, result.Skip(1).Count(n => n.Contains("ГОСТ")));
+    }
+
+    [Fact]
     public void Standard_products_group_has_priority_over_name()
     {
         var bearing = TestData.Row(SectionIds.StandardProducts, name: "Подшипник 205 ГОСТ 8338-75");

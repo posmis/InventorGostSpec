@@ -122,28 +122,13 @@ public sealed class GostRowComparer : IComparer<SpecRow>
         public static SortFields Of(SpecRow row)
         {
             var source = row.Source;
-            var sortName = source.SortName;
-            var standard = source.StandardNumber;
-            var parameters = source.Parameters;
+            var parsed = StandardDesignationParser.Parse(row.Get(SpecColumn.Name));
 
-            if (sortName.Length == 0 || standard.Length == 0)
-            {
-                var parsed = StandardDesignationParser.Parse(row.Get(SpecColumn.Name));
-                if (sortName.Length == 0)
-                {
-                    sortName = parsed.Name;
-                }
-
-                if (standard.Length == 0)
-                {
-                    standard = parsed.StandardNumber;
-                }
-
-                if (parameters.Length == 0)
-                {
-                    parameters = parsed.Parameters;
-                }
-            }
+            // Стандарт — из наименования, которое видно в спецификации: SPEC_StandardNumber мог остаться
+            // от старого наименования (например, «ISO …» вместо «ГОСТ ISO …»). Свойство — только если в наименовании стандарта нет.
+            var standard = parsed.StandardNumber.Length > 0 ? parsed.StandardNumber : source.StandardNumber;
+            var sortName = source.SortName.Length > 0 ? source.SortName : parsed.Name;
+            var parameters = source.Parameters.Length > 0 ? source.Parameters : parsed.Parameters;
 
             return new SortFields(source.Group, sortName, standard, parameters);
         }

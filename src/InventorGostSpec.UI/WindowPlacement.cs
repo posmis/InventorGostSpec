@@ -17,7 +17,14 @@ public static class WindowPlacement
             $"window-{name}.json");
 
         window.SourceInitialized += (_, _) => Restore(window, path);
-        window.Closed += (_, _) => Save(window, path);
+        // Closing, а не Closed: после закрытия окна RestoreBounds пуст (бесконечные координаты).
+        window.Closing += (_, e) =>
+        {
+            if (!e.Cancel)
+            {
+                Save(window, path);
+            }
+        };
     }
 
     private static void Restore(Window window, string path)
@@ -35,6 +42,11 @@ public static class WindowPlacement
                 SystemParameters.VirtualScreenTop,
                 SystemParameters.VirtualScreenWidth,
                 SystemParameters.VirtualScreenHeight);
+            if (!IsValid(placement.Left, placement.Top, placement.Width, placement.Height))
+            {
+                return;
+            }
+
             var bounds = new Rect(placement.Left, placement.Top, placement.Width, placement.Height);
             if (placement.Width < window.MinWidth || placement.Height < window.MinHeight || !screen.IntersectsWith(bounds))
             {
@@ -51,9 +63,9 @@ public static class WindowPlacement
                 window.WindowState = WindowState.Maximized;
             }
         }
-        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        catch (Exception)
         {
-            // Нет сохранённого положения — окно откроется по умолчанию.
+            // Положение окна — удобство: при любой ошибке окно просто откроется по умолчанию.
         }
     }
 
@@ -61,14 +73,23 @@ public static class WindowPlacement
     {
         try
         {
-            var bounds = window.RestoreBounds;
+            var bounds = window.WindowState == WindowState.Normal
+                ? new Rect(window.Left, window.Top, window.ActualWidth, window.ActualHeight)
+                : window.RestoreBounds;
+            if (bounds.IsEmpty || !IsValid(bounds.Left, bounds.Top, bounds.Width, bounds.Height))
+            {
+                return;
+            }
+
             var placement = new Placement(bounds.Left, bounds.Top, bounds.Width, bounds.Height, window.WindowState == WindowState.Maximized);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, JsonSerializer.Serialize(placement));
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        catch (Exception)
         {
-            // Не удалось сохранить положение — не страшно.
+            // Не удалось сохранить положение — не страшно, работа окна от этого не зависит.
         }
     }
+
+    private static bool IsValid(params double[] values) => values.All(double.IsFinite) && values[2] > 0 && values[3] > 0;
 }

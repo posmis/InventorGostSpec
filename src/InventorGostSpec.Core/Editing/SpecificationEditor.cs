@@ -12,6 +12,8 @@ public static class SpecificationEditor
     /// Задаёт значение ячейки. У строк компонентов значения из компонента не меняются,
     /// а переопределяются только в этой спецификации; значение, равное значению компонента,
     /// снимает переопределение. У ручных строк значение записывается напрямую.
+    /// Номер позиции у строк без позиции (текст, «Документация») не задаётся; пустой раздел не задаётся
+    /// (у строки компонента он означает «как в компоненте»).
     /// </summary>
     public static void SetCell(Specification spec, SpecificationContext context, SpecRow row, SpecColumn column, string? value)
     {
@@ -27,14 +29,25 @@ public static class SpecificationEditor
                 row.Note = value;
                 return;
             case SpecColumn.Position:
-                row.Position = int.TryParse(value, out var position) && position > 0 ? position : null;
+                if (PositionAllocator.IsNumbered(row, context))
+                {
+                    row.Position = int.TryParse(value, out var position) && position > 0 ? position : null;
+                }
+
                 return;
             case SpecColumn.SortGroup:
                 row.SortGroup = int.TryParse(value, out var group) && group >= 0 ? group : 0;
                 return;
         }
 
-        if (row.Kind == RowKind.Component)
+        if (column == SpecColumn.Section && value.Length == 0)
+        {
+            if (row.Kind != RowKind.Component || !row.Overrides.Remove(column))
+            {
+                return;
+            }
+        }
+        else if (row.Kind == RowKind.Component)
         {
             if (value == row.Source.Get(column))
             {
@@ -138,8 +151,13 @@ public static class SpecificationEditor
         string? afterRowId = null,
         string groupId = "")
     {
+        if (string.IsNullOrWhiteSpace(sectionId))
+        {
+            throw new ArgumentException("Section must be specified.", nameof(sectionId));
+        }
+
         var row = new SpecRow { Kind = RowKind.Note, GroupId = groupId };
-        row.Source.SectionId = sectionId;
+        row.Source.SectionId = sectionId.Trim();
         row.Source.Name = text.Trim();
         Insert(spec, context, row, afterRowId);
         return row;

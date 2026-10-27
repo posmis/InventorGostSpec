@@ -54,4 +54,9 @@ public sealed class ChangeRecord
 
     /// <summary>Дата внесения («Дата»).</summary>
     public string Date { get; set; } = "";
+
+    /// <summary>Ни одна графа не заполнена (пустая строка таблицы изменений).</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsEmpty =>
+        new[] { Number, Areas, Sheet, Document, Signature, Date }.All(v => string.IsNullOrWhiteSpace(v));
 }

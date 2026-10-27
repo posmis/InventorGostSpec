@@ -35,7 +35,13 @@ internal sealed class FakeHost : ISpecificationHost
         return "ok";
     }
 
-    public void ReportError(Exception exception) => throw exception;
+    /// <summary>Ошибки, переданные окном в журнал.</summary>
+    public List<Exception> Errors { get; } = new();
+
+    public void ReportError(Exception exception) => Errors.Add(exception);
+
+    /// <summary>Компоненты, запись свойств которых завершается ошибкой (файл только для чтения).</summary>
+    public HashSet<string> ReadOnlyComponents { get; } = new();
 
     /// <summary>Примечания из свойств компонентов по ключу.</summary>
     public Dictionary<string, string> Notes { get; } = new();
@@ -61,9 +67,17 @@ internal sealed class FakeHost : ISpecificationHost
         return null;
     }
 
+    /// <summary>Вызывается, пока временный Excel для PDF ещё существует.</summary>
+    public Action<string>? OnBuildPdf { get; set; }
+
+    /// <summary>Основная надпись во временном Excel последнего вызова утилиты PDF.</summary>
+    public TitleBlock? LastPdfTitle { get; private set; }
+
     public string? BuildPdf(string excelPath, string pdfPath)
     {
         PdfCalls.Add((excelPath, pdfPath, File.Exists(excelPath)));
+        LastPdfTitle = Excel.ExcelReader.Read(excelPath).TitleBlock;
+        OnBuildPdf?.Invoke(excelPath);
         return PdfError;
     }
 
@@ -90,6 +104,11 @@ internal sealed class FakeHost : ISpecificationHost
 
     public ComponentData WriteComponentProperties(string componentKey, IReadOnlyDictionary<string, string> changes)
     {
+        if (ReadOnlyComponents.Contains(componentKey))
+        {
+            throw new InvalidOperationException("Файл только для чтения.");
+        }
+
         var values = Properties.TryGetValue(componentKey, out var existing) ? existing : Properties[componentKey] = new();
         foreach (var (name, value) in changes)
         {

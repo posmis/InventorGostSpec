@@ -251,6 +251,9 @@ public sealed class SpecificationViewModel : ObservableObject
         Changed(rebuild: true, selectRowId: rowId);
     }
 
+    /// <summary>Получает ли строка номер позиции (не текст и раздел с позициями).</summary>
+    internal bool HasPosition(SpecRow row) => PositionAllocator.IsNumbered(row, _context);
+
     internal void SetCell(SpecRowViewModel rowViewModel, SpecColumn column, string value)
     {
         var row = rowViewModel.Row!;
@@ -954,13 +957,27 @@ public sealed class SpecificationViewModel : ObservableObject
             return;
         }
 
+        // Ошибка записи одного компонента (файл только для чтения, занят) не прерывает остальные.
+        var failed = new List<string>();
         foreach (var row in rows)
         {
-            var data = _host.WriteComponentProperties(row.ComponentKey!, changes);
-            SpecificationEditor.RefreshComponent(Specification, _context, row, data);
+            try
+            {
+                var data = _host.WriteComponentProperties(row.ComponentKey!, changes);
+                SpecificationEditor.RefreshComponent(Specification, _context, row, data);
+            }
+            catch (Exception ex)
+            {
+                _host.ReportError(ex);
+                failed.Add($"{Describe(row)}: {ex.Message}");
+            }
         }
 
         Changed(rebuild: true, selectRowId: rows.Count == 1 ? rows[0].Id : null);
+        if (failed.Count > 0)
+        {
+            _dialogs.Warning($"Не удалось записать свойства ({failed.Count} из {rows.Count}):\n" + string.Join("\n", failed.Take(10)));
+        }
     }
 
     /// <summary>Выделяет следующую подсвеченную строку (новую, изменённую или удалённую), по кругу.</summary>

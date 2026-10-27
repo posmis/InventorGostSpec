@@ -95,7 +95,7 @@ public static class ExcelReader
             string Get(int index) => columns[index] is { } column ? Text(sheet.Cell(row, column)) : "";
 
             rows.Add(new SheetRow(
-                Get(ExcelFormat.TypeColumn - 1),
+                NormalizeType(Get(ExcelFormat.TypeColumn - 1)),
                 Get(ExcelFormat.FormatColumn - 1),
                 Get(ExcelFormat.ZoneColumn - 1),
                 Get(ExcelFormat.PositionColumn - 1),
@@ -175,7 +175,7 @@ public static class ExcelReader
                 Signature = Get(ExcelFormat.ChangeSignatureColumn),
                 Date = Get(ExcelFormat.ChangeDateColumn),
             };
-            if (new[] { change.Number, change.Areas, change.Sheet, change.Document, change.Signature, change.Date }.Any(v => v.Length > 0))
+            if (!change.IsEmpty)
             {
                 changes.Add(change);
             }
@@ -183,6 +183,10 @@ public static class ExcelReader
 
         return changes;
     }
+
+    /// <summary>Тип строки, введённый вручную («раздел», « Резерв»), — к написанию из списка; неизвестный — как есть.</summary>
+    private static string NormalizeType(string type) =>
+        ExcelFormat.RowTypes.All.FirstOrDefault(t => string.Equals(t, type, StringComparison.CurrentCultureIgnoreCase)) ?? type;
 
     /// <summary>Номера колонок по заголовкам; если заголовка нет — стандартный номер из формата.</summary>
     private static int?[] FindColumns(IXLRow header, string[] names)

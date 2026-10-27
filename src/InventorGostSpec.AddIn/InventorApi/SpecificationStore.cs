@@ -14,11 +14,16 @@ internal static class SpecificationStore
     private const string ValueName = "Specification";
     private const string BackupName = "SpecificationBackup";
 
-    public static Specification? Load(Document document)
+    /// <summary>Спецификация сборки; если основная копия повреждена — предыдущая сохранённая.</summary>
+    public static Specification? Load(Document document) => Load(document, out _);
+
+    /// <param name="fromBackup">Основная копия повреждена, загружена предыдущая.</param>
+    public static Specification? Load(Document document, out bool fromBackup)
     {
         var set = FindSet(document);
         var json = set is null ? null : FindAttribute(set, ValueName)?.Value as string;
-        return string.IsNullOrWhiteSpace(json) ? null : SpecificationSerializer.Deserialize(json);
+        var backup = set is null ? null : FindAttribute(set, BackupName)?.Value as string;
+        return SpecificationSerializer.Load(json, backup, out fromBackup);
     }
 
     public static void Save(Document document, Specification specification)

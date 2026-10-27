@@ -135,7 +135,9 @@ public sealed class SpecRowViewModel : ObservableObject
         SpecRowKind.GroupHeader => column == SpecColumn.Name,
         SpecRowKind.Header or SpecRowKind.Reserve => false,
         SpecRowKind.Note => column == SpecColumn.Name,
-        _ => true,
+
+        // Номер позиции — только у строк, которые его получают (не в «Документации»).
+        _ => column != SpecColumn.Position || _owner.HasPosition(Row!),
     };
 
     /// <summary>Обновляет все привязки строки после изменения данных.</summary>

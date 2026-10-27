@@ -32,7 +32,14 @@ internal sealed class SpecificationCommand : AddInCommand
         }
 
         var host = new InventorSpecificationHost(context, assembly);
-        var specification = SpecificationStore.Load((Document)assembly);
+        var specification = SpecificationStore.Load((Document)assembly, out var fromBackup);
+        if (fromBackup)
+        {
+            context.Messages.Warning(
+                "Сохранённая спецификация повреждена, открыта предыдущая сохранённая версия.\n" +
+                "Проверьте последние изменения и сохраните спецификацию.");
+        }
+
         var isNew = specification is null;
         if (specification is null)
         {
@@ -42,7 +49,8 @@ internal sealed class SpecificationCommand : AddInCommand
             SpecificationUpdater.Update(specification, host.ReadComponents(), specContext, DateTime.UtcNow);
         }
 
-        SpecificationWindow.ShowDialog(host, specification, context.MainWindowHandle, isNew);
+        // Восстановленную из копии спецификацию предлагаем сохранить при закрытии, как новую.
+        SpecificationWindow.ShowDialog(host, specification, context.MainWindowHandle, isNew || fromBackup);
     }
 
     private sealed class InventorSpecificationHost : ISpecificationHost

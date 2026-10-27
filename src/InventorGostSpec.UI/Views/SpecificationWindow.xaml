@@ -46,6 +46,8 @@
                 <Separator />
                 <Button Style="{StaticResource ToolButton}" Command="{Binding AddSectionCommand}" Content="Раздел…"
                         ToolTip="Добавить раздел" />
+                <Button Style="{StaticResource ToolButton}" Command="{Binding AddGroupCommand}" Content="Группа…"
+                        ToolTip="Добавить группу «Изделия, устанавливаемые по …» (например, по электромонтажному чертежу)" />
                 <Button Style="{StaticResource ToolButton}" Command="{Binding AddItemCommand}" Content="+ Изделие"
                         ToolTip="Добавить строку изделия без модели в раздел выбранной строки" />
                 <Button Style="{StaticResource ToolButton}" Command="{Binding AddNoteCommand}" Content="+ Текст"
@@ -116,6 +118,10 @@
                             <Setter Property="Background" Value="#F2F2F2" />
                             <Setter Property="FontWeight" Value="SemiBold" />
                         </DataTrigger>
+                        <DataTrigger Binding="{Binding IsGroupHeader}" Value="True">
+                            <Setter Property="Background" Value="#E1ECF7" />
+                            <Setter Property="FontWeight" Value="Bold" />
+                        </DataTrigger>
                         <DataTrigger Binding="{Binding IsReserve}" Value="True">
                             <Setter Property="Foreground" Value="#AAA" />
                         </DataTrigger>
@@ -139,6 +145,15 @@
                             </Style>
                         </MenuItem.ItemContainerStyle>
                     </MenuItem>
+                    <MenuItem Header="Перенести в группу" ItemsSource="{Binding GroupOptions}">
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="Header" Value="{Binding Name}" />
+                                <EventSetter Event="Click" Handler="OnMoveToGroupClick" />
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                    <MenuItem Header="Удалить группу" Command="{Binding DeleteGroupCommand}" />
                     <Separator />
                     <MenuItem x:Name="ClearOverrideItem" Header="Вернуть значение из компонента" Command="{Binding ClearOverrideCommand}" />
                 </ContextMenu>

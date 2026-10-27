@@ -53,6 +53,9 @@ public sealed class SpecificationViewModel : ObservableObject
         ClearOverrideCommand = new RelayCommand(ClearOverride, p => SelectedRow?.Row is { Kind: RowKind.Component } row && ParseColumn(p) is { } c && row.IsOverridden(c));
         MoveToSectionCommand = new RelayCommand(MoveToSection, p => SelectedRow?.Row is { Kind: not RowKind.Note } && p is string);
         AddSectionCommand = new RelayCommand(AddSection);
+        AddGroupCommand = new RelayCommand(AddGroup);
+        DeleteGroupCommand = new RelayCommand(DeleteGroup, () => SelectedRow?.IsGroupHeader == true);
+        MoveToGroupCommand = new RelayCommand(MoveToGroup, p => SelectedRow?.Row is not null && p is string);
         ReservesCommand = new RelayCommand(EditReserves);
         SaveCommand = new RelayCommand(Save, () => IsDirty);
         WritePositionsCommand = new RelayCommand(WritePositions);
@@ -76,6 +79,9 @@ public sealed class SpecificationViewModel : ObservableObject
 
     /// <summary>Разделы для команды «Перенести в раздел».</summary>
     public ObservableCollection<Option> SectionOptions { get; } = new();
+
+    /// <summary>Основная часть и группы для команды «Перенести в группу».</summary>
+    public ObservableCollection<Option> GroupOptions { get; } = new();
 
     public string Title => $"Спецификация — {_host.DocumentName}{(IsDirty ? " *" : "")}";
 
@@ -129,6 +135,9 @@ public sealed class SpecificationViewModel : ObservableObject
     public ICommand ClearOverrideCommand { get; }
     public ICommand MoveToSectionCommand { get; }
     public ICommand AddSectionCommand { get; }
+    public ICommand AddGroupCommand { get; }
+    public ICommand DeleteGroupCommand { get; }
+    public ICommand MoveToGroupCommand { get; }
     public ICommand ReservesCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand WritePositionsCommand { get; }
@@ -219,9 +228,10 @@ public sealed class SpecificationViewModel : ObservableObject
             _dialogs.Info("Изменений в составе сборки нет.");
         }
 
-        if (result.Positions.ExhaustedSectionIds.Count > 0)
+        if (result.Positions.ExhaustedBlocks.Count > 0)
         {
-            var names = result.Positions.ExhaustedSectionIds.Select(id => _context.Catalog.GetOrCreate(id).Name);
+            var names = result.Positions.ExhaustedBlocks.Select(b =>
+                _context.FindGroup(b.GroupId) is { } group ? $"{b.Section.Name} ({group.Title})" : b.Section.Name);
             _dialogs.Warning(
                 $"Не хватило резервных номеров позиций в разделах: {string.Join(", ", names)}.\n" +
                 "Строки остались без номера. Перенумеруйте спецификацию или увеличьте резерв.");
@@ -264,7 +274,7 @@ public sealed class SpecificationViewModel : ObservableObject
     private void AddNote()
     {
         var selected = SelectedRow!;
-        var row = SpecificationEditor.AddNote(Specification, _context, selected.SectionId, "", selected.RowId);
+        var row = SpecificationEditor.AddNote(Specification, _context, SectionFor(selected), "", selected.RowId, selected.GroupId);
         Changed(rebuild: true, selectRowId: row.Id);
         RequestEdit(row.Id, SpecColumn.Name);
     }
@@ -272,8 +282,8 @@ public sealed class SpecificationViewModel : ObservableObject
     private void AddItem()
     {
         var selected = SelectedRow!;
-        var values = new ComponentSnapshot { SectionId = selected.SectionId, Quantity = "1" };
-        var row = SpecificationEditor.AddManualItem(Specification, _context, values, selected.RowId);
+        var values = new ComponentSnapshot { SectionId = SectionFor(selected), Quantity = "1" };
+        var row = SpecificationEditor.AddManualItem(Specification, _context, values, selected.RowId, selected.GroupId);
         Changed(rebuild: true, selectRowId: row.Id);
         RequestEdit(row.Id, SpecColumn.Name);
     }
@@ -349,21 +359,46 @@ public sealed class SpecificationViewModel : ObservableObject
 
     private void EditReserves()
     {
-        var items = _context.Catalog.Sections
-            .Where(s => s.HasPositions)
-            .Select(s => new ReserveItem(s, _context.GetReserve(s.Id)));
-        var viewModel = new ReserveSettingsViewModel(items);
+        var sections = _context.Catalog.Sections.Where(s => s.HasPositions).ToList();
+        var parts = new[] { new ReservePart("", "Основная часть", sections.Select(s => new ReserveItem(s, _context.GetReserve(s.Id)))) }
+            .Concat(_context.Groups.Select(g => new ReservePart(
+                g.Id,
+                g.Title,
+                sections.Select(s => new ReserveItem(s, _context.GetReserve(g.Id, s.Id))),
+                g.FirstPosition)));
+        var viewModel = new ReserveSettingsViewModel(parts);
+        if (SelectedRow is { GroupId.Length: > 0 } selected)
+        {
+            // Открываем резерв той части, в которой стоит выбранная строка.
+            viewModel.SelectedPart = viewModel.Parts.FirstOrDefault(p => p.GroupId == selected.GroupId) ?? viewModel.Parts[0];
+        }
+
         if (!_dialogs.EditReserves(viewModel))
         {
             return;
         }
 
-        foreach (var item in viewModel.Items)
+        foreach (var part in viewModel.Parts)
         {
-            Specification.ReserveOverrides[item.SectionId] = item.ToSettings();
-            if (viewModel.SaveAsDefault)
+            var group = _context.FindGroup(part.GroupId);
+            if (group is not null)
             {
-                _settings.DefaultReserves[item.SectionId] = item.ToSettings();
+                group.FirstPosition = part.FirstPosition;
+            }
+
+            foreach (var item in part.Items)
+            {
+                if (group is not null)
+                {
+                    group.Reserves[item.SectionId] = item.ToSettings();
+                    continue;
+                }
+
+                Specification.ReserveOverrides[item.SectionId] = item.ToSettings();
+                if (viewModel.SaveAsDefault)
+                {
+                    _settings.DefaultReserves[item.SectionId] = item.ToSettings();
+                }
             }
         }
 
@@ -380,6 +415,56 @@ public sealed class SpecificationViewModel : ObservableObject
 
         Changed(rebuild: true);
     }
+
+    internal void RenameGroup(string groupId, string title)
+    {
+        title = title.Trim();
+        if (_context.FindGroup(groupId) is { } group && title.Length > 0 && title != group.Title)
+        {
+            group.Title = title;
+            Changed(rebuild: false);
+            PostRebuild(groupId);
+        }
+    }
+
+    private void AddGroup()
+    {
+        var viewModel = new GroupViewModel();
+        if (!_dialogs.EditGroup(viewModel))
+        {
+            return;
+        }
+
+        var group = SpecificationEditor.AddGroup(Specification, viewModel.Title, viewModel.FirstPosition);
+        Changed(rebuild: true);
+        SelectedRow = Rows.FirstOrDefault(r => r.IsGroupHeader && r.GroupId == group.Id);
+    }
+
+    private void DeleteGroup()
+    {
+        var header = SelectedRow!;
+        if (_context.FindGroup(header.GroupId) is not { } group ||
+            !_dialogs.Confirm($"Удалить группу «{group.Title}»?\n\nЕё строки перейдут в основную часть и получат новые номера позиций."))
+        {
+            return;
+        }
+
+        SpecificationEditor.RemoveGroup(Specification, _context, group.Id);
+        Changed(rebuild: true);
+    }
+
+    private void MoveToGroup(object? parameter)
+    {
+        if (SelectedRow?.Row is { } row && parameter is string groupId && row.GroupId != groupId)
+        {
+            SpecificationEditor.MoveToGroup(Specification, _context, row, groupId);
+            Changed(rebuild: true, selectRowId: row.Id);
+        }
+    }
+
+    /// <summary>Раздел для новой строки: раздел выбранной строки, у заголовка группы — «Прочие изделия».</summary>
+    private static string SectionFor(SpecRowViewModel selected) =>
+        selected.IsGroupHeader ? Core.Sections.SectionIds.OtherProducts : selected.SectionId;
 
     private void Save()
     {
@@ -417,7 +502,7 @@ public sealed class SpecificationViewModel : ObservableObject
     {
         CommitEdits?.Invoke();
         var keep = selectRowId ?? SelectedRow?.RowId;
-        var keepSection = SelectedRow?.IsHeader == true ? SelectedRow.SectionId : null;
+        var keepHeader = SelectedRow?.IsHeader == true ? SelectedRow : null;
 
         Rows.Clear();
         foreach (var display in SpecificationViewBuilder.Build(Specification, _context))
@@ -426,12 +511,20 @@ public sealed class SpecificationViewModel : ObservableObject
         }
 
         SelectedRow = Rows.FirstOrDefault(r => keep is not null && r.RowId == keep)
-                      ?? Rows.FirstOrDefault(r => keepSection is not null && r.IsHeader && r.SectionId == keepSection);
+                      ?? Rows.FirstOrDefault(r => keepHeader is not null && r.Kind == keepHeader.Kind &&
+                                                  r.GroupId == keepHeader.GroupId && r.SectionId == keepHeader.SectionId);
 
         SectionOptions.Clear();
         foreach (var section in _context.Catalog.Sections)
         {
             SectionOptions.Add(new Option(section.Id, section.Name));
+        }
+
+        GroupOptions.Clear();
+        GroupOptions.Add(new Option("", "Основная часть"));
+        foreach (var group in _context.Groups)
+        {
+            GroupOptions.Add(new Option(group.Id, group.Title));
         }
 
         UpdateStatus();

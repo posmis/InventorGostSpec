@@ -111,19 +111,97 @@ public sealed class ReserveItem : ObservableObject
     public ReserveSettings ToSettings() => new() { Count = Count, RoundStartTo = RoundStartTo };
 }
 
-/// <summary>Резерв номеров позиций по разделам.</summary>
-public sealed class ReserveSettingsViewModel
+/// <summary>Резерв позиций одной большой части спецификации: основной части или группы.</summary>
+public sealed class ReservePart
 {
-    public ReserveSettingsViewModel(IEnumerable<ReserveItem> items)
+    public ReservePart(string groupId, string title, IEnumerable<ReserveItem> items, int? firstPosition = null)
     {
+        GroupId = groupId;
+        Title = title;
         Items = items.ToList();
+        FirstPositionText = firstPosition?.ToString() ?? "";
     }
+
+    /// <summary>Пусто — основная часть.</summary>
+    public string GroupId { get; }
+
+    public string Title { get; }
 
     public List<ReserveItem> Items { get; }
 
-    /// <summary>Сохранить и как значения по умолчанию для новых спецификаций.</summary>
+    public bool IsGroup => GroupId.Length > 0;
+
+    /// <summary>Номер первой позиции группы; пусто — сразу после предыдущей части.</summary>
+    public string FirstPositionText { get; set; }
+
+    public int? FirstPosition => int.TryParse(FirstPositionText.Trim(), out var value) && value > 0 ? value : null;
+}
+
+/// <summary>Резерв номеров позиций по разделам, отдельно для основной части и каждой группы.</summary>
+public sealed class ReserveSettingsViewModel : ObservableObject
+{
+    private ReservePart _selectedPart;
+
+    public ReserveSettingsViewModel(IEnumerable<ReserveItem> items)
+        : this(new[] { new ReservePart("", "Основная часть", items) })
+    {
+    }
+
+    public ReserveSettingsViewModel(IEnumerable<ReservePart> parts)
+    {
+        Parts = parts.ToList();
+        _selectedPart = Parts[0];
+    }
+
+    public List<ReservePart> Parts { get; }
+
+    public ReservePart SelectedPart
+    {
+        get => _selectedPart;
+        set
+        {
+            if (value is not null && SetField(ref _selectedPart, value))
+            {
+                OnPropertyChanged(nameof(Items));
+            }
+        }
+    }
+
+    /// <summary>Разделы выбранной части.</summary>
+    public List<ReserveItem> Items => SelectedPart.Items;
+
+    /// <summary>Сохранить резерв основной части как значения по умолчанию для новых спецификаций.</summary>
     public bool SaveAsDefault { get; set; }
 
     /// <summary>Перенумеровать позиции с новым резервом.</summary>
     public bool Renumber { get; set; } = true;
+}
+
+/// <summary>Группа «устанавливаемые по …».</summary>
+public sealed class GroupViewModel : ObservableObject
+{
+    private string _title = "Изделия, устанавливаемые по электромонтажному чертежу ";
+
+    public string Title
+    {
+        get => _title;
+        set => SetField(ref _title, value ?? "");
+    }
+
+    /// <summary>Номер первой позиции группы; пусто — сразу после основной части с учётом резерва.</summary>
+    public string FirstPositionText { get; set; } = "";
+
+    public int? FirstPosition => int.TryParse(FirstPositionText.Trim(), out var value) && value > 0 ? value : null;
+
+    public string? Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Title))
+        {
+            return "Введите заголовок группы.";
+        }
+
+        return FirstPositionText.Trim().Length > 0 && FirstPosition is null
+            ? "Номер первой позиции должен быть целым положительным числом."
+            : null;
+    }
 }

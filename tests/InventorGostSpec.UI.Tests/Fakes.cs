@@ -52,6 +52,8 @@ internal sealed class FakeDialogs : IDialogService
 
     public Action<ReserveSettingsViewModel>? OnReserves { get; set; }
 
+    public Action<GroupViewModel>? OnGroup { get; set; }
+
     public bool Confirm(string text) => ConfirmAnswer;
 
     public void Info(string text) => Infos.Add(text);
@@ -64,6 +66,12 @@ internal sealed class FakeDialogs : IDialogService
     {
         OnNewSection?.Invoke(viewModel);
         return OnNewSection is not null;
+    }
+
+    public bool EditGroup(GroupViewModel viewModel)
+    {
+        OnGroup?.Invoke(viewModel);
+        return OnGroup is not null;
     }
 
     public bool EditReserves(ReserveSettingsViewModel viewModel)

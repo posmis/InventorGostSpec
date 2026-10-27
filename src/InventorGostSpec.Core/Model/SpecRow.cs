@@ -77,6 +77,9 @@ public sealed class SpecRow
 
     public RowStatus Status { get; set; }
 
+    /// <summary>Группа «устанавливаемые по …» (<see cref="SpecGroup.Id"/>). Пусто — основная часть.</summary>
+    public string GroupId { get; set; } = "";
+
     /// <summary>Значения до последнего обновления для колонок, которые изменились.</summary>
     public Dictionary<SpecColumn, string> PreviousValues { get; set; } = new();
 

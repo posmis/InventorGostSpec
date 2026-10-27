@@ -29,6 +29,9 @@ public sealed class Specification
     /// <summary>Строки в порядке отображения, сгруппированные по разделам.</summary>
     public List<SpecRow> Rows { get; set; } = new();
 
+    /// <summary>Группы составных частей, устанавливаемых по отдельным документам, в порядке записи.</summary>
+    public List<SpecGroup> Groups { get; set; } = new();
+
     /// <summary>Разделы, добавленные только в эту спецификацию.</summary>
     public List<SectionDefinition> CustomSections { get; set; } = new();
 
@@ -56,14 +59,38 @@ public sealed class SpecSettings
 public sealed class SpecificationContext
 {
     private readonly Dictionary<string, ReserveSettings> _reserves;
+    private readonly List<SpecGroup> _groups;
 
-    private SpecificationContext(SectionCatalog catalog, Dictionary<string, ReserveSettings> reserves)
+    private SpecificationContext(SectionCatalog catalog, Dictionary<string, ReserveSettings> reserves, List<SpecGroup> groups)
     {
         Catalog = catalog;
         _reserves = reserves;
+        _groups = groups;
     }
 
     public SectionCatalog Catalog { get; }
+
+    /// <summary>Группы спецификации (живой список: добавленные группы видны сразу).</summary>
+    public IReadOnlyList<SpecGroup> Groups => _groups;
+
+    public SpecGroup? FindGroup(string? groupId) =>
+        string.IsNullOrEmpty(groupId) ? null : _groups.FirstOrDefault(g => g.Id == groupId);
+
+    /// <summary>0 — основная часть, 1… — группы по порядку.</summary>
+    public int GroupIndex(string? groupId)
+    {
+        if (string.IsNullOrEmpty(groupId))
+        {
+            return 0;
+        }
+
+        var index = _groups.FindIndex(g => g.Id == groupId);
+        return index < 0 ? 0 : index + 1;
+    }
+
+    /// <summary>Резерв раздела в группе; если в группе не задан — как в основной части.</summary>
+    public ReserveSettings GetReserve(string? groupId, string sectionId) =>
+        FindGroup(groupId)?.Reserves.TryGetValue(sectionId, out var reserve) == true ? reserve : GetReserve(sectionId);
 
     public static SpecificationContext Create(SpecSettings? settings, Specification specification)
     {
@@ -85,9 +112,10 @@ public sealed class SpecificationContext
             reserves[id] = reserve.Clone();
         }
 
-        return new SpecificationContext(catalog, reserves);
+        return new SpecificationContext(catalog, reserves, specification.Groups);
     }
 
+    /// <summary>Резерв раздела основной части.</summary>
     public ReserveSettings GetReserve(string sectionId) =>
         _reserves.TryGetValue(sectionId, out var reserve) ? reserve : ReserveSettings.None;
 }

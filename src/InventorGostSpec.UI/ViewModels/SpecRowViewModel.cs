@@ -5,6 +5,9 @@ namespace InventorGostSpec.UI.ViewModels;
 
 public enum SpecRowKind
 {
+    /// <summary>Заголовок группы «устанавливаемые по …».</summary>
+    GroupHeader,
+
     Header,
     Component,
     ManualItem,
@@ -37,6 +40,7 @@ public sealed class SpecRowViewModel : ObservableObject
         _display = display;
         Kind = display.Kind switch
         {
+            DisplayRowKind.GroupHeader => SpecRowKind.GroupHeader,
             DisplayRowKind.SectionHeader => SpecRowKind.Header,
             DisplayRowKind.Reserve => SpecRowKind.Reserve,
             _ => display.Row!.Kind switch
@@ -57,7 +61,13 @@ public sealed class SpecRowViewModel : ObservableObject
 
     public string SectionId => _display.SectionId;
 
-    public bool IsHeader => Kind == SpecRowKind.Header;
+    /// <summary>Группа «устанавливаемые по …»; пусто — основная часть.</summary>
+    public string GroupId => _display.GroupId;
+
+    /// <summary>Заголовок раздела или группы.</summary>
+    public bool IsHeader => Kind is SpecRowKind.Header or SpecRowKind.GroupHeader;
+
+    public bool IsGroupHeader => Kind == SpecRowKind.GroupHeader;
 
     public bool IsReserve => Kind == SpecRowKind.Reserve;
 
@@ -91,7 +101,17 @@ public sealed class SpecRowViewModel : ObservableObject
     public string Name
     {
         get => IsHeader ? _display.SectionName : IsReserve ? "(резерв)" : Get(SpecColumn.Name);
-        set => Set(SpecColumn.Name, value);
+        set
+        {
+            if (IsGroupHeader)
+            {
+                _owner.RenameGroup(GroupId, value ?? "");
+            }
+            else
+            {
+                Set(SpecColumn.Name, value);
+            }
+        }
     }
 
     public string Quantity { get => Get(SpecColumn.Quantity); set => Set(SpecColumn.Quantity, value); }
@@ -108,6 +128,7 @@ public sealed class SpecRowViewModel : ObservableObject
 
     public bool CanEdit(SpecColumn column) => Kind switch
     {
+        SpecRowKind.GroupHeader => column == SpecColumn.Name,
         SpecRowKind.Header or SpecRowKind.Reserve => false,
         SpecRowKind.Note => column == SpecColumn.Name,
         _ => true,

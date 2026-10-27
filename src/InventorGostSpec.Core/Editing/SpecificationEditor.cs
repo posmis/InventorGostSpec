@@ -79,21 +79,21 @@ public static class SpecificationEditor
         }
 
         var target = targetRowId is null ? null : spec.FindRow(targetRowId);
-        if (targetRowId is not null && (target is null || !SameSection(target, row)))
+        if (targetRowId is not null && (target is null || !SpecBlocks.Same(target, row)))
         {
             return false;
         }
 
-        var positions = NumberedPositions(spec, row.SectionId);
+        var positions = NumberedPositions(spec, row);
         var oldIndex = spec.Rows.IndexOf(row);
         var targetIndex = target is null ? -1 : spec.Rows.IndexOf(target);
 
         // Строка занимает место цели: при перемещении вверх встаёт перед ней, при перемещении вниз — после.
         spec.Rows.RemoveAt(oldIndex);
-        var sectionEnd = LastIndexOfSection(spec, row.SectionId);
-        spec.Rows.Insert(target is not null ? targetIndex : sectionEnd >= 0 ? sectionEnd : oldIndex, row);
+        var blockEnd = LastIndexOfBlock(spec, row);
+        spec.Rows.Insert(target is not null ? targetIndex : blockEnd >= 0 ? blockEnd : oldIndex, row);
 
-        ReapplyPositions(spec, row.SectionId, positions);
+        ReapplyPositions(spec, row, positions);
         return true;
     }
 
@@ -102,7 +102,7 @@ public static class SpecificationEditor
     {
         var row = spec.FindRow(rowId) ?? throw new ArgumentException($"Row '{rowId}' not found.", nameof(rowId));
         var index = spec.Rows.IndexOf(row) + Math.Sign(direction);
-        if (index < 0 || index >= spec.Rows.Count || !SameSection(spec.Rows[index], row))
+        if (index < 0 || index >= spec.Rows.Count || !SpecBlocks.Same(spec.Rows[index], row))
         {
             return false;
         }
@@ -111,9 +111,16 @@ public static class SpecificationEditor
     }
 
     /// <summary>Добавляет текстовую строку (без позиции) после указанной строки или в конец раздела.</summary>
-    public static SpecRow AddNote(Specification spec, SpecificationContext context, string sectionId, string text, string? afterRowId = null)
+    /// <param name="groupId">Группа «устанавливаемые по …»; пусто — основная часть.</param>
+    public static SpecRow AddNote(
+        Specification spec,
+        SpecificationContext context,
+        string sectionId,
+        string text,
+        string? afterRowId = null,
+        string groupId = "")
     {
-        var row = new SpecRow { Kind = RowKind.Note };
+        var row = new SpecRow { Kind = RowKind.Note, GroupId = groupId };
         row.Source.SectionId = sectionId;
         row.Source.Name = text.Trim();
         Insert(spec, context, row, afterRowId);
@@ -123,13 +130,15 @@ public static class SpecificationEditor
     /// <summary>
     /// Добавляет строку изделия вручную (без модели). Номер позиции выдаётся из резерва раздела.
     /// </summary>
+    /// <param name="groupId">Группа «устанавливаемые по …»; пусто — основная часть.</param>
     public static SpecRow AddManualItem(
         Specification spec,
         SpecificationContext context,
         ComponentSnapshot values,
-        string? afterRowId = null)
+        string? afterRowId = null,
+        string groupId = "")
     {
-        var row = new SpecRow { Kind = RowKind.ManualItem, Source = values.Clone() };
+        var row = new SpecRow { Kind = RowKind.ManualItem, Source = values.Clone(), GroupId = groupId };
         if (string.IsNullOrWhiteSpace(row.Source.SectionId))
         {
             throw new ArgumentException("Section must be specified.", nameof(values));
@@ -187,11 +196,12 @@ public static class SpecificationEditor
     /// </summary>
     public static void Reset(Specification spec, SpecificationContext context)
     {
+        NormalizeGroups(spec);
         var result = new List<SpecRow>(spec.Rows.Count);
-        foreach (var section in OrderedSections(spec, context))
+        foreach (var specBlock in SpecBlocks.All(spec, context))
         {
-            var comparer = new GostRowComparer(section.SortRule);
-            var rows = spec.Rows.Where(r => string.Equals(r.SectionId, section.Id, StringComparison.OrdinalIgnoreCase));
+            var comparer = new GostRowComparer(specBlock.Section.SortRule);
+            var rows = spec.Rows.Where(specBlock.Contains);
             var blocks = SplitIntoBlocks(rows);
 
             // Блок без ведущей строки (тексты в начале раздела) остаётся первым.
@@ -210,48 +220,76 @@ public static class SpecificationEditor
         PositionAllocator.RenumberAll(spec, context);
     }
 
-    /// <summary>Упорядочивает строки по разделам, сохраняя порядок внутри раздела.</summary>
+    /// <summary>Упорядочивает строки по группам и разделам, сохраняя порядок внутри раздела.</summary>
     public static void Normalize(Specification spec, SpecificationContext context)
     {
-        var sections = OrderedSections(spec, context).Select(s => s.Id).ToList();
+        NormalizeGroups(spec);
+        SpecBlocks.All(spec, context);
         spec.Rows = spec.Rows
             .Select((row, index) => (row, index))
-            .OrderBy(x => sections.FindIndex(id => string.Equals(id, x.row.SectionId, StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(x => SpecBlocks.Order(x.row, context))
             .ThenBy(x => x.index)
             .Select(x => x.row)
             .ToList();
     }
 
-    /// <summary>Вставляет строку в конец её раздела.</summary>
+    /// <summary>Строки удалённых групп возвращаются в основную часть.</summary>
+    public static void NormalizeGroups(Specification spec)
+    {
+        foreach (var row in spec.Rows.Where(r => r.GroupId.Length > 0 && spec.Groups.All(g => g.Id != r.GroupId)))
+        {
+            row.GroupId = "";
+        }
+    }
+
+    /// <summary>Добавляет группу «устанавливаемые по …» в конец спецификации.</summary>
+    public static SpecGroup AddGroup(Specification spec, string title, int? firstPosition = null)
+    {
+        var group = new SpecGroup { Title = title.Trim(), FirstPosition = firstPosition };
+        spec.Groups.Add(group);
+        return group;
+    }
+
+    /// <summary>Удаляет группу; её строки переходят в конец своих разделов основной части и получают новые номера.</summary>
+    public static void RemoveGroup(Specification spec, SpecificationContext context, string groupId)
+    {
+        var rows = spec.Rows.Where(r => r.GroupId == groupId).ToList();
+        spec.Groups.RemoveAll(g => g.Id == groupId);
+        foreach (var row in rows)
+        {
+            MoveToGroup(spec, context, row, "", assignPositions: false);
+        }
+
+        PositionAllocator.AssignMissing(spec, context);
+    }
+
+    /// <summary>
+    /// Переносит строку в группу «устанавливаемые по …» (или в основную часть, если <paramref name="groupId"/> пуст):
+    /// в конец того же раздела группы, с новым номером позиции. Хранится только в спецификации.
+    /// </summary>
+    public static void MoveToGroup(Specification spec, SpecificationContext context, SpecRow row, string groupId) =>
+        MoveToGroup(spec, context, row, groupId, assignPositions: true);
+
+    /// <summary>Вставляет строку в конец её раздела (в её группе).</summary>
     internal static void InsertAtSectionEnd(Specification spec, SpecificationContext context, SpecRow row)
     {
-        var last = LastIndexOfSection(spec, row.SectionId);
+        var last = LastIndexOfBlock(spec, row);
         if (last >= 0)
         {
             spec.Rows.Insert(last, row);
             return;
         }
 
-        var order = context.Catalog.IndexOf(row.SectionId);
-        var index = spec.Rows.FindIndex(r => context.Catalog.IndexOf(r.SectionId) > order);
+        SpecBlocks.All(spec, context);
+        var order = SpecBlocks.Order(row, context);
+        var index = spec.Rows.FindIndex(r => SpecBlocks.Order(r, context) > order);
         spec.Rows.Insert(index < 0 ? spec.Rows.Count : index, row);
-    }
-
-    internal static IEnumerable<SectionDefinition> OrderedSections(Specification spec, SpecificationContext context)
-    {
-        // Регистрируем разделы строк, которых нет в каталоге, чтобы строки не пропали.
-        foreach (var row in spec.Rows)
-        {
-            context.Catalog.GetOrCreate(row.SectionId);
-        }
-
-        return context.Catalog.Sections.ToList();
     }
 
     private static void Insert(Specification spec, SpecificationContext context, SpecRow row, string? afterRowId)
     {
         var after = afterRowId is null ? null : spec.FindRow(afterRowId);
-        if (after is not null && SameSection(after, row))
+        if (after is not null && SpecBlocks.Same(after, row))
         {
             spec.Rows.Insert(spec.Rows.IndexOf(after) + 1, row);
         }
@@ -269,31 +307,49 @@ public static class SpecificationEditor
         PositionAllocator.AssignMissing(spec, context);
     }
 
-    /// <summary>Индекс сразу после последней строки раздела (или -1, если строк раздела нет).</summary>
-    private static int LastIndexOfSection(Specification spec, string sectionId)
+    private static void MoveToGroup(Specification spec, SpecificationContext context, SpecRow row, string groupId, bool assignPositions)
     {
-        var last = spec.Rows.FindLastIndex(r => string.Equals(r.SectionId, sectionId, StringComparison.OrdinalIgnoreCase));
+        if (groupId.Length > 0 && context.FindGroup(groupId) is null)
+        {
+            throw new ArgumentException($"Group '{groupId}' not found.", nameof(groupId));
+        }
+
+        if (row.GroupId == groupId && spec.Rows.Contains(row))
+        {
+            return;
+        }
+
+        spec.Rows.Remove(row);
+        row.GroupId = groupId;
+        row.Position = null;
+        InsertAtSectionEnd(spec, context, row);
+        if (assignPositions)
+        {
+            PositionAllocator.AssignMissing(spec, context);
+        }
+    }
+
+    /// <summary>Индекс сразу после последней строки того же раздела той же группы (или -1, если таких строк нет).</summary>
+    private static int LastIndexOfBlock(Specification spec, SpecRow row)
+    {
+        var last = spec.Rows.FindLastIndex(r => SpecBlocks.Same(r, row));
         return last < 0 ? -1 : last + 1;
     }
 
-    private static bool SameSection(SpecRow a, SpecRow b) =>
-        string.Equals(a.SectionId, b.SectionId, StringComparison.OrdinalIgnoreCase);
+    private static List<int> NumberedPositions(Specification spec, SpecRow row) =>
+        BlockNumberedRows(spec, row).Select(r => r.Position!.Value).OrderBy(p => p).ToList();
 
-    private static List<int> NumberedPositions(Specification spec, string sectionId) =>
-        SectionNumberedRows(spec, sectionId).Select(r => r.Position!.Value).OrderBy(p => p).ToList();
-
-    private static void ReapplyPositions(Specification spec, string sectionId, List<int> positions)
+    private static void ReapplyPositions(Specification spec, SpecRow row, List<int> positions)
     {
-        var rows = SectionNumberedRows(spec, sectionId).ToList();
+        var rows = BlockNumberedRows(spec, row).ToList();
         for (var i = 0; i < rows.Count && i < positions.Count; i++)
         {
             rows[i].Position = positions[i];
         }
     }
 
-    private static IEnumerable<SpecRow> SectionNumberedRows(Specification spec, string sectionId) =>
-        spec.Rows.Where(r => r.Position.HasValue && !r.IsRemoved &&
-                             string.Equals(r.SectionId, sectionId, StringComparison.OrdinalIgnoreCase));
+    private static IEnumerable<SpecRow> BlockNumberedRows(Specification spec, SpecRow row) =>
+        spec.Rows.Where(r => r.Position.HasValue && !r.IsRemoved && SpecBlocks.Same(r, row));
 
     private static List<Block> SplitIntoBlocks(IEnumerable<SpecRow> rows)
     {

@@ -38,6 +38,7 @@ public static class SpecificationUpdater
     {
         var result = new UpdateResult { IsInitialBuild = spec.LastUpdatedUtc is null && spec.Rows.Count == 0 };
         var snapshots = Aggregate(components);
+        SpecificationEditor.NormalizeGroups(spec);
 
         foreach (var row in spec.Rows)
         {

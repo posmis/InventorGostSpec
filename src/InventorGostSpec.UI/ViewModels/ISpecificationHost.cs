@@ -40,4 +40,6 @@ public interface IDialogService
     bool EditNewSection(NewSectionViewModel viewModel);
 
     bool EditReserves(ReserveSettingsViewModel viewModel);
+
+    bool EditGroup(GroupViewModel viewModel);
 }

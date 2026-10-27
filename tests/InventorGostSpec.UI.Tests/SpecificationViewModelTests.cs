@@ -269,6 +269,94 @@ public class SpecificationViewModelTests
         Assert.Equal(new[] { "ok" }, _dialogs.Infos);
     }
 
+    [Fact]
+    public void Group_is_added_rows_moved_and_positions_continue()
+    {
+        var vm = Open();
+        _dialogs.OnGroup = g =>
+        {
+            g.Title = "Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ";
+            g.FirstPositionText = "101";
+        };
+
+        vm.AddGroupCommand.Execute(null);
+        var header = vm.SelectedRow!;
+        Assert.True(header.IsGroupHeader);
+        Assert.Equal("Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ", header.Name);
+        Assert.Equal(new[] { "", "Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ" }, vm.GroupOptions.Select(o => o.Name == "Основная часть" ? "" : o.Name));
+
+        vm.SelectedRow = RowByName(vm, "Болт М8х20 ГОСТ 7798-70");
+        vm.MoveToGroupCommand.Execute(header.GroupId);
+
+        var names = vm.Rows.Select(r => r.Name).ToList();
+        Assert.Equal(
+            new[] { "Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ", "Стандартные изделия", "Болт М8х20 ГОСТ 7798-70" },
+            names.Skip(names.IndexOf("Изделия, устанавливаемые по электромонтажному чертежу А.000МЭ")));
+        Assert.Equal("101", RowByName(vm, "Болт М8х20 ГОСТ 7798-70").Position);
+    }
+
+    [Fact]
+    public void Group_header_title_is_editable_and_group_can_be_deleted()
+    {
+        var vm = Open();
+        _dialogs.OnGroup = g => g.Title = "Устанавливают по МЭ";
+        vm.AddGroupCommand.Execute(null);
+        vm.SelectedRow = RowByName(vm, "Ось");
+        vm.MoveToGroupCommand.Execute(vm.GroupOptions[1].Id);
+
+        var header = vm.Rows.Single(r => r.IsGroupHeader);
+        Assert.True(header.CanEdit(SpecColumn.Name));
+        header.Name = "Изделия, устанавливаемые по МЭ";
+        Assert.Equal("Изделия, устанавливаемые по МЭ", vm.Rows.Single(r => r.IsGroupHeader).Name);
+
+        vm.SelectedRow = vm.Rows.Single(r => r.IsGroupHeader);
+        vm.DeleteGroupCommand.Execute(null);
+
+        Assert.DoesNotContain(vm.Rows, r => r.IsGroupHeader);
+        Assert.Equal("", RowByName(vm, "Ось").GroupId);
+    }
+
+    [Fact]
+    public void Item_added_on_group_header_goes_to_group()
+    {
+        var vm = Open();
+        _dialogs.OnGroup = g => g.Title = "Устанавливают по МЭ";
+        vm.AddGroupCommand.Execute(null);
+        var groupId = vm.SelectedRow!.GroupId;
+
+        vm.AddItemCommand.Execute(null);
+
+        var item = vm.SelectedRow!;
+        Assert.Equal(groupId, item.GroupId);
+        Assert.Equal(SectionIds.OtherProducts, item.SectionId);
+        Assert.Equal("Прочие изделия", vm.Rows[vm.Rows.IndexOf(item) - 1].Name);
+    }
+
+    [Fact]
+    public void Each_part_has_its_own_reserve()
+    {
+        var vm = Open();
+        _dialogs.OnGroup = g => g.Title = "Устанавливают по МЭ";
+        vm.AddGroupCommand.Execute(null);
+        vm.SelectedRow = RowByName(vm, "Ось");
+        vm.MoveToGroupCommand.Execute(vm.GroupOptions[1].Id);
+
+        _dialogs.OnReserves = reserves =>
+        {
+            Assert.Equal(2, reserves.Parts.Count);
+            Assert.Same(reserves.Parts[1], reserves.SelectedPart); // выбрана строка группы
+            reserves.SelectedPart.FirstPositionText = "50";
+            reserves.Items.Single(i => i.SectionId == SectionIds.Parts).Count = 5;
+        };
+        vm.ReservesCommand.Execute(null);
+
+        var group = vm.Specification.Groups.Single();
+        Assert.Equal(50, group.FirstPosition);
+        Assert.Equal(5, group.Reserves[SectionIds.Parts].Count);
+        Assert.Equal(2, vm.Specification.ReserveOverrides[SectionIds.Parts].Count); // основная часть не изменилась
+        Assert.Equal("50", RowByName(vm, "Ось").Position);
+    }
+
     private SpecificationViewModel Open()
     {
         // Как при первом открытии: спецификация сформирована, но не сохранена.

@@ -71,6 +71,9 @@ public partial class SpecificationWindow : Window, IDialogService
     public bool EditReserves(ReserveSettingsViewModel viewModel) =>
         new ReserveSettingsWindow(viewModel) { Owner = this }.ShowDialog() == true;
 
+    public bool EditGroup(GroupViewModel viewModel) =>
+        new GroupWindow(viewModel) { Owner = this }.ShowDialog() == true;
+
     protected override void OnClosing(CancelEventArgs e)
     {
         Grid.CommitEdit(DataGridEditingUnit.Row, true);
@@ -245,6 +248,15 @@ public partial class SpecificationWindow : Window, IDialogService
     private void OnMoveToSectionClick(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { DataContext: Option option } && _viewModel?.MoveToSectionCommand is { } command &&
+            command.CanExecute(option.Id))
+        {
+            command.Execute(option.Id);
+        }
+    }
+
+    private void OnMoveToGroupClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { DataContext: Option option } && _viewModel?.MoveToGroupCommand is { } command &&
             command.CanExecute(option.Id))
         {
             command.Execute(option.Id);

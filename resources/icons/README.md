@@ -25,3 +25,13 @@ node resources/icons/render.js [папка для превью]
 только после правки SVG.
 
 ![Превью](preview.png)
+
+## Значки окон
+
+Значки панели команд окон (16×16) описаны в `ui_icons.py` — одно описание даёт XAML-ресурсы
+`src/InventorGostSpec.UI/Themes/Icons.xaml` (ключи `Icon.<Имя>`) и SVG для предпросмотра:
+
+```
+python3 resources/icons/ui_icons.py [папка для превью]
+```
+![Значки окон](ui-preview.png)

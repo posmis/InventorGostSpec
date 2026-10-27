@@ -31,6 +31,9 @@ public partial class SpecificationWindow : Window, IDialogService
         Grid.PreviewMouseRightButtonDown += OnPreviewRightButtonDown;
         Grid.ContextMenuOpening += (_, _) => ClearOverrideItem.CommandParameter = Grid.CurrentColumn?.SortMemberPath;
 
+        PreviewKeyDown += OnPreviewKeyDown;
+        WindowPlacement.Attach(this, "specification");
+
         Dispatcher.UnhandledException += OnUnhandledException;
         Closed += (_, _) => Dispatcher.UnhandledException -= OnUnhandledException;
     }
@@ -90,6 +93,14 @@ public partial class SpecificationWindow : Window, IDialogService
         _viewModel = viewModel;
         DataContext = viewModel;
         viewModel.EditRequested += OnEditRequested;
+        viewModel.PropertyChanged += (_, e) =>
+        {
+            // Выделенная строка (после перехода к изменению, переноса, добавления) должна быть видна.
+            if (e.PropertyName == nameof(SpecificationViewModel.SelectedRow) && viewModel.SelectedRow is { } row)
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Background, () => Grid.ScrollIntoView(row));
+            }
+        };
         viewModel.CommitEdits = () =>
         {
             if (!Grid.CommitEdit(DataGridEditingUnit.Row, true))
@@ -251,6 +262,25 @@ public partial class SpecificationWindow : Window, IDialogService
             command.CanExecute(option.Id))
         {
             command.Execute(option.Id);
+        }
+    }
+
+    private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+
+    /// <summary>Ctrl+F — к поиску, Esc в поиске — очистить.</summary>
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            SearchBox.Focus();
+            SearchBox.SelectAll();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && SearchBox.IsKeyboardFocusWithin && SearchBox.Text.Length > 0)
+        {
+            SearchBox.Clear();
+            Grid.Focus();
+            e.Handled = true;
         }
     }
 

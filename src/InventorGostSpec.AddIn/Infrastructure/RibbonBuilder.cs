@@ -18,17 +18,20 @@ internal static class RibbonBuilder
     {
         var ribbons = application.UserInterfaceManager.Ribbons;
 
+        // Главные действия — большие кнопки, подготовка компонентов — маленькие, в одну колонку.
         AddButtons(ribbons["Assembly"], AssembleTabId, commands,
-            AssignSectionCommand.Id,
-            AutoAssignCommand.Id,
-            StandardNamesCommand.Id,
-            SpecificationCommand.Id,
-            WritePositionsCommand.Id);
+            new Button(SpecificationCommand.Id, Large: true),
+            new Button(WritePositionsCommand.Id, Large: true),
+            new Button(AssignSectionCommand.Id, Large: false),
+            new Button(AutoAssignCommand.Id, Large: false),
+            new Button(StandardNamesCommand.Id, Large: false));
 
-        AddButtons(ribbons["Part"], ManageTabId, commands, AssignSectionCommand.Id);
+        AddButtons(ribbons["Part"], ManageTabId, commands, new Button(AssignSectionCommand.Id, Large: true));
     }
 
-    private static void AddButtons(Ribbon ribbon, string targetTabId, CommandRegistry commands, params string[] commandIds)
+    private sealed record Button(string CommandId, bool Large);
+
+    private static void AddButtons(Ribbon ribbon, string targetTabId, CommandRegistry commands, params Button[] buttons)
     {
         var tab = FindTab(ribbon, targetTabId);
         if (tab is not null)
@@ -41,20 +44,12 @@ internal static class RibbonBuilder
             tab = FindTab(ribbon, OwnTabId) ?? ribbon.RibbonTabs.Add(AddInInfo.Title, OwnTabId, AddInInfo.ClientId);
         }
 
-        var panel = FindPanel(tab) ?? tab.RibbonPanels.Add(AddInInfo.Title, PanelId, AddInInfo.ClientId);
-
-        var existing = new HashSet<string>();
-        foreach (CommandControl control in panel.CommandControls)
+        // Панель пересоздаётся, чтобы раскладка кнопок обновлялась вместе с аддином.
+        FindPanel(tab)?.Delete();
+        var panel = tab.RibbonPanels.Add(AddInInfo.Title, PanelId, AddInInfo.ClientId);
+        foreach (var button in buttons)
         {
-            existing.Add(control.InternalName);
-        }
-
-        foreach (var id in commandIds)
-        {
-            if (!existing.Contains(id))
-            {
-                panel.CommandControls.AddButton(commands[id], true, true);
-            }
+            panel.CommandControls.AddButton(commands[button.CommandId], button.Large, true);
         }
     }
 

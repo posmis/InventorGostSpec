@@ -13,6 +13,7 @@ public partial class StandardNamesWindow : Window
         InitializeComponent();
         _viewModel = viewModel;
         DataContext = viewModel;
+        WindowPlacement.Attach(this, "standard-names");
     }
 
     private void OnApply(object sender, RoutedEventArgs e)

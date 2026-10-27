@@ -353,6 +353,54 @@ public class SpecificationViewModelTests
         Assert.Equal("5", RowByName(vm, "Ось").Position);
     }
 
+    [Fact]
+    public void Search_shows_matching_rows_with_their_headers()
+    {
+        var vm = Open();
+
+        vm.SearchText = "болт";
+
+        Assert.Equal(new[] { "Стандартные изделия", "Болт М8х20 ГОСТ 7798-70" }, vm.Rows.Select(r => r.Name));
+        Assert.StartsWith("Найдено: 1", vm.StatusText);
+
+        vm.SearchText = "А.00";
+        Assert.Equal(new[] { "Детали", "Корпус", "Ось" }, vm.Rows.Select(r => r.Name));
+
+        vm.ClearSearchCommand.Execute(null);
+        Assert.Contains(vm.Rows, r => r.IsReserve);
+        Assert.False(vm.IsSearching);
+    }
+
+    [Fact]
+    public void Next_change_cycles_through_highlighted_rows()
+    {
+        var vm = Open();
+        _host.Components.Add(Part("А.003", "Втулка"));
+        _host.Components.Add(Part("А.000", "Шайба"));
+        vm.UpdateFromAssemblyCommand.Execute(null);
+        vm.SelectedRow = vm.Rows[0];
+
+        vm.NextChangeCommand.Execute(null);
+        var first = vm.SelectedRow!;
+        vm.NextChangeCommand.Execute(null);
+        var second = vm.SelectedRow!;
+        vm.NextChangeCommand.Execute(null);
+
+        Assert.True(first.IsNew && second.IsNew);
+        Assert.NotSame(first, second);
+        Assert.Same(first, vm.SelectedRow);
+    }
+
+    [Fact]
+    public void Empty_specification_is_reported()
+    {
+        var vm = new SpecificationViewModel(_host, _dialogs, new Specification(), post: Immediate);
+
+        Assert.True(vm.IsEmpty);
+        vm.UpdateFromAssemblyCommand.Execute(null);
+        Assert.False(vm.IsEmpty);
+    }
+
     private SpecificationViewModel Open()
     {
         // Как при первом открытии: спецификация сформирована, но не сохранена.

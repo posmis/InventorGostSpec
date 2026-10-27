@@ -22,6 +22,7 @@ public sealed class SpecificationViewModel : ObservableObject
     private SpecRowViewModel? _selectedRow;
     private bool _isDirty;
     private string _statusText = "";
+    private string _searchText = "";
 
     /// <param name="isNew">Спецификация только что сформирована и ещё не сохранена: закрытие без сохранения её потеряет.</param>
     /// <param name="post">
@@ -59,6 +60,8 @@ public sealed class SpecificationViewModel : ObservableObject
         ReservesCommand = new RelayCommand(EditReserves);
         SaveCommand = new RelayCommand(Save, () => IsDirty);
         WritePositionsCommand = new RelayCommand(WritePositions);
+        NextChangeCommand = new RelayCommand(GoToNextChange, () => Specification.Rows.Any(r => r.Status != RowStatus.None));
+        ClearSearchCommand = new RelayCommand(() => SearchText = "", () => IsSearching);
 
         Rebuild();
         _isDirty = isNew;
@@ -141,6 +144,27 @@ public sealed class SpecificationViewModel : ObservableObject
     public ICommand ReservesCommand { get; }
     public ICommand SaveCommand { get; }
     public ICommand WritePositionsCommand { get; }
+    public ICommand NextChangeCommand { get; }
+    public ICommand ClearSearchCommand { get; }
+
+    /// <summary>Поиск по обозначению, наименованию, примечанию и позиции. Показываются только найденные строки.</summary>
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (SetField(ref _searchText, value ?? ""))
+            {
+                OnPropertyChanged(nameof(IsSearching));
+                Rebuild();
+            }
+        }
+    }
+
+    public bool IsSearching => SearchText.Trim().Length > 0;
+
+    /// <summary>В спецификации нет строк (подсказка «нажмите Обновить из сборки»).</summary>
+    public bool IsEmpty => Specification.Rows.Count == 0;
 
     /// <summary>Вызывается при закрытии окна. <c>false</c> — закрытие отменено.</summary>
     public bool CanClose()
@@ -499,10 +523,12 @@ public sealed class SpecificationViewModel : ObservableObject
         var keepHeader = SelectedRow?.IsHeader == true ? SelectedRow : null;
 
         Rows.Clear();
-        foreach (var display in SpecificationViewBuilder.Build(Specification, _context))
+        foreach (var display in Filter(SpecificationViewBuilder.Build(Specification, _context)))
         {
             Rows.Add(new SpecRowViewModel(this, display));
         }
+
+        OnPropertyChanged(nameof(IsEmpty));
 
         SelectedRow = Rows.FirstOrDefault(r => keep is not null && r.RowId == keep)
                       ?? Rows.FirstOrDefault(r => keepHeader is not null && r.Kind == keepHeader.Kind &&
@@ -522,6 +548,48 @@ public sealed class SpecificationViewModel : ObservableObject
         }
 
         UpdateStatus();
+    }
+
+    /// <summary>
+    /// При поиске оставляет найденные строки и заголовки их разделов и групп; резервные строки скрываются.
+    /// </summary>
+    private IEnumerable<DisplayRow> Filter(IReadOnlyList<DisplayRow> rows)
+    {
+        var text = SearchText.Trim();
+        if (text.Length == 0)
+        {
+            return rows;
+        }
+
+        var matches = rows.Where(r => r.Row is not null && Matches(r.Row, text)).ToList();
+        return rows.Where(r => r.Kind switch
+        {
+            DisplayRowKind.Row => matches.Contains(r),
+            DisplayRowKind.SectionHeader => matches.Any(m => m.GroupId == r.GroupId && m.SectionId == r.SectionId),
+            DisplayRowKind.GroupHeader => matches.Any(m => m.GroupId == r.GroupId),
+            _ => false,
+        });
+    }
+
+    private static bool Matches(SpecRow row, string text) =>
+        new[] { SpecColumn.Designation, SpecColumn.Name, SpecColumn.Note, SpecColumn.Position, SpecColumn.Format, SpecColumn.Zone }
+            .Any(c => row.Get(c).Replace('ё', 'е').Replace('Ё', 'Е')
+                .Contains(text.Replace('ё', 'е').Replace('Ё', 'Е'), StringComparison.CurrentCultureIgnoreCase));
+
+    /// <summary>Выделяет следующую подсвеченную строку (новую, изменённую или удалённую), по кругу.</summary>
+    private void GoToNextChange()
+    {
+        var changed = Rows.Where(r => r.IsNew || r.IsChanged || r.IsRemoved).ToList();
+        if (changed.Count == 0)
+        {
+            _dialogs.Info(IsSearching
+                ? "Среди найденных строк изменений нет."
+                : "Изменений нет.");
+            return;
+        }
+
+        var current = SelectedRow is null ? -1 : Rows.IndexOf(SelectedRow);
+        SelectedRow = changed.FirstOrDefault(r => Rows.IndexOf(r) > current) ?? changed[0];
     }
 
     private void PostRebuild(string rowId) => _post(() => Rebuild(rowId));
@@ -552,6 +620,11 @@ public sealed class SpecificationViewModel : ObservableObject
         if (Specification.LastUpdatedUtc is { } updated)
         {
             parts.Add($"обновлено из сборки: {updated.ToLocalTime():dd.MM.yyyy HH:mm}");
+        }
+
+        if (IsSearching)
+        {
+            parts.Insert(0, $"Найдено: {Rows.Count(r => r.Row is not null)}");
         }
 
         StatusText = string.Join(" · ", parts);

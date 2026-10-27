@@ -25,11 +25,19 @@ public sealed class PrintLine
     public string Note { get; init; } = "";
     public LineStyle Style { get; init; }
 
+    /// <summary>
+    /// Свободная строка, добавленная вокруг заголовка по ГОСТ 2.106. В отличие от резервной строки,
+    /// не ставится в начале листа и после другой пустой строки.
+    /// </summary>
+    public bool IsSpacer { get; init; }
+
     public bool IsBlank =>
         Format.Length == 0 && Zone.Length == 0 && Position.Length == 0 && Designation.Length == 0
         && Name.Length == 0 && Quantity.Length == 0 && Note.Length == 0;
 
     public static PrintLine Blank => new();
+
+    public static PrintLine Spacer => new() { IsSpacer = true };
 
     public string this[int column] => column switch
     {
@@ -83,7 +91,7 @@ public static class SpecPaginator
                     page = new List<PrintLine>();
                     pages.Add(page);
                     capacity = GostLayout.RowsOnPage(pages.Count - 1);
-                    if (line.IsBlank)
+                    if (line.IsSpacer)
                     {
                         continue;
                     }
@@ -124,12 +132,15 @@ public static class SpecPaginator
         return total;
     }
 
-    /// <summary>Свободные строки в начале листа и подряд за другой свободной строкой не повторяются.</summary>
+    /// <summary>
+    /// Свободная строка перед заголовком не нужна в начале листа и после другой пустой строки (например, резервной).
+    /// Резервные и пустые строки из файла остаются всегда.
+    /// </summary>
     private static List<PrintLine> Trim(List<PrintLine> lines, List<PrintLine> page)
     {
         var skip = 0;
         var previousBlank = page.Count == 0 || page[^1].IsBlank;
-        while (skip < lines.Count && lines[skip].IsBlank && previousBlank)
+        while (skip < lines.Count && lines[skip].IsSpacer && previousBlank)
         {
             skip++;
         }
@@ -147,9 +158,9 @@ public static class SpecPaginator
             case ExcelFormat.RowTypes.Group:
             {
                 var style = type == ExcelFormat.RowTypes.Section ? LineStyle.Section : LineStyle.Group;
-                var lines = new List<PrintLine> { PrintLine.Blank };
+                var lines = new List<PrintLine> { PrintLine.Spacer };
                 lines.AddRange(Wrap(row.Name, nameWidth, measure).Select(text => new PrintLine { Name = text, Style = style }));
-                lines.Add(PrintLine.Blank);
+                lines.Add(PrintLine.Spacer);
                 return new Block(lines, true);
             }
 

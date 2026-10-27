@@ -42,6 +42,22 @@ public class PaginatorTests
     }
 
     [Fact]
+    public void Each_reserve_row_stays_and_replaces_free_line_before_next_section()
+    {
+        var reserve = new SheetRow(ExcelFormat.RowTypes.Reserve, "", "", "3", "", "", "", "", "");
+
+        var page = Assert.Single(SpecPaginator.Paginate(
+            new[] { Section("Сборочные единицы"), Item("Привод", "1"), reserve, reserve, Section("Детали"), Item("Корпус", "4") }, Measure));
+
+        // Две резервные строки — две пустые строки; дополнительной свободной строки перед «Деталями» нет.
+        Assert.Equal(new[] { "Сборочные единицы", "", "Привод", "", "", "Детали", "", "Корпус" }, page.Select(l => l.Name));
+
+        // Без резерва — одна свободная строка перед заголовком.
+        page = Assert.Single(SpecPaginator.Paginate(new[] { Item("Привод", "1"), Section("Детали"), Item("Корпус", "4") }, Measure));
+        Assert.Equal(new[] { "Привод", "", "Детали", "", "Корпус" }, page.Select(l => l.Name));
+    }
+
+    [Fact]
     public void Line_does_not_start_with_a_dash()
     {
         var lines = SpecPaginator.Wrap("Гайка барашек DIN 315 - M8 - St - C", 24 * 2, Measure);

@@ -224,3 +224,65 @@ public class ExternalDocumentTests
         Assert.Equal(("АБВГ.301234.001", "Паспорт"), (values.Designation, values.Name));
     }
 }
+
+public class ExternalDocumentHashTests
+{
+    [Fact]
+    public void Changed_file_is_marked_and_accept_keeps_the_link()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "doc-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        var file = Path.Combine(folder, "АБВГ.301234.001ТУ-ТУ.pdf");
+        try
+        {
+            File.WriteAllText(file, "v1");
+            var spec = new Specification();
+            var context = TestData.Context(spec);
+            var row = SpecificationEditor.AddExternalDocument(spec, context, "АБВГ.301234.001ТУ-ТУ.pdf");
+            row.DocumentHash = ExternalDocuments.Hash(file);
+
+            Assert.Equal(0, ExternalDocuments.CheckFiles(spec, folder));
+            Assert.False(row.Status.HasFlag(RowStatus.FileChanged));
+
+            File.WriteAllText(file, "v2");
+            Assert.Equal(1, ExternalDocuments.CheckFiles(spec, folder));
+            Assert.True(row.Status.HasFlag(RowStatus.FileChanged));
+
+            // Сброс уведомлений: ссылка та же, запоминается новое содержимое.
+            ExternalDocuments.AcceptFiles(spec, folder);
+            SpecificationEditor.AcceptChanges(spec);
+            Assert.Equal(RowStatus.None, row.Status);
+            Assert.Equal("АБВГ.301234.001ТУ-ТУ.pdf", row.DocumentFile);
+            Assert.Equal(0, ExternalDocuments.CheckFiles(spec, folder));
+
+            // Файл удалён — не отмечается, связь остаётся.
+            File.Delete(file);
+            Assert.Equal(0, ExternalDocuments.CheckFiles(spec, folder));
+            Assert.Equal("АБВГ.301234.001ТУ-ТУ.pdf", spec.Rows.Single().DocumentFile);
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
+    public void Row_without_hash_remembers_it_silently()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "doc-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            File.WriteAllText(Path.Combine(folder, "А.001ПЗ.pdf"), "x");
+            var spec = new Specification();
+            var row = SpecificationEditor.AddExternalDocument(spec, TestData.Context(spec), "А.001ПЗ.pdf");
+
+            Assert.Equal(0, ExternalDocuments.CheckFiles(spec, folder));
+            Assert.NotEmpty(row.DocumentHash);
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+}

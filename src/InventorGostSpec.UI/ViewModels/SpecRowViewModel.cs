@@ -82,6 +82,9 @@ public sealed class SpecRowViewModel : ObservableObject
 
     public bool IsRemoved => Row?.IsRemoved == true;
 
+    /// <summary>Файл стороннего документа изменился после добавления — уведомление, связь с файлом остаётся.</summary>
+    public bool IsFileChanged => Row?.Status.HasFlag(RowStatus.FileChanged) == true;
+
     /// <summary>Можно ли перетаскивать строку.</summary>
     public bool CanMove => Row is not null;
 
@@ -175,6 +178,11 @@ public sealed class SpecRowViewModel : ObservableObject
             {
                 var source = Row!.Source.Get(column);
                 tips.Add($"Изменено вручную. Значение компонента: {(source.Length > 0 ? source : "(пусто)")}");
+            }
+
+            if (IsFileChanged && column is SpecColumn.Designation or SpecColumn.Name)
+            {
+                tips.Add($"Файл документа изменён после добавления в спецификацию:\n{Row!.DocumentFile}\n«Сбросить уведомления» — снять отметку.");
             }
 
             if (IsRemoved && column == SpecColumn.Name)

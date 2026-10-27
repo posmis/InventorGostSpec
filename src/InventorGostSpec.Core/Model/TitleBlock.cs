@@ -18,8 +18,6 @@ public sealed class TitleBlock
 
     public string Checker { get; set; } = "";
 
-    public string TechControl { get; set; } = "";
-
     public string NormControl { get; set; } = "";
 
     public string Approver { get; set; } = "";

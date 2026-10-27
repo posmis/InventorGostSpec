@@ -285,7 +285,9 @@ public static class GostPdfWriter
 
             var signatures = new[]
             {
-                ("Разраб.", _title.Developer), ("Пров.", _title.Checker), ("Т. контр.", _title.TechControl),
+                ("Разраб.", _title.Developer), ("Пров.", _title.Checker),
+                // Третья строка (в бланке — «Т. контр.») в спецификации не заполняется — остаётся пустой.
+                ("", ""),
                 ("Н. контр.", _title.NormControl), ("Утв.", _title.Approver),
             };
             var y = header + 5;

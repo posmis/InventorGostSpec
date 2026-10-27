@@ -71,7 +71,6 @@ public static class ExcelFormat
         public const string Letter = "Литера";
         public const string Developer = "Разработал";
         public const string Checker = "Проверил";
-        public const string TechControl = "Т. контр.";
         public const string NormControl = "Н. контр.";
         public const string Approver = "Утвердил";
         public const string FirstUse = "Перв. примен.";

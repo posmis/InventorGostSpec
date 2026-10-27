@@ -94,6 +94,7 @@ public sealed class SpecificationViewModel : ObservableObject
         AddExternalDocumentCommand = new RelayCommand(AddExternalDocument, () => CanAddExternalDocument);
         ShowDrawingFileCommand = new RelayCommand(ShowDrawingFile, () => SelectedComponent() is { } row && SpecificationEditor.IsModelRow(row) && !IsDocumentSelected);
 
+        CheckDocumentFiles();
         Rebuild();
         _isDirty = isNew;
     }
@@ -426,6 +427,7 @@ public sealed class SpecificationViewModel : ObservableObject
     {
         var components = _host.ReadComponents();
         var result = SpecificationUpdater.Update(Specification, components, _context, DateTime.UtcNow);
+        CheckDocumentFiles();
         Changed(rebuild: true);
 
         if (result.IsInitialBuild)
@@ -471,11 +473,13 @@ public sealed class SpecificationViewModel : ObservableObject
     private void AcceptChanges()
     {
         var removed = Specification.Rows.Count(r => r.Kind == RowKind.Component && r.IsRemoved);
-        if (removed > 0 && !_dialogs.Confirm($"Снять подсветку изменений и удалить строки компонентов, которых нет в сборке ({removed})?"))
+        if (removed > 0 && !_dialogs.Confirm($"Снять все уведомления и удалить строки компонентов, которых нет в сборке ({removed})?"))
         {
             return;
         }
 
+        // «Файл изменён»: запоминается текущее содержимое файлов; сами ссылки не меняются.
+        TryHostAction(() => ExternalDocuments.AcceptFiles(Specification, _host.AssemblyFolder));
         SpecificationEditor.AcceptChanges(Specification);
         Changed(rebuild: true);
     }
@@ -705,6 +709,7 @@ public sealed class SpecificationViewModel : ObservableObject
             }
 
             last = SpecificationEditor.AddExternalDocument(Specification, _context, StoredPath(folder, file), afterRowId);
+            last.DocumentHash = ExternalDocuments.Hash(file);
             afterRowId = last.Id;
         }
 
@@ -742,6 +747,10 @@ public sealed class SpecificationViewModel : ObservableObject
 
         _dialogs.ShowInFolder(document);
     }
+
+    /// <summary>Отмечает сторонние документы, файлы которых изменились (уведомление, ссылки не меняются).</summary>
+    private void CheckDocumentFiles() =>
+        TryHostAction(() => ExternalDocuments.CheckFiles(Specification, _host.AssemblyFolder));
 
     private void ShowComponentFile()
     {
@@ -1423,6 +1432,19 @@ public sealed class SpecificationViewModel : ObservableObject
         }
     }
 
+    /// <summary>Действие с файлами (папка сборки из Inventor); ошибка — в журнал, работа окна продолжается.</summary>
+    private void TryHostAction(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception ex)
+        {
+            _host.ReportError(ex);
+        }
+    }
+
     /// <summary>Выделяет строку и прокручивает к ней; если её скрывает поиск — поиск сбрасывается.</summary>
     private void GoToRow(string rowId)
     {
@@ -1664,6 +1686,7 @@ public sealed class SpecificationViewModel : ObservableObject
         AddCount(parts, "новых", rows.Count(r => r.Status.HasFlag(RowStatus.New)));
         AddCount(parts, "изменённых", rows.Count(r => r.Status.HasFlag(RowStatus.Changed)));
         AddCount(parts, "удалённых из сборки", rows.Count(r => r.IsRemoved));
+        AddCount(parts, "изменённых файлов документов", rows.Count(r => r.Status.HasFlag(RowStatus.FileChanged)));
         AddCount(parts, "без позиции", rows.Count(r => !r.IsRemoved && r.Position is null && PositionAllocator.IsNumbered(r, _context)));
         if (Specification.LastUpdatedUtc is { } updated)
         {

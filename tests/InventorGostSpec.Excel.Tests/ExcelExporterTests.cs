@@ -81,7 +81,7 @@ public class ExcelExporterTests : IDisposable
         Assert.Equal(ExcelFormat.TitleFields.Designation, title.Cell(2, 1).GetString());
         Assert.Equal("АБВГ.301234.001", title.Cell(2, 2).GetString());
         Assert.Equal("Иванов", title.Cell(6, 2).GetString());
-        Assert.Equal(ExcelFormat.TitleFields.NameHeight, title.Cell(12, 1).GetString());
+        Assert.Equal(ExcelFormat.TitleFields.NameHeight, title.Cell(11, 1).GetString());
         Assert.True(title.Cell(12, 2).IsEmpty());
 
         // Изменения — текстом, без превращения «1-3» и «05.25» в даты.

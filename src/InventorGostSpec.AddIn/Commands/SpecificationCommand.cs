@@ -145,7 +145,7 @@ internal sealed class SpecificationCommand : AddInCommand
                 Designation = designation,
                 Name = name.Length > 0 ? name : Get(PropertyAccess.SummarySet, PropertyAccess.Title),
                 // Как в ГОСТ-шаблонах чертежей Inventor: «Утвердил (инженер)» — нормоконтроль,
-                // «Утвердил (технолог)» — утверждающий. «Т. контр.» в iProperties нет — заполняется в Excel.
+                // «Утвердил (технолог)» — утверждающий. Строка «Т. контр.» в спецификации пустая.
                 Developer = Get(PropertyAccess.DesignTrackingSet, PropertyAccess.Designer),
                 Checker = Get(PropertyAccess.DesignTrackingSet, PropertyAccess.CheckedBy),
                 NormControl = Get(PropertyAccess.DesignTrackingSet, PropertyAccess.EngineeringApprovedBy),

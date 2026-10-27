@@ -45,6 +45,11 @@
                         <Setter TargetName="Badge" Property="Background" Value="{StaticResource Brush.RemovedBadge}" />
                         <Setter TargetName="BadgeText" Property="Text" Value="нет в сборке" />
                     </DataTrigger>
+                    <DataTrigger Binding="{Binding IsFileChanged}" Value="True">
+                        <Setter TargetName="Badge" Property="Visibility" Value="Visible" />
+                        <Setter TargetName="Badge" Property="Background" Value="{StaticResource Brush.ChangedBadge}" />
+                        <Setter TargetName="BadgeText" Property="Text" Value="файл изменён" />
+                    </DataTrigger>
                 </DataTemplate.Triggers>
             </DataTemplate>
             <Style TargetType="Image" x:Key="MenuIcon">
@@ -122,8 +127,8 @@
                                                  ToolTip="Перейти к следующей подсвеченной строке (F3)" />
                             <controls:IconButton Icon="{StaticResource Icon.Formats}" Text="Форматы" Command="{Binding DrawingFormatsCommand}"
                                                  ToolTip="Найти чертежи деталей (выбранных строк или всех деталей) и записать форматы всех их листов в свойства деталей: «А1, А2х3, А2» в порядке уменьшения" />
-                            <controls:IconButton Icon="{StaticResource Icon.Accept}" Text="Принять" Command="{Binding AcceptChangesCommand}"
-                                                 ToolTip="Принять изменения: снять подсветку и удалить строки компонентов, которых нет в сборке" />
+                            <controls:IconButton Icon="{StaticResource Icon.Accept}" Text="Сбросить уведомления" Command="{Binding AcceptChangesCommand}"
+                                                 ToolTip="Снять все отметки: «новый», «изменён», «файл изменён» (у сторонних документов запоминается их текущее содержимое, ссылки не меняются) и удалить строки компонентов, которых нет в сборке" />
                         </StackPanel>
                     </HeaderedContentControl>
 
@@ -256,6 +261,9 @@
                                 <Setter Property="Background" Value="{StaticResource Brush.NewRow}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding IsChanged}" Value="True">
+                                <Setter Property="Background" Value="{StaticResource Brush.ChangedRow}" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsFileChanged}" Value="True">
                                 <Setter Property="Background" Value="{StaticResource Brush.ChangedRow}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding IsRemoved}" Value="True">

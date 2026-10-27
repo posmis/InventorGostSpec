@@ -171,7 +171,6 @@ public static class ExcelExporter
             (ExcelFormat.TitleFields.Letter, title.Letter),
             (ExcelFormat.TitleFields.Developer, title.Developer),
             (ExcelFormat.TitleFields.Checker, title.Checker),
-            (ExcelFormat.TitleFields.TechControl, title.TechControl),
             (ExcelFormat.TitleFields.NormControl, title.NormControl),
             (ExcelFormat.TitleFields.Approver, title.Approver),
             (ExcelFormat.TitleFields.FirstUse, title.FirstUse),

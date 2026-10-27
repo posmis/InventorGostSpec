@@ -44,6 +44,9 @@ public enum RowStatus
 
     /// <summary>Компонента больше нет в сборке.</summary>
     Removed = 4,
+
+    /// <summary>Файл стороннего документа изменился после добавления (или после последнего «Сбросить уведомления»).</summary>
+    FileChanged = 8,
 }
 
 public sealed class SpecRow
@@ -94,6 +97,9 @@ public sealed class SpecRow
     /// (или полный, если файл на другом диске). Пусто — строка не связана с файлом.
     /// </summary>
     public string DocumentFile { get; set; } = "";
+
+    /// <summary>SHA-256 файла <see cref="DocumentFile"/> на момент добавления или сброса уведомлений.</summary>
+    public string DocumentHash { get; set; } = "";
 
     /// <summary>Значения до последнего обновления для колонок, которые изменились.</summary>
     public Dictionary<SpecColumn, string> PreviousValues { get; set; } = new();

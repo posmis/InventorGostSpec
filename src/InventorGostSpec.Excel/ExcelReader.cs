@@ -129,7 +129,6 @@ public static class ExcelReader
             [ExcelFormat.TitleFields.Letter] = v => title.Letter = v,
             [ExcelFormat.TitleFields.Developer] = v => title.Developer = v,
             [ExcelFormat.TitleFields.Checker] = v => title.Checker = v,
-            [ExcelFormat.TitleFields.TechControl] = v => title.TechControl = v,
             [ExcelFormat.TitleFields.NormControl] = v => title.NormControl = v,
             [ExcelFormat.TitleFields.Approver] = v => title.Approver = v,
             [ExcelFormat.TitleFields.FirstUse] = v => title.FirstUse = v,

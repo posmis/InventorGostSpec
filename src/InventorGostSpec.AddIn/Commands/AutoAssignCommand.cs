@@ -42,6 +42,10 @@ internal sealed class AutoAssignCommand : AddInCommand
         var skipped = 0;
         var failed = new List<string>();
 
+        // Поиск чертежей — один на команду: файлы проекта перечисляются один раз.
+        var drawings = new Lazy<DrawingSearch>(() => new DrawingSearch(
+            context.Application,
+            items.Select(i => System.IO.Path.GetDirectoryName(i.Target.FullFileName ?? "") ?? "").Distinct()));
         using (var transaction = new InventorTransaction(context.Application, (Document)assembly, "Авторазделы"))
         {
             foreach (var item in items)
@@ -55,7 +59,7 @@ internal sealed class AutoAssignCommand : AddInCommand
 
                 try
                 {
-                    Assign(context, target);
+                    Assign(context, target, drawings);
                     assigned++;
                 }
                 catch (Exception ex)
@@ -82,7 +86,7 @@ internal sealed class AutoAssignCommand : AddInCommand
         context.Messages.Info(message);
     }
 
-    private static void Assign(AddInContext context, ComponentTarget target)
+    private static void Assign(AddInContext context, ComponentTarget target, Lazy<DrawingSearch> drawings)
     {
         var section = SectionResolver.GetDefault(target.Kind, target.IsContentCenter);
         target.Set(PropertyNames.Section, section);
@@ -100,7 +104,7 @@ internal sealed class AutoAssignCommand : AddInCommand
         // Формат берётся из чертежа только у деталей. У сборочной единицы в спецификации указывается
         // формат её спецификации (А4) — его подставляет сама спецификация, а не формат сборочного чертежа.
         if (target.Kind == ComponentKind.Part && target.FullFileName is not null && target.Get(PropertyNames.Format).Length == 0 &&
-            DrawingAccess.FindModelDrawing(context.Application, target.FullFileName, target.PartNumber) is { } drawing)
+            drawings.Value.Find(target.FullFileName, target.PartNumber, isAssembly: false) is { } drawing)
         {
             SetIfEmpty(target, PropertyNames.Format, DrawingAccess.ReadFormat(context.Application, drawing));
         }

@@ -164,14 +164,18 @@ internal sealed class SpecificationCommand : AddInCommand
         {
             var keys = componentKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
             var result = new Dictionary<string, DrawingFormat>(StringComparer.OrdinalIgnoreCase);
-            foreach (var item in BomAccess.GetFirstLevel(_assembly).Where(i => keys.Contains(i.Key)))
+            var items = BomAccess.GetFirstLevel(_assembly).Where(i => keys.Contains(i.Key)).ToList();
+            var search = new DrawingSearch(
+                _context.Application,
+                items.Select(i => System.IO.Path.GetDirectoryName(i.Target.FullFileName ?? "") ?? "").Distinct());
+            foreach (var item in items)
             {
                 if (result.ContainsKey(item.Key) || item.Target.FullFileName is not { } file)
                 {
                     continue;
                 }
 
-                var drawing = DrawingAccess.FindModelDrawing(_context.Application, file, item.Target.PartNumber);
+                var drawing = search.Find(file, item.Target.PartNumber, item.Target.Kind == ComponentKind.Assembly);
                 result[item.Key] = drawing is null
                     ? new DrawingFormat(null, "")
                     : new DrawingFormat(drawing, DrawingAccess.ReadFormat(_context.Application, drawing));

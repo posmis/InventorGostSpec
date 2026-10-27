@@ -5,23 +5,26 @@ namespace InventorGostSpec.Core.Sorting;
 /// <summary>Категории стандартов в последовательности записи стандартных изделий.</summary>
 public enum StandardCategory
 {
+    /// <summary>Зарубежные стандарты (DIN, ISO, EN) — записываются первыми.</summary>
+    Foreign = 0,
+
     /// <summary>Межгосударственные стандарты (ГОСТ, ГОСТ ISO).</summary>
-    Interstate = 0,
+    Interstate = 1,
 
     /// <summary>Национальные стандарты (ГОСТ Р).</summary>
-    National = 1,
+    National = 2,
 
     /// <summary>Отраслевые стандарты (ОСТ).</summary>
-    Industry = 2,
+    Industry = 3,
 
     /// <summary>Стандарты организаций (СТО, СТП).</summary>
-    Organization = 3,
+    Organization = 4,
 
-    /// <summary>Прочие (ISO, DIN и т. д.).</summary>
-    Other = 4,
+    /// <summary>Прочие (ТУ и т. д.).</summary>
+    Other = 5,
 
     /// <summary>Стандарт не указан.</summary>
-    None = 5,
+    None = 6,
 }
 
 public static class StandardCategories
@@ -38,6 +41,10 @@ public static class StandardCategories
 
     private static readonly Regex National = new(@"^ГОСТ\s*Р(?!\p{L})", RegexOptions.CultureInvariant);
 
+    private static readonly Regex Foreign = new(
+        $@"^({string.Join("|", new[] { "DIN", "ISO", "ИСО", "EN" }.Select(NaturalComparer.Normalize).Distinct())})(?!\p{{L}})",
+        RegexOptions.CultureInvariant);
+
     public static StandardCategory Categorize(string? standardNumber)
     {
         if (string.IsNullOrWhiteSpace(standardNumber))
@@ -46,6 +53,11 @@ public static class StandardCategories
         }
 
         var normalized = NaturalComparer.Normalize(standardNumber);
+        if (Foreign.IsMatch(normalized))
+        {
+            return StandardCategory.Foreign;
+        }
+
         var match = Prefix.Match(normalized);
         if (!match.Success)
         {

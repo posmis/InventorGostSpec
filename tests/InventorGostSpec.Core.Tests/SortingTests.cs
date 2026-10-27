@@ -47,7 +47,10 @@ public class StandardCategoryTests
     [InlineData("ОСТ 1 31100-80", StandardCategory.Industry)]
     [InlineData("ОСТ1 31100-80", StandardCategory.Industry)]
     [InlineData("СТО 12345678-001-2020", StandardCategory.Organization)]
-    [InlineData("DIN 933", StandardCategory.Other)]
+    [InlineData("DIN 933", StandardCategory.Foreign)]
+    [InlineData("ISO 4762", StandardCategory.Foreign)]
+    [InlineData("EN 14399-4", StandardCategory.Foreign)]
+    [InlineData("ТУ 14-1-123-90", StandardCategory.Other)]
     [InlineData("", StandardCategory.None)]
     public void Categorizes(string number, StandardCategory expected) =>
         Assert.Equal(expected, StandardCategories.Categorize(number));
@@ -136,6 +139,29 @@ public class GostRowComparerTests
                 "Кольцо 020-025-30 ГОСТ Р 52627-2006",
                 // Отраслевые.
                 "Гайка М12 ОСТ 1 33041-80",
+            },
+            result);
+    }
+
+    [Fact]
+    public void Foreign_standards_go_first()
+    {
+        var result = Sort(
+            SortRule.StandardProducts,
+            TestData.Row(SectionIds.StandardProducts, name: "Болт М8х20 ГОСТ 7798-70"),
+            TestData.Row(SectionIds.StandardProducts, name: "Гайка барашек DIN 315 - M8 - St - C"),
+            TestData.Row(SectionIds.StandardProducts, name: "Винт ISO 4762 - M6 x 20 - 8.8"),
+            TestData.Row(SectionIds.StandardProducts, name: "Кольцо 020-025-30 ГОСТ Р 52627-2006"),
+            TestData.Row(SectionIds.StandardProducts, name: "Болт М8х20 ГОСТ ISO 4014-2013"));
+
+        Assert.Equal(
+            new[]
+            {
+                "Винт ISO 4762 - M6 x 20 - 8.8",
+                "Гайка барашек DIN 315 - M8 - St - C",
+                "Болт М8х20 ГОСТ ISO 4014-2013",
+                "Болт М8х20 ГОСТ 7798-70",
+                "Кольцо 020-025-30 ГОСТ Р 52627-2006",
             },
             result);
     }

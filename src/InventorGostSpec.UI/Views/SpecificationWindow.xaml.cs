@@ -172,6 +172,9 @@ public partial class SpecificationWindow : Window, IDialogService
             ElementStyle = CreateStatusStyle(),
         });
 
+        AddColumn(SpecColumn.SortGroup, "Гр.", 40, center: true,
+            "Группа сортировки (только в этой спецификации): внутри раздела меньшее число — выше, без группы — после всех.\n" +
+            "Порядок применяется кнопкой «По ГОСТ».");
         AddColumn(SpecColumn.Format, "Формат", 58, center: true);
         AddColumn(SpecColumn.Zone, "Зона", 50, center: true);
         AddColumn(SpecColumn.Position, "Поз.", 50, center: true);
@@ -182,12 +185,12 @@ public partial class SpecificationWindow : Window, IDialogService
         AddColumn(SpecColumn.Note, "Примечание", 190, center: false);
     }
 
-    private void AddColumn(SpecColumn column, string header, DataGridLength width, bool center)
+    private void AddColumn(SpecColumn column, string header, DataGridLength width, bool center, string? headerToolTip = null)
     {
         var key = column.ToString();
         Grid.Columns.Add(new DataGridTextColumn
         {
-            Header = header,
+            Header = headerToolTip is null ? header : new TextBlock { Text = header, ToolTip = headerToolTip },
             Width = width,
             MinWidth = 40,
             SortMemberPath = key,
@@ -353,6 +356,15 @@ public partial class SpecificationWindow : Window, IDialogService
             SearchBox.Clear();
             Grid.Focus();
             e.Handled = true;
+        }
+    }
+
+    private void OnSortGroupClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { DataContext: Option option } && _viewModel?.SetSortGroupCommand is { } command &&
+            command.CanExecute(option.Id))
+        {
+            command.Execute(option.Id);
         }
     }
 

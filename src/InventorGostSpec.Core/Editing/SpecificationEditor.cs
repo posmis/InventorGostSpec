@@ -29,6 +29,9 @@ public static class SpecificationEditor
             case SpecColumn.Position:
                 row.Position = int.TryParse(value, out var position) && position > 0 ? position : null;
                 return;
+            case SpecColumn.SortGroup:
+                row.SortGroup = int.TryParse(value, out var group) && group >= 0 ? group : null;
+                return;
         }
 
         if (row.Kind == RowKind.Component)

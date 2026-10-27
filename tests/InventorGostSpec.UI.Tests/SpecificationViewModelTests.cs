@@ -459,6 +459,28 @@ public class SpecificationViewModelTests
     }
 
     [Fact]
+    public void Sort_group_is_set_for_selected_rows_and_applied_by_gost_sort()
+    {
+        var vm = Open();
+        vm.SetSelectedRows(new[] { RowByName(vm, "Ось") });
+
+        vm.SetSortGroupCommand.Execute("0");
+        Assert.Equal("0", RowByName(vm, "Ось").SortGroup);
+        // Ручной порядок не меняется, пока не нажата «По ГОСТ».
+        Assert.Equal(new[] { "Корпус", "Ось" }, vm.Rows.Where(r => r.Kind == SpecRowKind.Component).Select(r => r.Name).Take(2));
+
+        vm.ResetCommand.Execute(null);
+        Assert.Equal(new[] { "Ось", "Корпус" }, vm.Rows.Where(r => r.Kind == SpecRowKind.Component).Select(r => r.Name).Take(2));
+
+        RowByName(vm, "Корпус").SortGroup = "x";
+        Assert.Single(_dialogs.Warnings);
+
+        vm.SetSelectedRows(new[] { RowByName(vm, "Ось") });
+        vm.SetSortGroupCommand.Execute("");
+        Assert.Equal("", RowByName(vm, "Ось").SortGroup);
+    }
+
+    [Fact]
     public void Search_shows_matching_rows_with_their_headers()
     {
         var vm = Open();

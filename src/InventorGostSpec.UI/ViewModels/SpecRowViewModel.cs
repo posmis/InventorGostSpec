@@ -29,6 +29,7 @@ public sealed class SpecRowViewModel : ObservableObject
         SpecColumn.Quantity,
         SpecColumn.Unit,
         SpecColumn.Note,
+        SpecColumn.SortGroup,
     };
 
     private readonly SpecificationViewModel _owner;
@@ -119,6 +120,9 @@ public sealed class SpecRowViewModel : ObservableObject
     public string Unit { get => Get(SpecColumn.Unit); set => Set(SpecColumn.Unit, value); }
 
     public string Note { get => Get(SpecColumn.Note); set => Set(SpecColumn.Note, value); }
+
+    /// <summary>Группа сортировки (только эта спецификация).</summary>
+    public string SortGroup { get => Get(SpecColumn.SortGroup); set => Set(SpecColumn.SortGroup, value); }
 
     /// <summary>Колонка (имя <see cref="SpecColumn"/>) переопределена вручную.</summary>
     public IReadOnlyDictionary<string, bool> Overridden { get; private set; } = new Dictionary<string, bool>();

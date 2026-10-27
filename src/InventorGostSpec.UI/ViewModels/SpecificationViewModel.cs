@@ -61,6 +61,7 @@ public sealed class SpecificationViewModel : ObservableObject
         ReservesCommand = new RelayCommand(EditReserves);
         SaveCommand = new RelayCommand(Save, () => IsDirty);
         WritePositionsCommand = new RelayCommand(WritePositions);
+        SetSortGroupCommand = new RelayCommand(SetSortGroup, p => p is string && TargetRows.Any(r => r.Kind != RowKind.Note));
         EditComponentCommand = new RelayCommand(EditComponent, () => TargetRows.Any(CanEditComponent));
         NextChangeCommand = new RelayCommand(GoToNextChange, () => Specification.Rows.Any(r => r.Status != RowStatus.None));
         ClearSearchCommand = new RelayCommand(() => SearchText = "", () => IsSearching);
@@ -170,6 +171,13 @@ public sealed class SpecificationViewModel : ObservableObject
     public ICommand WritePositionsCommand { get; }
     public ICommand NextChangeCommand { get; }
 
+    /// <summary>Группа сортировки выбранных строк: параметр — число или пустая строка (без группы).</summary>
+    public ICommand SetSortGroupCommand { get; }
+
+    /// <summary>Варианты для подменю «Группа сортировки».</summary>
+    public IReadOnlyList<Option> SortGroupOptions { get; } =
+        new[] { new Option("", "Без группы") }.Concat(Enumerable.Range(0, 10).Select(i => new Option(i.ToString(), i.ToString()))).ToList();
+
     /// <summary>Свойства компонента (раздел, формат, поля сортировки) — записываются в его iProperties.</summary>
     public ICommand EditComponentCommand { get; }
     public ICommand ClearSearchCommand { get; }
@@ -231,6 +239,13 @@ public sealed class SpecificationViewModel : ObservableObject
     {
         var row = rowViewModel.Row!;
         value = value.Trim();
+
+        if (column == SpecColumn.SortGroup && value.Length > 0 && !(int.TryParse(value, out var group) && group >= 0))
+        {
+            _dialogs.Warning("Группа сортировки — целое число от 0: чем меньше, тем выше в разделе. Пусто — без группы.");
+            rowViewModel.Refresh();
+            return;
+        }
 
         if (column == SpecColumn.Position && value.Length > 0)
         {
@@ -533,6 +548,25 @@ public sealed class SpecificationViewModel : ObservableObject
         foreach (var row in TargetRows.Where(r => r.GroupId != groupId).ToList())
         {
             SpecificationEditor.MoveToGroup(Specification, _context, row, groupId);
+        }
+
+        Changed(rebuild: true);
+    }
+
+    /// <summary>
+    /// Задаёт группу сортировки выбранным строкам. Порядок применяется при «По ГОСТ»
+    /// (ручной порядок строк сам по себе не меняется).
+    /// </summary>
+    private void SetSortGroup(object? parameter)
+    {
+        if (parameter is not string value)
+        {
+            return;
+        }
+
+        foreach (var row in TargetRows.Where(r => r.Kind != RowKind.Note).ToList())
+        {
+            SpecificationEditor.SetCell(Specification, _context, row, SpecColumn.SortGroup, value);
         }
 
         Changed(rebuild: true);

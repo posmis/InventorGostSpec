@@ -14,6 +14,9 @@ public enum SpecColumn
     Quantity,
     Unit,
     Note,
+
+    /// <summary>Группа сортировки (служебная колонка, только в этой спецификации).</summary>
+    SortGroup,
 }
 
 public enum RowKind
@@ -77,6 +80,12 @@ public sealed class SpecRow
 
     public RowStatus Status { get; set; }
 
+    /// <summary>
+    /// Группа сортировки, заданная вручную: внутри раздела строки с меньшим числом идут выше,
+    /// строки без группы — после всех групп. Хранится только в этой спецификации.
+    /// </summary>
+    public int? SortGroup { get; set; }
+
     /// <summary>Группа «устанавливаемые по …» (<see cref="SpecGroup.Id"/>). Пусто — основная часть.</summary>
     public string GroupId { get; set; } = "";
 
@@ -101,6 +110,7 @@ public sealed class SpecRow
         SpecColumn.Position => Position?.ToString() ?? "",
         SpecColumn.Zone => Zone,
         SpecColumn.Note => Note,
+        SpecColumn.SortGroup => SortGroup?.ToString() ?? "",
         _ => Overrides.TryGetValue(column, out var value) ? value : Source.Get(column),
     };
 }

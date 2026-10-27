@@ -31,6 +31,13 @@ public sealed class GostRowComparer : IComparer<SpecRow>
             return 1;
         }
 
+        // Группа сортировки, заданная вручную, важнее правил ГОСТ; строки без группы — после всех групп.
+        var byGroup = (x.SortGroup ?? int.MaxValue).CompareTo(y.SortGroup ?? int.MaxValue);
+        if (byGroup != 0)
+        {
+            return byGroup;
+        }
+
         var result = _rule switch
         {
             SortRule.Documentation => CompareDocuments(x, y),

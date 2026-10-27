@@ -10,7 +10,6 @@ namespace InventorGostSpec.Pdf;
 /// </summary>
 public static class ExcelSheetMarker
 {
-    private static readonly XLColor ThinColor = XLColor.FromHtml("#D9DDE3");
     private static readonly XLColor MarkColor = XLColor.FromHtml("#1F2937");
 
     /// <summary>Размечает файл и возвращает число листов.</summary>
@@ -39,13 +38,12 @@ public static class ExcelSheetMarker
             // Снимаем прошлую разметку.
             var body = sheet.Range(2, 1, last, width);
             body.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
-            body.Style.Border.BottomBorderColor = ThinColor;
+            body.Style.Border.BottomBorderColor = ExcelStyle.GridColor;
             sheet.Range(1, ExcelFormat.SheetColumn, last, ExcelFormat.SheetColumn).Clear();
 
             var header = sheet.Cell(1, ExcelFormat.SheetColumn);
             header.Value = ExcelFormat.SheetColumnTitle;
-            header.Style.Font.Bold = true;
-            header.Style.Fill.BackgroundColor = XLColor.FromHtml("#EEF1F5");
+            ExcelStyle.Header(header.AsRange());
             header.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
             sheet.Column(ExcelFormat.SheetColumn).Width = 9;
 

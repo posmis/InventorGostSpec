@@ -16,7 +16,6 @@ public static class ExcelExporter
     // Ширины колонок (в символах) примерно в пропорциях граф спецификации по ГОСТ 2.106.
     private static readonly double[] Widths = { 11, 7, 6, 6, 26, 46, 7, 8, 22 };
 
-    private static readonly XLColor HeaderFill = XLColor.FromHtml("#EEF1F5");
     private static readonly XLColor SectionFill = XLColor.FromHtml("#F7F8FA");
     private static readonly XLColor GroupFill = XLColor.FromHtml("#E1ECF7");
     private static readonly XLColor MutedFont = XLColor.FromHtml("#9CA3AF");
@@ -42,8 +41,7 @@ public static class ExcelExporter
         }
 
         var header = sheet.Range(1, 1, 1, ExcelFormat.Columns.Length);
-        header.Style.Font.Bold = true;
-        header.Style.Fill.BackgroundColor = HeaderFill;
+        ExcelStyle.Header(header);
         header.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         header.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
         sheet.Row(1).Height = 22;
@@ -57,10 +55,7 @@ public static class ExcelExporter
 
         var last = Math.Max(row - 1, 1);
         var table = sheet.Range(1, 1, last, ExcelFormat.Columns.Length);
-        table.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-        table.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-        table.Style.Border.InsideBorderColor = XLColor.FromHtml("#D9DDE3");
-        table.Style.Border.OutsideBorderColor = XLColor.FromHtml("#D9DDE3");
+        ExcelStyle.Grid(table);
         table.Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
         sheet.Range(2, 1, Math.Max(last, 2), ExcelFormat.Columns.Length).Style.Alignment.WrapText = true;
 
@@ -159,8 +154,7 @@ public static class ExcelExporter
         sheet.Cell(1, 1).Value = "Поле";
         sheet.Cell(1, 2).Value = "Значение";
         var header = sheet.Range(1, 1, 1, 2);
-        header.Style.Font.Bold = true;
-        header.Style.Fill.BackgroundColor = HeaderFill;
+        ExcelStyle.Header(header);
 
         var fields = new (string Field, string Value)[]
         {
@@ -197,10 +191,7 @@ public static class ExcelExporter
         sheet.Column(1).Width = 24;
         sheet.Column(2).Width = 60;
         var table = sheet.Range(1, 1, heightRow, 2);
-        table.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-        table.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-        table.Style.Border.InsideBorderColor = XLColor.FromHtml("#D9DDE3");
-        table.Style.Border.OutsideBorderColor = XLColor.FromHtml("#D9DDE3");
+        ExcelStyle.Grid(table);
     }
 
     // Пустых строк под записи изменений (с рамкой и текстовым форматом), сверх уже внесённых.
@@ -216,8 +207,7 @@ public static class ExcelExporter
         }
 
         var header = sheet.Range(1, 1, 1, ExcelFormat.ChangeColumns.Length);
-        header.Style.Font.Bold = true;
-        header.Style.Fill.BackgroundColor = HeaderFill;
+        ExcelStyle.Header(header);
         header.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
 
         var last = changes.Count + SpareChangeRows + 1;
@@ -238,10 +228,7 @@ public static class ExcelExporter
         }
 
         var table = sheet.Range(1, 1, last, ExcelFormat.ChangeColumns.Length);
-        table.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
-        table.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-        table.Style.Border.InsideBorderColor = XLColor.FromHtml("#D9DDE3");
-        table.Style.Border.OutsideBorderColor = XLColor.FromHtml("#D9DDE3");
+        ExcelStyle.Grid(table);
         sheet.SheetView.FreezeRows(1);
     }
 

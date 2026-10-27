@@ -12,6 +12,15 @@ public sealed class ComponentSnapshot
 {
     private static readonly CultureInfo RuCulture = CultureInfo.GetCultureInfo("ru-RU");
 
+    /// <summary>Формат спецификации — его указывают в графе «Формат» у сборочных единиц и комплексов.</summary>
+    public const string SpecificationFormat = "А4";
+
+    private static readonly HashSet<string> SectionsWithSpecification = new(StringComparer.OrdinalIgnoreCase)
+    {
+        SectionIds.AssemblyUnits,
+        SectionIds.Complexes,
+    };
+
     private static readonly HashSet<string> SectionsWithoutDesignation = new(StringComparer.OrdinalIgnoreCase)
     {
         SectionIds.StandardProducts,
@@ -50,6 +59,12 @@ public sealed class ComponentSnapshot
             Parameters = Clean(component.Parameters),
             MaterialKind = Clean(component.MaterialKind),
         };
+
+        // У сборочной единицы (комплекса) в графе «Формат» — формат её спецификации, то есть А4.
+        if (snapshot.Format.Length == 0 && SectionsWithSpecification.Contains(snapshot.SectionId))
+        {
+            snapshot.Format = SpecificationFormat;
+        }
 
         // ГОСТ 2.106: в разделах стандартных, прочих изделий и материалов графа «Обозначение» не заполняется.
         // Если наименования нет (у Content Center оно часто только в Part Number), берём его из обозначения.

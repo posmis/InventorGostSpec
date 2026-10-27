@@ -31,6 +31,19 @@ public class SnapshotTests
         Assert.Equal("2,5", snapshot.Quantity);
     }
 
+    [Fact]
+    public void Assembly_unit_gets_specification_format_a4()
+    {
+        Assert.Equal("А4", ComponentSnapshot.FromComponent(TestData.Assembly("А.100СБ", "Привод")).Format);
+
+        var withFormat = TestData.Assembly("А.101", "Рама");
+        withFormat.Format = "А3";
+        Assert.Equal("А3", ComponentSnapshot.FromComponent(withFormat).Format);
+
+        // У деталей формат не подставляется.
+        Assert.Equal("", ComponentSnapshot.FromComponent(TestData.Part("А.001", "Ось")).Format);
+    }
+
     [Theory]
     [InlineData(ComponentKind.Document, false, SectionIds.Documentation)]
     [InlineData(ComponentKind.Part, true, SectionIds.StandardProducts)]

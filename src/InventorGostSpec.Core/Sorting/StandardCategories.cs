@@ -75,6 +75,20 @@ public static class StandardCategories
             : StandardCategory.Organization;
     }
 
+    /// <summary>
+    /// Ранг для записи стандартных изделий: зарубежные (DIN, ISO, EN) → ГОСТ и ГОСТ Р вместе
+    /// (по наименованию, как в КОМПАС-3D) → ОСТ → СТО → прочие → без стандарта.
+    /// </summary>
+    public static int SortRank(string? standardNumber) => Categorize(standardNumber) switch
+    {
+        StandardCategory.Foreign => 0,
+        StandardCategory.Interstate or StandardCategory.National => 1,
+        StandardCategory.Industry => 2,
+        StandardCategory.Organization => 3,
+        StandardCategory.Other => 4,
+        _ => 5,
+    };
+
     /// <summary>Номер стандарта без префикса категории: «ГОСТ Р 52627-2006» → «52627-2006».</summary>
     public static string StripPrefix(string? standardNumber)
     {

@@ -69,7 +69,7 @@ public sealed class GostRowComparer : IComparer<SpecRow>
         var fx = SortFields.Of(x);
         var fy = SortFields.Of(y);
         return First(
-            StandardCategories.Categorize(fx.StandardNumber).CompareTo(StandardCategories.Categorize(fy.StandardNumber)),
+            StandardCategories.SortRank(fx.StandardNumber).CompareTo(StandardCategories.SortRank(fy.StandardNumber)),
             () => NaturalComparer.CompareEmptyLast(fx.Group, fy.Group),
             () => NaturalComparer.CompareEmptyLast(fx.SortName, fy.SortName),
             () => NaturalComparer.CompareEmptyLast(

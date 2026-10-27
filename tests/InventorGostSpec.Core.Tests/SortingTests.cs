@@ -128,15 +128,14 @@ public class GostRowComparerTests
         Assert.Equal(
             new[]
             {
-                // Межгосударственные: по наименованию, затем по номеру стандарта, затем по размерам.
+                // ГОСТ и ГОСТ Р вместе (как в КОМПАС-3D): по наименованию, затем по номеру стандарта, затем по размерам.
                 "Болт М6х20 ГОСТ 7796-70",
                 "Болт М8х20 ГОСТ 7798-70",
                 "Болт М12х40 ГОСТ 7798-70",
                 "Болт М12х60 ГОСТ 7798-70",
                 "Гайка М12 ГОСТ 5915-70",
-                "Шайба 12 ГОСТ 6402-70",
-                // Национальные.
                 "Кольцо 020-025-30 ГОСТ Р 52627-2006",
+                "Шайба 12 ГОСТ 6402-70",
                 // Отраслевые.
                 "Гайка М12 ОСТ 1 33041-80",
             },
@@ -162,6 +161,31 @@ public class GostRowComparerTests
                 "Болт М8х20 ГОСТ ISO 4014-2013",
                 "Болт М8х20 ГОСТ 7798-70",
                 "Кольцо 020-025-30 ГОСТ Р 52627-2006",
+            },
+            result);
+    }
+
+    [Fact]
+    public void Gost_and_gost_r_are_sorted_together_by_name()
+    {
+        var result = Sort(
+            SortRule.StandardProducts,
+            TestData.Row(SectionIds.StandardProducts, name: "Шайба 8 ГОСТ 6402-70"),
+            TestData.Row(SectionIds.StandardProducts, name: "Рым-болт М8 ГОСТ 4751-73"),
+            TestData.Row(SectionIds.StandardProducts, name: "Манжета 1-20х40-1 ГОСТ 8752-79"),
+            TestData.Row(SectionIds.StandardProducts, name: "Заклепка 3,2x8 AlA/St ГОСТ Р ИСО 15973-2005"),
+            TestData.Row(SectionIds.StandardProducts, name: "Гайка М8 ГОСТ 5915-70"),
+            TestData.Row(SectionIds.StandardProducts, name: "Болт М8х20 ГОСТ 7798-70"));
+
+        Assert.Equal(
+            new[]
+            {
+                "Болт М8х20 ГОСТ 7798-70",
+                "Гайка М8 ГОСТ 5915-70",
+                "Заклепка 3,2x8 AlA/St ГОСТ Р ИСО 15973-2005",
+                "Манжета 1-20х40-1 ГОСТ 8752-79",
+                "Рым-болт М8 ГОСТ 4751-73",
+                "Шайба 8 ГОСТ 6402-70",
             },
             result);
     }

@@ -163,7 +163,8 @@ public static class GostPdfWriter
                 var x = ColumnLeft(column);
 
                 // Весь текст строк — шрифт 5; в узкой графе «Формат» он сжимается по ширине.
-                var section = line.Style == LineStyle.Section && column == NameColumn;
+                // Заголовки разделов и групп «Изделия, устанавливаемые по …» подчёркиваются (каждая строка).
+                var section = line.Style != LineStyle.Normal && column == NameColumn;
                 var padding = column == FormatColumn ? NarrowPadding : (double?)null;
                 var gap = RowBaselineGap;
                 var width = _text.DrawInBox(_gfx, value, x, y, ColumnWidths[column], height, RowTextHeight, align, padding, gap);

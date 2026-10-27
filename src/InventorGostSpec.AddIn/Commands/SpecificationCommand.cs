@@ -160,6 +160,11 @@ internal sealed class SpecificationCommand : AddInCommand
 
         public string? BuildPdf(string excelPath, string pdfPath) => PdfToolRunner.Run(excelPath, pdfPath);
 
+        public IReadOnlyDictionary<string, string> ReadBomItemNumbers() =>
+            BomAccess.GetFirstLevel(_assembly)
+                .GroupBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().Row.ItemNumber ?? "", StringComparer.OrdinalIgnoreCase);
+
         public string? OpenPdfSettings(string? excelPath) => PdfToolRunner.OpenWindow(excelPath);
 
         public void ReportError(Exception exception) => Log.Error("SpecificationWindow", exception);

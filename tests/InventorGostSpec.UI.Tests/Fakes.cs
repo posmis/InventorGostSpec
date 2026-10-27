@@ -51,13 +51,21 @@ internal sealed class FakeHost : ISpecificationHost
 
     public string ExportFolder { get; set; } = Path.GetTempPath();
 
-    public ExportInfo GetExportInfo() =>
-        new(new TitleBlock { Designation = "АБВГ.301234.001", Name = "Привод" }, Path.Combine(ExportFolder, "spec.xlsx"));
+    /// <summary>Основная надпись из «iProperties сборки».</summary>
+    public Func<TitleBlock> Title { get; set; } = () => new TitleBlock { Designation = "АБВГ.301234.001", Name = "Привод" };
+
+    public ExportInfo GetExportInfo() => new(Title(), Path.Combine(ExportFolder, "spec.xlsx"));
 
     /// <summary>Вызовы утилиты PDF: (Excel, PDF). Пока идёт вызов, временный Excel существует.</summary>
     public List<(string Excel, string Pdf, bool ExcelExisted)> PdfCalls { get; } = new();
 
     public string? PdfError { get; set; }
+
+    /// <summary>Номера позиций в BOM; <c>null</c> — чтение BOM завершается ошибкой.</summary>
+    public Dictionary<string, string>? BomItemNumbers { get; set; } = new();
+
+    public IReadOnlyDictionary<string, string> ReadBomItemNumbers() =>
+        BomItemNumbers ?? throw new InvalidOperationException("BOM недоступна.");
 
     public List<string?> SettingsOpened { get; } = new();
 
@@ -154,6 +162,17 @@ internal sealed class FakeDialogs : IDialogService
     public string? AskExportPath(string defaultPath) => ExportPath(defaultPath);
 
     public string? AskPdfPath(string defaultPath) => ExportPath(defaultPath);
+
+    /// <summary>Последнее показанное окно проверки и что «выбрал» пользователь (строка для перехода).</summary>
+    public CheckViewModel? LastCheck { get; private set; }
+
+    public Func<CheckViewModel, string?> OnCheck { get; set; } = _ => null;
+
+    public string? ShowCheckResults(CheckViewModel viewModel)
+    {
+        LastCheck = viewModel;
+        return OnCheck(viewModel);
+    }
 
     public void OpenFile(string path) => OpenedFiles.Add(path);
 

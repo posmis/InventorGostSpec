@@ -42,6 +42,9 @@ public interface ISpecificationHost
     /// </summary>
     string? ReadComponentNote(string componentKey);
 
+    /// <summary>Номера позиций в BOM Inventor (Item Number) по ключу компонента — для проверки расхождений.</summary>
+    IReadOnlyDictionary<string, string> ReadBomItemNumbers();
+
     /// <summary>Данные основной надписи (из iProperties сборки) и путь к файлу экспорта по умолчанию.</summary>
     ExportInfo GetExportInfo();
 
@@ -89,6 +92,11 @@ public interface IDialogService
 
     /// <summary>Выбор файла PDF. <c>null</c> — отмена.</summary>
     string? AskPdfPath(string defaultPath);
+
+    /// <summary>
+    /// Показывает замечания проверки. Возвращает строку, к которой нужно перейти (<c>null</c> — просто закрыть).
+    /// </summary>
+    string? ShowCheckResults(CheckViewModel viewModel);
 
     /// <summary>Открывает файл в связанной программе (Excel).</summary>
     void OpenFile(string path);

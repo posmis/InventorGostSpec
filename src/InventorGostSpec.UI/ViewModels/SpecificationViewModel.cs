@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using InventorGostSpec.Core.Checking;
 using InventorGostSpec.Core.Editing;
 using InventorGostSpec.Core.Model;
 using InventorGostSpec.Core.Positions;
@@ -14,6 +15,9 @@ namespace InventorGostSpec.UI.ViewModels;
 /// </summary>
 public sealed class SpecificationViewModel : ObservableObject
 {
+    /// <summary>Сколько шагов можно отменить.</summary>
+    public const int UndoLimit = 100;
+
     private readonly ISpecificationHost _host;
     private readonly IDialogService _dialogs;
     private readonly Action<Action> _post;
@@ -24,6 +28,12 @@ public sealed class SpecificationViewModel : ObservableObject
     private string _statusText = "";
     private string _searchText = "";
     private List<SpecRowViewModel> _selectedRows = new();
+
+    // Отмена: снимки спецификации (JSON) до и после каждого изменения.
+    private readonly List<string> _undo = new();
+    private readonly List<string> _redo = new();
+    private string _current;
+    private string? _saved;
 
     /// <param name="isNew">Спецификация только что сформирована и ещё не сохранена: закрытие без сохранения её потеряет.</param>
     /// <param name="post">
@@ -42,6 +52,8 @@ public sealed class SpecificationViewModel : ObservableObject
         _settings = host.LoadSettings();
         Specification = SpecificationSerializer.Deserialize(SpecificationSerializer.Serialize(specification));
         _context = CreateContext();
+        _current = SpecificationSerializer.Serialize(Specification);
+        _saved = isNew ? null : _current;
 
         UpdateFromAssemblyCommand = new RelayCommand(UpdateFromAssembly);
         ResetCommand = new RelayCommand(Reset);
@@ -69,6 +81,9 @@ public sealed class SpecificationViewModel : ObservableObject
         EditComponentCommand = new RelayCommand(EditComponent, () => TargetRows.Any(CanEditComponent));
         NextChangeCommand = new RelayCommand(GoToNextChange, () => Specification.Rows.Any(r => r.Status != RowStatus.None));
         ClearSearchCommand = new RelayCommand(() => SearchText = "", () => IsSearching);
+        UndoCommand = new RelayCommand(Undo, () => _undo.Count > 0);
+        RedoCommand = new RelayCommand(Redo, () => _redo.Count > 0);
+        CheckCommand = new RelayCommand(Check, () => !IsEmpty);
 
         Rebuild();
         _isDirty = isNew;
@@ -105,7 +120,7 @@ public sealed class SpecificationViewModel : ObservableObject
     /// <summary>Запрос начать редактирование ячейки (например, у только что добавленной строки).</summary>
     public event Action<SpecRowViewModel, SpecColumn>? EditRequested;
 
-    public Specification Specification { get; }
+    public Specification Specification { get; private set; }
 
     public ObservableCollection<SpecRowViewModel> Rows { get; } = new();
 
@@ -197,6 +212,23 @@ public sealed class SpecificationViewModel : ObservableObject
     /// <summary>Свойства компонента (раздел, формат, поля сортировки) — записываются в его iProperties.</summary>
     public ICommand EditComponentCommand { get; }
     public ICommand ClearSearchCommand { get; }
+
+    /// <summary>
+    /// Отменить последнее изменение (Ctrl+Z). Отменяется изменение спецификации; свойства, уже записанные
+    /// в файлы деталей командой «Свойства», и общие настройки не откатываются.
+    /// </summary>
+    public ICommand UndoCommand { get; }
+
+    /// <summary>Вернуть отменённое изменение (Ctrl+Y).</summary>
+    public ICommand RedoCommand { get; }
+
+    /// <summary>Проверка перед выпуском: позиции, обязательные графы, повторы, расхождения с BOM.</summary>
+    public ICommand CheckCommand { get; }
+
+    /// <summary>Подсказки кнопок отмены: что будет отменено.</summary>
+    public string UndoToolTip => _undo.Count > 0 ? $"Отменить (Ctrl+Z). Можно отменить шагов: {_undo.Count}" : "Отменить (Ctrl+Z): нечего отменять";
+
+    public string RedoToolTip => _redo.Count > 0 ? $"Вернуть (Ctrl+Y). Можно вернуть шагов: {_redo.Count}" : "Вернуть (Ctrl+Y): нечего возвращать";
 
     /// <summary>Поиск по обозначению, наименованию, примечанию и позиции. Показываются только найденные строки.</summary>
     public string SearchText
@@ -613,6 +645,18 @@ public sealed class SpecificationViewModel : ObservableObject
     private void ExportPdf()
     {
         CommitEdits?.Invoke();
+
+        // PDF — документ для выпуска: явные ошибки (нет позиции, повтор позиции, нет наименования) показываем заранее.
+        var errors = SpecificationChecker.Check(Specification, _context).Where(i => i.Severity == IssueSeverity.Error).ToList();
+        if (errors.Count > 0 && !_dialogs.Confirm(
+                $"В спецификации ошибки: {errors.Count}.\n\n" +
+                string.Join("\n", errors.Take(5).Select(e => "• " + e.Message)) +
+                (errors.Count > 5 ? "\n…" : "") +
+                "\n\nВсё равно создать PDF? Подробно — кнопка «Проверка»."))
+        {
+            return;
+        }
+
         var info = _host.GetExportInfo();
         var path = _dialogs.AskPdfPath(System.IO.Path.ChangeExtension(info.DefaultPath, ".pdf"));
         if (path is null)
@@ -794,8 +838,115 @@ public sealed class SpecificationViewModel : ObservableObject
 
     private void Save()
     {
+        TakeSnapshot();
         _host.Save(Specification);
+        _saved = _current;
         IsDirty = false;
+    }
+
+    private void Undo() => Step(_undo, _redo);
+
+    private void Redo() => Step(_redo, _undo);
+
+    /// <summary>Переход к снимку из <paramref name="from"/>; текущее состояние уходит в <paramref name="to"/>.</summary>
+    private void Step(List<string> from, List<string> to)
+    {
+        CommitEdits?.Invoke();
+        TakeSnapshot();
+        if (from.Count == 0)
+        {
+            return;
+        }
+
+        to.Add(_current);
+        _current = from[^1];
+        from.RemoveAt(from.Count - 1);
+        Specification = SpecificationSerializer.Deserialize(_current);
+        _context = CreateContext();
+        IsDirty = _current != _saved;
+        OnPropertyChanged(nameof(ShowReserveRows));
+        Rebuild();
+        OnUndoChanged();
+    }
+
+    /// <summary>
+    /// Запоминает текущее состояние как шаг отмены, если оно изменилось с прошлого снимка.
+    /// Возвращает, было ли изменение.
+    /// </summary>
+    private bool TakeSnapshot()
+    {
+        var snapshot = SpecificationSerializer.Serialize(Specification);
+        if (snapshot == _current)
+        {
+            return false;
+        }
+
+        _undo.Add(_current);
+        if (_undo.Count > UndoLimit)
+        {
+            _undo.RemoveAt(0);
+        }
+
+        _redo.Clear();
+        _current = snapshot;
+        OnUndoChanged();
+        return true;
+    }
+
+    private void OnUndoChanged()
+    {
+        OnPropertyChanged(nameof(UndoToolTip));
+        OnPropertyChanged(nameof(RedoToolTip));
+    }
+
+    private void Check()
+    {
+        CommitEdits?.Invoke();
+        var input = new CheckInput
+        {
+            Components = TryHost(_host.ReadComponents),
+            BomItemNumbers = TryHost(_host.ReadBomItemNumbers),
+            TitleBlock = TryHost(() => _host.GetExportInfo().TitleBlock),
+        };
+        var issues = SpecificationChecker.Check(Specification, _context, input);
+        if (issues.Count == 0)
+        {
+            _dialogs.Info("Замечаний нет.");
+            return;
+        }
+
+        if (_dialogs.ShowCheckResults(new CheckViewModel(issues)) is { } rowId)
+        {
+            GoToRow(rowId);
+        }
+    }
+
+    /// <summary>Данные из Inventor для проверки; ошибка чтения — проверка без них (ошибка в журнал).</summary>
+    private T? TryHost<T>(Func<T> read) where T : class
+    {
+        try
+        {
+            return read();
+        }
+        catch (Exception ex)
+        {
+            _host.ReportError(ex);
+            return null;
+        }
+    }
+
+    /// <summary>Выделяет строку и прокручивает к ней; если её скрывает поиск — поиск сбрасывается.</summary>
+    private void GoToRow(string rowId)
+    {
+        if (IsSearching && Rows.All(r => r.RowId != rowId))
+        {
+            _searchText = "";
+            OnPropertyChanged(nameof(SearchText));
+            OnPropertyChanged(nameof(IsSearching));
+        }
+
+        _selectedRows.Clear();
+        Rebuild(rowId);
     }
 
     private void WritePositions()
@@ -813,7 +964,8 @@ public sealed class SpecificationViewModel : ObservableObject
 
     private void Changed(bool rebuild, string? selectRowId = null)
     {
-        IsDirty = true;
+        TakeSnapshot();
+        IsDirty = _current != _saved;
         if (rebuild)
         {
             Rebuild(selectRowId);

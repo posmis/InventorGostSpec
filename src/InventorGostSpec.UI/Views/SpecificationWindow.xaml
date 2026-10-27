@@ -37,6 +37,10 @@
         <KeyBinding Key="F3" Command="{Binding NextChangeCommand}" />
         <KeyBinding Modifiers="Alt" Key="Enter" Command="{Binding EditComponentCommand}" />
         <KeyBinding Modifiers="Control" Key="S" Command="{Binding SaveCommand}" />
+        <KeyBinding Modifiers="Control" Key="Z" Command="{Binding UndoCommand}" />
+        <KeyBinding Modifiers="Control" Key="Y" Command="{Binding RedoCommand}" />
+        <KeyBinding Modifiers="Control+Shift" Key="Z" Command="{Binding RedoCommand}" />
+        <KeyBinding Key="F7" Command="{Binding CheckCommand}" />
         <KeyBinding Key="Insert" Command="{Binding AddItemCommand}" />
         <KeyBinding Modifiers="Control" Key="T" Command="{Binding AddNoteCommand}" />
         <KeyBinding Key="Delete" Command="{Binding DeleteRowCommand}" />
@@ -81,6 +85,13 @@
                 </Border>
 
                 <WrapPanel>
+                    <HeaderedContentControl Style="{StaticResource CommandGroup}" Header="Правка">
+                        <StackPanel Orientation="Horizontal">
+                            <controls:IconButton Icon="{StaticResource Icon.Undo}" Command="{Binding UndoCommand}" ToolTip="{Binding UndoToolTip}" />
+                            <controls:IconButton Icon="{StaticResource Icon.Redo}" Command="{Binding RedoCommand}" ToolTip="{Binding RedoToolTip}" />
+                        </StackPanel>
+                    </HeaderedContentControl>
+
                     <HeaderedContentControl Style="{StaticResource CommandGroup}" Header="Сборка">
                         <StackPanel Orientation="Horizontal">
                             <controls:IconButton Icon="{StaticResource Icon.Refresh}" Text="Обновить из сборки" Command="{Binding UpdateFromAssemblyCommand}"
@@ -133,6 +144,8 @@
 
                     <HeaderedContentControl Style="{StaticResource CommandGroup}" Header="Вывод">
                         <StackPanel Orientation="Horizontal">
+                            <controls:IconButton Icon="{StaticResource Icon.Check}" Text="Проверка" Command="{Binding CheckCommand}"
+                                                 ToolTip="Проверить спецификацию перед выпуском (F7): позиции, обязательные графы, повторы обозначений, расхождения с BOM Inventor, основная надпись" />
                             <controls:IconButton Icon="{StaticResource Icon.Excel}" Text="Excel" Command="{Binding ExportExcelCommand}"
                                                  ToolTip="Выгрузить спецификацию в Excel: для ручной правки и вывода в PDF по ГОСТ. Резервные строки выгружаются, если включено «Показывать резерв»." />
                             <controls:IconButton Icon="{StaticResource Icon.Settings}" Text="Настройки PDF" Command="{Binding PdfSettingsCommand}"

@@ -1,0 +1,54 @@
+<Window x:Class="InventorGostSpec.UI.Views.CheckWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Проверка спецификации"
+        Width="820"
+        Height="480"
+        MinWidth="520"
+        MinHeight="260"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <DockPanel Margin="12">
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Summary}" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <TextBlock VerticalAlignment="Center" Foreground="#6B7280" Margin="0,0,12,0"
+                       Text="Двойной щелчок — перейти к строке" />
+            <Button Content="Перейти к строке" Width="130" IsDefault="True" Click="OnGoTo" IsEnabled="{Binding CanGoToRow}" />
+            <Button Content="Закрыть" Width="90" Margin="8,0,0,0" IsCancel="True" />
+        </StackPanel>
+        <ListView x:Name="List" ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" MouseDoubleClick="OnDoubleClick">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="" Width="100">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding SeverityText}" FontWeight="SemiBold">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#6B7280" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                    <Setter Property="Foreground" Value="#B91C1C" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                                                    <Setter Property="Foreground" Value="#A16207" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="Замечание" Width="660">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
+                            </DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
+    </DockPanel>
+</Window>

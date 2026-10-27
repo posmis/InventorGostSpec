@@ -16,6 +16,7 @@ internal static class PropertyAccess
     public const string Designer = "Designer";
     public const string CheckedBy = "Checked By";
     public const string EngineeringApprovedBy = "Engr Approved By";
+    public const string ManufacturingApprovedBy = "Mfg Approved By";
     public const string Company = "Company";
 
     /// <summary>Как <see cref="Get"/>, но без исключения, если набора или свойства нет.</summary>

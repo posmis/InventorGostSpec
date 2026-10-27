@@ -39,15 +39,15 @@ public class SettingsTests
     [Fact]
     public void Broken_settings_fall_back_to_defaults_and_reset_restores_them()
     {
-        var settings = new PdfSettings { Sizes = new FontSizes { TableRows = 0, Organization = 7 }, MinWidthPercent = 150 };
+        var settings = new PdfSettings { Sizes = new FontSizes { TableRows = 0, Organization = 9 }, MinWidthPercent = 150 };
 
         var options = settings.ToOptions();
         Assert.Equal(5, options.Sizes.TableRows);
-        Assert.Equal(7, options.Sizes.Organization);
+        Assert.Equal(9, options.Sizes.Organization);
         Assert.Equal(100, options.MinWidthPercent);
 
         settings.ResetSizes();
-        Assert.Equal(10, settings.Sizes.Organization);
+        Assert.Equal(7, settings.Sizes.Organization);
         Assert.Equal(80, settings.MinWidthPercent);
     }
 }

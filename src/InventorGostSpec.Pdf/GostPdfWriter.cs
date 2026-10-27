@@ -238,7 +238,7 @@ public static class GostPdfWriter
             }
 
             _text.DrawInBox(_gfx, _count.ToString(), 185, top + 20, 20, 5, _sizes.TitleBlock, TextAlign.Center);
-            // Организация — шрифт 10, одной строкой, при необходимости сжимается по ширине.
+            // Организация — одной строкой (шрифт из настроек, по умолчанию 7), при необходимости сжимается по ширине.
             var organization = string.Join(" ", _title.Organization.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
             _text.DrawLines(_gfx, new[] { organization }, 155, top + 25, 50, 15, _sizes.Organization, TextAlign.Center);
             _gfx.DrawLine(Thick, FrameLeft, top, FrameRight, top);

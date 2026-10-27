@@ -22,7 +22,7 @@ public sealed class FontSizes
     public double Name { get; set; } = 5;
 
     /// <summary>Организация в основной надписи (одной строкой).</summary>
-    public double Organization { get; set; } = 10;
+    public double Organization { get; set; } = 7;
 
     /// <summary>Надписи и данные основной надписи: «Изм.», «Разраб.», фамилии, даты, изменения, литера, листы.</summary>
     public double TitleBlock { get; set; } = 3.5;

@@ -714,6 +714,56 @@ public class AssignSectionViewModelTests
 
         Assert.Equal("", vm.GetChanges()[PropertyNames.Section]);
     }
+
+    [Fact]
+    public void First_use_is_written_to_component()
+    {
+        var vm = new AssignSectionViewModel(SectionCatalog.CreateBuiltIn(), new Dictionary<string, string?>(), "");
+
+        vm.FirstUse.Value = " АБВГ.301234.001 ";
+
+        Assert.Equal("АБВГ.301234.001", Assert.Single(vm.GetChanges()).Value);
+        Assert.Equal(PropertyNames.FirstUse, vm.GetChanges().Single().Key);
+    }
+
+    [Fact]
+    public void Empty_fields_show_current_values_in_grey()
+    {
+        var host = new FakeHost();
+        var dialogs = new FakeDialogs();
+        host.Components.Add(new ComponentData { Key = "b.ipt", Kind = ComponentKind.Part, IsContentCenter = true, Name = "Болт М8х30 ГОСТ 7798-70", Quantity = 1 });
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, host.Components, SpecificationContext.Create(null, spec), DateTime.UtcNow);
+        var vm = new SpecificationViewModel(host, dialogs, spec, post: a => a());
+        vm.SelectedRow = vm.Rows.Single(r => r.Row is not null);
+        AssignSectionViewModel? dialog = null;
+        dialogs.OnComponentProperties = p => dialog = p;
+
+        vm.EditComponentCommand.Execute(null);
+
+        Assert.NotNull(dialog);
+        Assert.Equal(("Болт", true), (dialog!.SortName.CurrentValue, dialog.SortName.ShowCurrentValue));
+        Assert.Equal("ГОСТ 7798-70", dialog.StandardNumber.CurrentValue);
+        Assert.Equal("М8х30", dialog.Parameters.CurrentValue);
+        Assert.False(dialog.Group.ShowCurrentValue);
+
+        // Вписанное вручную значение скрывает серую подсказку.
+        dialog.SortName.Value = "Винт";
+        Assert.False(dialog.SortName.ShowCurrentValue);
+    }
+
+    [Fact]
+    public void Current_values_differing_between_components_are_not_shown()
+    {
+        var values = AssignSectionViewModel.CurrentValues(new[]
+        {
+            new ComponentSnapshot { SortName = "Болт", StandardNumber = "ГОСТ 7798-70" },
+            new ComponentSnapshot { SortName = "Винт", StandardNumber = "ГОСТ 7798-70" },
+        });
+
+        Assert.False(values.ContainsKey(PropertyNames.SortName));
+        Assert.Equal("ГОСТ 7798-70", values[PropertyNames.StandardNumber]);
+    }
 }
 
 public class StandardNamesViewModelTests

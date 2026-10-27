@@ -26,4 +26,10 @@ public static class PropertyNames
 
     /// <summary>Единица измерения количества.</summary>
     public const string Unit = "SPEC_Unit";
+
+    /// <summary>
+    /// Первичная применяемость («Перв. примен.» в основной надписи чертежа и спецификации, ГОСТ 2.104) —
+    /// обозначение изделия, в которое компонент впервые вошёл. Хранится в компоненте, а не в спецификации.
+    /// </summary>
+    public const string FirstUse = "SPEC_FirstUse";
 }

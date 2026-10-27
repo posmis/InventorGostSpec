@@ -1,3 +1,4 @@
+using InventorGostSpec.Core.Model;
 using InventorGostSpec.Core.Sections;
 using InventorGostSpec.Core.Storage;
 
@@ -14,13 +15,23 @@ public sealed class PropertyField : ObservableObject
     private string _value;
     private bool _isChanged;
 
-    public PropertyField(string propertyName, string label, string? initialValue)
+    public PropertyField(string propertyName, string label, string? initialValue, string currentValue = "")
     {
         PropertyName = propertyName;
         Label = label;
         IsMixed = initialValue is null;
         _value = initialValue ?? "";
+        CurrentValue = currentValue;
     }
+
+    /// <summary>
+    /// Что сейчас идёт в спецификацию, если поле не заполнено (например, разобрано из наименования) —
+    /// показывается серым в пустом поле.
+    /// </summary>
+    public string CurrentValue { get; }
+
+    /// <summary>Показать <see cref="CurrentValue"/>: поле пустое и это не «разные значения».</summary>
+    public bool ShowCurrentValue => CurrentValue.Length > 0 && _value.Length == 0 && (!IsMixed || IsChanged);
 
     public string PropertyName { get; }
 
@@ -37,6 +48,7 @@ public sealed class PropertyField : ObservableObject
             if (SetField(ref _value, value ?? ""))
             {
                 IsChanged = true;
+                OnPropertyChanged(nameof(ShowCurrentValue));
             }
         }
     }
@@ -71,13 +83,20 @@ public sealed class AssignSectionViewModel : ObservableObject
     /// Раздел, который компонент получит автоматически (по типу). <c>null</c> — неизвестен
     /// или у выбранных компонентов разный (<paramref name="autoSectionVaries"/>).
     /// </param>
+    /// <param name="currentValues">
+    /// Значения, которые сейчас идут в спецификацию (см. <see cref="CurrentValues"/>): показываются серым в пустых полях.
+    /// </param>
     public AssignSectionViewModel(
         IEnumerable<SectionDefinition> sections,
         IReadOnlyDictionary<string, string?> initialValues,
         string targetDescription,
         string? autoSectionId = null,
-        bool autoSectionVaries = false)
+        bool autoSectionVaries = false,
+        IReadOnlyDictionary<string, string>? currentValues = null)
     {
+        currentValues ??= new Dictionary<string, string>();
+        string Current(string name) => currentValues.TryGetValue(name, out var value) ? value : "";
+
         TargetDescription = targetDescription;
         var sectionList = sections.ToList();
         _autoSectionId = autoSectionVaries ? null : autoSectionId;
@@ -114,12 +133,14 @@ public sealed class AssignSectionViewModel : ObservableObject
             MaterialKinds.Insert(0, MixedSection);
         }
 
-        Format = new PropertyField(PropertyNames.Format, "Формат", Initial(initialValues, PropertyNames.Format));
-        Unit = new PropertyField(PropertyNames.Unit, "Единица измерения", Initial(initialValues, PropertyNames.Unit));
-        Group = new PropertyField(PropertyNames.Group, "Группа изделий", Initial(initialValues, PropertyNames.Group));
-        SortName = new PropertyField(PropertyNames.SortName, "Наименование изделия", Initial(initialValues, PropertyNames.SortName));
-        StandardNumber = new PropertyField(PropertyNames.StandardNumber, "Обозначение стандарта", Initial(initialValues, PropertyNames.StandardNumber));
-        Parameters = new PropertyField(PropertyNames.Parameters, "Параметры, размеры", Initial(initialValues, PropertyNames.Parameters));
+        PropertyField Field(string name, string label) => new(name, label, Initial(initialValues, name), Current(name));
+        Format = Field(PropertyNames.Format, "Формат");
+        Unit = Field(PropertyNames.Unit, "Единица измерения");
+        FirstUse = Field(PropertyNames.FirstUse, "Перв. примен.");
+        Group = Field(PropertyNames.Group, "Группа изделий");
+        SortName = Field(PropertyNames.SortName, "Наименование изделия");
+        StandardNumber = Field(PropertyNames.StandardNumber, "Обозначение стандарта");
+        Parameters = Field(PropertyNames.Parameters, "Параметры, размеры");
     }
 
     public string TargetDescription { get; }
@@ -131,6 +152,9 @@ public sealed class AssignSectionViewModel : ObservableObject
     public PropertyField Format { get; }
 
     public PropertyField Unit { get; }
+
+    /// <summary>Первичная применяемость — свойство компонента (графа «Перв. примен.» на его чертеже).</summary>
+    public PropertyField FirstUse { get; }
 
     public PropertyField Group { get; }
 
@@ -191,7 +215,7 @@ public sealed class AssignSectionViewModel : ObservableObject
             changes[PropertyNames.MaterialKind] = SelectedMaterialKind.Id;
         }
 
-        foreach (var field in new[] { Format, Unit, Group, SortName, StandardNumber, Parameters })
+        foreach (var field in new[] { Format, Unit, FirstUse, Group, SortName, StandardNumber, Parameters })
         {
             if (field.IsChanged)
             {
@@ -200,6 +224,32 @@ public sealed class AssignSectionViewModel : ObservableObject
         }
 
         return changes;
+    }
+
+    /// <summary>
+    /// Что сейчас идёт в спецификацию у компонентов (с разбором наименования, форматом А4 у сборочных единиц):
+    /// имя свойства → значение. Если у выбранных компонентов значения различаются — значение не показывается.
+    /// </summary>
+    public static IReadOnlyDictionary<string, string> CurrentValues(IEnumerable<ComponentSnapshot> snapshots)
+    {
+        var list = snapshots.ToList();
+        var result = new Dictionary<string, string>();
+        void Add(string name, Func<ComponentSnapshot, string> get)
+        {
+            var values = list.Select(get).Distinct(StringComparer.Ordinal).Take(2).ToList();
+            if (values.Count == 1 && values[0].Length > 0)
+            {
+                result[name] = values[0];
+            }
+        }
+
+        Add(PropertyNames.Format, s => s.Format);
+        Add(PropertyNames.Unit, s => s.Unit);
+        Add(PropertyNames.Group, s => s.Group);
+        Add(PropertyNames.SortName, s => s.SortName);
+        Add(PropertyNames.StandardNumber, s => s.StandardNumber);
+        Add(PropertyNames.Parameters, s => s.Parameters);
+        return result;
     }
 
     private static string? Initial(IReadOnlyDictionary<string, string?> values, string name) =>

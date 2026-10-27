@@ -1,6 +1,7 @@
 using InventorGostSpec.AddIn.Infrastructure;
 using InventorGostSpec.AddIn.InventorApi;
 using InventorGostSpec.Core.Model;
+using InventorGostSpec.Core.Storage;
 using InventorGostSpec.Core.Update;
 using InventorGostSpec.UI.ViewModels;
 using InventorGostSpec.UI.Views;
@@ -145,6 +146,7 @@ internal sealed class SpecificationCommand : AddInCommand
                 NormControl = Get(PropertyAccess.DesignTrackingSet, PropertyAccess.EngineeringApprovedBy),
                 Approver = Get(PropertyAccess.DesignTrackingSet, PropertyAccess.ManufacturingApprovedBy),
                 Organization = Get(PropertyAccess.DocumentSummarySet, PropertyAccess.Company),
+                FirstUse = PropertyAccess.GetCustom(sets, PropertyNames.FirstUse),
             };
 
             var folder = System.IO.Path.GetDirectoryName(document.FullFileName) ?? "";

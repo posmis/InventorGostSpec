@@ -61,16 +61,22 @@ public sealed class PdfSettings
         }
     }
 
-    public void Save()
+    /// <summary>Где хранятся настройки.</summary>
+    public static string Location => FilePath;
+
+    /// <summary>Сохраняет настройки. Не удалось (нет доступа к папке) — текст ошибки, иначе <c>null</c>.</summary>
+    public string? Save()
     {
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
             File.WriteAllText(FilePath, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            return null;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Настройки — удобство, их потеря не мешает работе.
+            // Настройки — удобство, их потеря не мешает созданию PDF.
+            return ex.Message;
         }
     }
 }

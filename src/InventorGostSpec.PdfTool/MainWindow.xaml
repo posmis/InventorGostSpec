@@ -84,8 +84,12 @@
                                Text="Длинное слово в «Примечании» сужается до, % (дальше — перенос по слогам: «термооб-работка»)" />
                     <TextBox x:Name="WordMinWidthBox" Grid.Column="1" />
                 </Grid>
-                <Button Content="По умолчанию" HorizontalAlignment="Left" Margin="0,8,0,0" Click="OnResetSizes"
-                        ToolTip="Вернуть размеры шрифтов и сужение по умолчанию (как в бланке КОМПАС-3D). Шрифт не меняется." />
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="Сохранить настройки" Click="OnSaveSettings" FontWeight="SemiBold"
+                            ToolTip="Запомнить шрифт, размеры и сужение. Они действуют и при создании PDF из Inventor." />
+                    <Button Content="По умолчанию" Margin="8,0,0,0" Click="OnResetSizes"
+                            ToolTip="Вернуть размеры шрифтов и сужение по умолчанию (как в бланке КОМПАС-3D). Шрифт не меняется." />
+                </StackPanel>
             </StackPanel>
         </GroupBox>
 

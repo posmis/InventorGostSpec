@@ -1136,6 +1136,12 @@ public sealed class SpecificationViewModel : ObservableObject
         }
 
         title.NameTextHeight ??= previous.NameTextHeight;
+
+        // «Перв. примен.» берётся из свойства сборки; не задано — остаётся вписанное в Excel.
+        if (title.FirstUse.Length == 0)
+        {
+            title.FirstUse = previous.FirstUse;
+        }
     }
 
     /// <summary>
@@ -1477,7 +1483,8 @@ public sealed class SpecificationViewModel : ObservableObject
             initial,
             $"{title}\nСвойства записываются в файлы компонентов и действуют во всех сборках.",
             autoSections.FirstOrDefault(),
-            autoSectionVaries: autoSections.Count > 1);
+            autoSectionVaries: autoSections.Count > 1,
+            currentValues: AssignSectionViewModel.CurrentValues(rows.Select(r => r.Source)));
         if (!_dialogs.EditComponentProperties(viewModel))
         {
             return;

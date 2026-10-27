@@ -19,6 +19,7 @@ internal sealed class ComponentTarget
         PropertyNames.StandardNumber,
         PropertyNames.Parameters,
         PropertyNames.MaterialKind,
+        PropertyNames.FirstUse,
     };
 
     private ComponentTarget(PropertySets propertySets, ComponentKind kind, bool isContentCenter, string displayName, string? fullFileName)

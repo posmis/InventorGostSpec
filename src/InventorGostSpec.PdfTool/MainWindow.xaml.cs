@@ -14,6 +14,9 @@ public partial class MainWindow : Window
     private readonly PdfSettings _settings = PdfSettings.Load();
     private string _suggestedOutput = "";
 
+    /// <summary>Поля настроек на момент последнего сохранения — чтобы спросить при закрытии о несохранённых.</summary>
+    private string _savedState = "";
+
     public MainWindow(string? input)
     {
         InitializeComponent();
@@ -41,6 +44,8 @@ public partial class MainWindow : Window
         OpenBox.IsChecked = _settings.OpenAfter;
         CreateSizeFields();
         ShowSizes();
+        _savedState = SettingsState();
+        Closing += OnClosing;
 
         if (input is not null)
         {
@@ -219,8 +224,43 @@ public partial class MainWindow : Window
         _settings.MinWidthPercent = (int)Math.Round(percent);
         _settings.NoteMinWidthPercent = notePercent;
         _settings.WordMinWidthPercent = wordPercent;
-        _settings.Save();
+        if (_settings.Save() is { } error)
+        {
+            ShowStatus($"Не удалось сохранить настройки в {PdfSettings.Location}: {error}", error: true);
+        }
+        else
+        {
+            _savedState = SettingsState();
+        }
+
         return true;
+    }
+
+    /// <summary>Значения всех полей настроек одной строкой.</summary>
+    private string SettingsState() =>
+        string.Join("\u0001", new[] { FontBox.Text.Trim(), OpenBox.IsChecked == true ? "1" : "0", MinWidthBox.Text.Trim(), NoteMinWidthBox.Text.Trim(), WordMinWidthBox.Text.Trim() }
+            .Concat(_sizeFields.Select(f => f.Box.Text.Trim())));
+
+    private void OnSaveSettings(object sender, RoutedEventArgs e)
+    {
+        if (SaveSettings() && SettingsState() == _savedState)
+        {
+            ShowStatus($"Настройки сохранены: {PdfSettings.Location}", error: false);
+        }
+    }
+
+    private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (SettingsState() == _savedState)
+        {
+            return;
+        }
+
+        var answer = MessageBox.Show(this, "Сохранить изменённые настройки?", Title, MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+        if (answer == MessageBoxResult.Cancel || answer == MessageBoxResult.Yes && !SaveSettings())
+        {
+            e.Cancel = true;
+        }
     }
 
     private bool TryParsePercent(TextBox box, out int percent)
@@ -280,7 +320,7 @@ public partial class MainWindow : Window
     {
         _settings.ResetSizes();
         ShowSizes();
-        ShowStatus("Размеры шрифтов и сужение — по умолчанию. Сохранятся при создании PDF или разметке листов.", error: false);
+        ShowStatus("Размеры шрифтов и сужение — по умолчанию. Нажмите «Сохранить настройки», чтобы запомнить.", error: false);
     }
 
     private static readonly System.Globalization.CultureInfo Russian = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");

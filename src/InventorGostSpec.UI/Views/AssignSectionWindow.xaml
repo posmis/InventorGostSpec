@@ -29,6 +29,10 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Style="{StaticResource Label}" Text="{Binding Label}" />
                 <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" />
+                <!-- Текущее значение (например, из наименования), если поле не заполнено вручную. -->
+                <TextBlock Grid.Column="1" Margin="6,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                           Foreground="#9CA3AF" FontStyle="Italic" Text="{Binding CurrentValue}"
+                           Visibility="{Binding ShowCurrentValue, Converter={StaticResource BoolToVisibility}}" />
                 <TextBlock Grid.Column="1" Margin="6,0" VerticalAlignment="Center" IsHitTestVisible="False"
                            Foreground="Gray" Text="(разные значения)">
                     <TextBlock.Style>
@@ -64,6 +68,8 @@
 
         <ContentControl Content="{Binding Format}" ContentTemplate="{StaticResource FieldTemplate}" />
         <ContentControl Content="{Binding Unit}" ContentTemplate="{StaticResource FieldTemplate}" />
+        <ContentControl Content="{Binding FirstUse}" ContentTemplate="{StaticResource FieldTemplate}"
+                        ToolTip="Обозначение изделия, в которое компонент вошёл впервые. Хранится в файле компонента (SPEC_FirstUse)." />
 
         <!-- Блок всегда на месте (размер окна не меняется), неактивен, если разделу не нужен. -->
         <GroupBox Header="Сортировка по ГОСТ" Margin="0,8,0,0" Padding="6" IsEnabled="{Binding ShowProductFields}">
@@ -94,7 +100,7 @@
                 <ContentControl Content="{Binding StandardNumber}" ContentTemplate="{StaticResource FieldTemplate}" />
                 <ContentControl Content="{Binding Parameters}" ContentTemplate="{StaticResource FieldTemplate}" />
                 <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"
-                           Text="Пустые поля заполняются из наименования, например «Болт М12х60 ГОСТ 7798-70»." />
+                           Text="Пустые поля заполняются из наименования, например «Болт М12х60 ГОСТ 7798-70». Серым — что сейчас идёт в спецификацию." />
             </StackPanel>
         </GroupBox>
 

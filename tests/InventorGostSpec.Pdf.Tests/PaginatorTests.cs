@@ -50,7 +50,7 @@ public class PaginatorTests
             new[] { Section("Сборочные единицы"), Item("Привод", "1"), reserve, reserve, Section("Детали"), Item("Корпус", "4") }, Measure));
 
         // Между разделами — свободная строка и ещё по строке на каждый резерв.
-        Assert.Equal(new[] { "Сборочные единицы", "", "Привод", "", "", "", "Детали", "", "Корпус" }, page.Select(l => l.Name));
+        Assert.Equal(new[] { "", "Сборочные единицы", "", "Привод", "", "", "", "Детали", "", "Корпус" }, page.Select(l => l.Name));
 
         // Без резерва — одна свободная строка перед заголовком.
         page = Assert.Single(SpecPaginator.Paginate(new[] { Item("Привод", "1"), Section("Детали"), Item("Корпус", "4") }, Measure));
@@ -73,13 +73,14 @@ public class PaginatorTests
     }
 
     [Fact]
-    public void Section_gets_free_lines_around_it_but_not_at_top_of_sheet()
+    public void Section_gets_free_lines_around_it_also_at_top_of_sheet()
     {
         var pages = SpecPaginator.Paginate(new[] { Section("Детали"), Item("Корпус", "1"), Section("Стандартные изделия"), Item("Болт", "2") }, Measure);
 
         var page = Assert.Single(pages);
-        Assert.Equal(new[] { "Детали", "", "Корпус", "", "Стандартные изделия", "", "Болт" }, page.Select(l => l.Name));
-        Assert.Equal(LineStyle.Section, page[0].Style);
+        // Над заголовком всегда свободная строка: первый раздел начинается со второй строки листа.
+        Assert.Equal(new[] { "", "Детали", "", "Корпус", "", "Стандартные изделия", "", "Болт" }, page.Select(l => l.Name));
+        Assert.Equal(LineStyle.Section, page[1].Style);
     }
 
     [Fact]
@@ -95,7 +96,7 @@ public class PaginatorTests
 
         Assert.Equal(2, pages.Count);
         Assert.Equal("Деталь 26", pages[0][^1].Name);
-        Assert.Equal(new[] { "Стандартные изделия", "", "Болт" }, pages[1].Select(l => l.Name));
+        Assert.Equal(new[] { "", "Стандартные изделия", "", "Болт" }, pages[1].Select(l => l.Name));
     }
 
     [Fact]

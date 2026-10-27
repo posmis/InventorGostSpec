@@ -34,7 +34,7 @@
 1. Откройте `InventorGostSpec.sln` в Visual Studio 2022.
 2. Закройте Inventor и соберите решение в конфигурации **Debug**. Аддин автоматически копируется в
    `%APPDATA%\Autodesk\ApplicationPlugins\InventorGostSpec\`.
-3. Запустите Inventor. В сборке появится вкладка **«Спецификация ГОСТ»**, в детали — кнопка «Раздел компонента».
+3. Запустите Inventor. В сборке на вкладке **«Сборка»** появится панель **«Спецификация ГОСТ»**, в детали — кнопка «Раздел компонента» на вкладке **«Управление»**.
 
 Если Inventor установлен не в `C:\Program Files\Autodesk\Inventor 2025\`, укажите путь:
 `dotnet build -p:InventorInstallDir="D:\Autodesk\Inventor 2025\"`.

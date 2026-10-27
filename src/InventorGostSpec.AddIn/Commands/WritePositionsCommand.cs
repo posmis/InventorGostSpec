@@ -18,6 +18,8 @@ internal sealed class WritePositionsCommand : AddInCommand
 
     public override string Description => "Записать номера позиций из спецификации в спецификацию Inventor (BOM)";
 
+    public override string IconName => "write-positions";
+
     public override void Execute(AddInContext context)
     {
         var assembly = context.RequireAssembly();

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Деталь -->
+  <g stroke="#1C5F9E" stroke-linejoin="round">
+    <path d="M12 11.5 L21 16 L12 20.5 L3 16 Z" fill="#A9D0F5"/>
+    <path d="M3 16 L12 20.5 L12 29.5 L3 25 Z" fill="#5AA0E6"/>
+    <path d="M12 20.5 L21 16 L21 25 L12 29.5 Z" fill="#2E7DD1"/>
+  </g>
+  <!-- Ярлык раздела -->
+  <path d="M17.5 2.5 H29.5 V12.5 H17.5 L13.5 7.5 Z" fill="#F5C342" stroke="#A87B0C" stroke-linejoin="round"/>
+  <circle cx="17.5" cy="7.5" r="1.25" fill="#FFFFFF" stroke="#A87B0C"/>
+  <path d="M21 5.5 H27 M21 9.5 H25" stroke="#8A6508"/>
+</svg>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Лист спецификации -->
+  <rect x="2.5" y="1.5" width="11" height="13" fill="#FFFFFF" stroke="#616161"/>
+  <rect x="3" y="2" width="10" height="2" fill="#2E7DD1"/>
+  <path d="M2.5 4.5 H13.5" stroke="#616161"/>
+  <path d="M5.5 5 V14 M8.5 5 V14" stroke="#9E9E9E"/>
+  <path d="M3 7.5 H13 M3 10.5 H13" stroke="#C7C7C7"/>
+  <path d="M9.5 5.5 H12 M9.5 8.5 H12 M9.5 11.5 H12" stroke="#616161"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Лист спецификации -->
+  <rect x="4.5" y="2.5" width="23" height="27" fill="#FFFFFF" stroke="#616161"/>
+  <rect x="5" y="3" width="22" height="5" fill="#2E7DD1"/>
+  <path d="M4.5 8.5 H27.5" stroke="#616161"/>
+  <!-- Графы: формат, поз., обозначение, наименование -->
+  <path d="M8.5 3 V8 M11.5 3 V8 M19.5 3 V8" stroke="#A9D0F5"/>
+  <path d="M8.5 9 V29 M11.5 9 V29 M19.5 9 V29" stroke="#9E9E9E"/>
+  <path d="M5 12.5 H27 M5 16.5 H27 M5 20.5 H27 M5 24.5 H27" stroke="#C7C7C7"/>
+  <!-- Заголовок раздела и строки -->
+  <path d="M21.5 10.5 H25.5" stroke="#1C5F9E"/>
+  <path d="M9.5 14.5 H10.5 M13 14.5 H18 M21 14.5 H26 M9.5 18.5 H10.5 M13 18.5 H17 M21 18.5 H25 M9.5 22.5 H10.5 M13 22.5 H18 M21 22.5 H26" stroke="#616161"/>
+</svg>

@@ -29,8 +29,8 @@ internal sealed class CommandRegistry : IDisposable
                          AddInInfo.ClientId,
                          command.Description,
                          command.Description,
-                         Type.Missing,
-                         Type.Missing,
+                         IconLoader.Load(command.IconName, 16, _context.IsDarkTheme),
+                         IconLoader.Load(command.IconName, 32, _context.IsDarkTheme),
                          ButtonDisplayEnum.kAlwaysDisplayText);
 
         ButtonDefinitionSink_OnExecuteEventHandler handler = _ => Execute(command);

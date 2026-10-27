@@ -20,6 +20,23 @@ internal sealed class AddInContext
 
     public Messages Messages => new(MainWindowHandle);
 
+    /// <summary>Включена тёмная тема Inventor (значки берутся в тёмном варианте).</summary>
+    public bool IsDarkTheme
+    {
+        get
+        {
+            try
+            {
+                return Application.ThemeManager.ActiveTheme.Name.Contains("Dark", StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("IsDarkTheme", ex);
+                return false;
+            }
+        }
+    }
+
     /// <summary>Активная сборка или <c>null</c> с сообщением пользователю.</summary>
     public AssemblyDocument? RequireAssembly()
     {

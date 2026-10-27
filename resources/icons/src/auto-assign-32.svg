@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Компоненты с ярлыками разделов -->
+  <g stroke-linejoin="round">
+    <path d="M4.5 3.5 H11.5 V8.5 H4.5 L2.5 6 Z" fill="#5AA0E6" stroke="#1C5F9E"/>
+    <path d="M4.5 12.5 H11.5 V17.5 H4.5 L2.5 15 Z" fill="#F5C342" stroke="#A87B0C"/>
+    <path d="M4.5 21.5 H11.5 V26.5 H4.5 L2.5 24 Z" fill="#7CC47F" stroke="#2E7D32"/>
+  </g>
+  <g fill="#9E9E9E">
+    <rect x="13" y="5" width="10" height="2"/>
+    <rect x="13" y="14" width="4" height="2"/>
+    <rect x="13" y="23" width="3" height="2"/>
+  </g>
+  <!-- Автоматически -->
+  <path d="M23.5 9.5 L17.5 20.5 H22 L19.5 30.5 L28.5 17.5 H24 L27.5 9.5 Z" fill="#F59B23" stroke="#B4620A" stroke-linejoin="round"/>
+</svg>

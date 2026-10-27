@@ -3,6 +3,8 @@
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <!-- System.Drawing для значков кнопок. -->
+    <UseWindowsForms>true</UseWindowsForms>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RootNamespace>InventorGostSpec.AddIn</RootNamespace>
     <!-- Аддин загружается в процесс Inventor: зависимости копируются рядом с dll. -->
@@ -29,6 +31,11 @@
   <ItemGroup>
     <ProjectReference Include="..\InventorGostSpec.Core\InventorGostSpec.Core.csproj" />
     <ProjectReference Include="..\InventorGostSpec.UI\InventorGostSpec.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Значки кнопок. Исходники SVG: resources/icons/src, конвертация: node resources/icons/render.js -->
+    <EmbeddedResource Include="Resources\Icons\*.png" />
   </ItemGroup>
 
   <ItemGroup>

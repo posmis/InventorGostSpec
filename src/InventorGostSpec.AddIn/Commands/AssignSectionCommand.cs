@@ -22,6 +22,8 @@ internal sealed class AssignSectionCommand : AddInCommand
 
     public override string Description => "Назначить раздел спецификации и поля для сортировки выбранным компонентам";
 
+    public override string IconName => "assign-section";
+
     public override void Execute(AddInContext context)
     {
         var document = context.Application.ActiveDocument;

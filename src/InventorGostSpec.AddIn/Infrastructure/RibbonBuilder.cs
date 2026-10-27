@@ -53,7 +53,7 @@ internal static class RibbonBuilder
         {
             if (!existing.Contains(id))
             {
-                panel.CommandControls.AddButton(commands[id], false, true);
+                panel.CommandControls.AddButton(commands[id], true, true);
             }
         }
     }

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- Спецификация Inventor (BOM) -->
+  <rect x="12.5" y="4.5" width="17" height="23" fill="#FFFFFF" stroke="#616161"/>
+  <rect x="13" y="5" width="16" height="4" fill="#2E7DD1"/>
+  <path d="M12.5 9.5 H29.5" stroke="#616161"/>
+  <!-- Ячейка номера позиции -->
+  <rect x="13" y="10" width="5" height="4" fill="#F5C342"/>
+  <path d="M18.5 10 V27" stroke="#9E9E9E"/>
+  <path d="M13 14.5 H29 M13 18.5 H29 M13 22.5 H29" stroke="#C7C7C7"/>
+  <path d="M20.5 12.5 H27 M20.5 16.5 H26 M20.5 20.5 H27 M20.5 24.5 H25" stroke="#616161"/>
+  <!-- Выноска с номером -->
+  <path d="M11 12 H15.5" stroke="#1C5F9E" stroke-width="1.5"/>
+  <circle cx="15.5" cy="12" r="1.25" fill="#1C5F9E"/>
+  <circle cx="6" cy="12" r="5" fill="#FFFFFF" stroke="#1C5F9E" stroke-width="1.5"/>
+  <path d="M4.75 10.25 L6.5 9 V15" fill="none" stroke="#1C5F9E" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

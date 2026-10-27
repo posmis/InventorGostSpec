@@ -22,6 +22,8 @@ internal sealed class SpecificationCommand : AddInCommand
 
     public override string Description => "Открыть спецификацию сборки по ГОСТ 2.106";
 
+    public override string IconName => "specification";
+
     public override void Execute(AddInContext context)
     {
         var assembly = context.RequireAssembly();

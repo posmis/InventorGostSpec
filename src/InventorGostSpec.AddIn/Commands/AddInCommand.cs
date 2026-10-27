@@ -12,5 +12,8 @@ internal abstract class AddInCommand
 
     public abstract string Description { get; }
 
+    /// <summary>Имя значка в Resources/Icons (без размера и темы).</summary>
+    public abstract string IconName { get; }
+
     public abstract void Execute(AddInContext context);
 }

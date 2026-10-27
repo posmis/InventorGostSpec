@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Компоненты с ярлыками разделов -->
+  <g stroke-linejoin="round">
+    <path d="M2.5 1.5 H6.5 V4.5 H2.5 L1 3 Z" fill="#5AA0E6" stroke="#1C5F9E"/>
+    <path d="M2.5 6.5 H6.5 V9.5 H2.5 L1 8 Z" fill="#F5C342" stroke="#A87B0C"/>
+    <path d="M2.5 11.5 H6.5 V14.5 H2.5 L1 13 Z" fill="#7CC47F" stroke="#2E7D32"/>
+  </g>
+  <rect x="7.5" y="2.5" width="5" height="1" fill="#9E9E9E"/>
+  <!-- Автоматически -->
+  <path d="M11.5 5.5 L8.5 10.5 H10.5 L9.5 15 L14.5 8.5 H12.5 L14 5.5 Z" fill="#F59B23" stroke="#B4620A" stroke-linejoin="round"/>
+</svg>

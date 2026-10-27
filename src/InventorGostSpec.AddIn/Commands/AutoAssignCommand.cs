@@ -24,6 +24,8 @@ internal sealed class AutoAssignCommand : AddInCommand
         "Назначить разделы компонентам без раздела: Content Center — стандартные изделия, сборки — сборочные единицы, детали — детали. " +
         "Для стандартных изделий заполняются поля сортировки, для деталей и сборок с чертежом — формат.";
 
+    public override string IconName => "auto-assign";
+
     public override void Execute(AddInContext context)
     {
         var assembly = context.RequireAssembly();

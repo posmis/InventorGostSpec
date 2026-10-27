@@ -500,6 +500,33 @@ public class SpecificationViewModelTests
     }
 
     [Fact]
+    public void Export_to_excel_writes_file_and_offers_to_open_it()
+    {
+        var vm = Open();
+        var folder = Directory.CreateTempSubdirectory().FullName;
+        _host.ExportFolder = folder;
+        try
+        {
+            vm.ExportExcelCommand.Execute(null);
+
+            var path = Path.Combine(folder, "spec.xlsx");
+            Assert.True(File.Exists(path));
+            Assert.Equal(new[] { path }, _dialogs.OpenedFiles);
+
+            using var workbook = new ClosedXML.Excel.XLWorkbook(path);
+            Assert.Contains(workbook.Worksheet("Спецификация").ColumnsUsed().First().CellsUsed(), c => c.GetString() == "Изделие");
+
+            _dialogs.ExportPath = _ => null;
+            vm.ExportExcelCommand.Execute(null);
+            Assert.Single(_dialogs.OpenedFiles);
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
     public void Search_shows_matching_rows_with_their_headers()
     {
         var vm = Open();

@@ -5,6 +5,7 @@ namespace InventorGostSpec.AddIn.InventorApi;
 internal static class PropertyAccess
 {
     public const string DesignTrackingSet = "Design Tracking Properties";
+    public const string DocumentSummarySet = "Inventor Document Summary Information";
     public const string SummarySet = "Inventor Summary Information";
     public const string UserDefinedSet = "Inventor User Defined Properties";
 
@@ -12,6 +13,23 @@ internal static class PropertyAccess
     public const string Description = "Description";
     public const string Title = "Title";
     public const string Comments = "Comments";
+    public const string Designer = "Designer";
+    public const string CheckedBy = "Checked By";
+    public const string EngineeringApprovedBy = "Engr Approved By";
+    public const string Company = "Company";
+
+    /// <summary>Как <see cref="Get"/>, но без исключения, если набора или свойства нет.</summary>
+    public static string TryGet(PropertySets sets, string setName, string propertyName)
+    {
+        try
+        {
+            return Get(sets, setName, propertyName);
+        }
+        catch (Exception)
+        {
+            return "";
+        }
+    }
 
     public static string Get(PropertySets sets, string setName, string propertyName)
     {

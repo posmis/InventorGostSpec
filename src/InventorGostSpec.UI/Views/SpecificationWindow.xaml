@@ -131,8 +131,10 @@
                         </StackPanel>
                     </HeaderedContentControl>
 
-                    <HeaderedContentControl Style="{StaticResource CommandGroup}" Header="Inventor">
+                    <HeaderedContentControl Style="{StaticResource CommandGroup}" Header="Вывод">
                         <StackPanel Orientation="Horizontal">
+                            <controls:IconButton Icon="{StaticResource Icon.Excel}" Text="Excel" Command="{Binding ExportExcelCommand}"
+                                                 ToolTip="Выгрузить спецификацию в Excel: для ручной правки и вывода в PDF по ГОСТ. Резервные строки выгружаются, если включено «Показывать резерв»." />
                             <controls:IconButton Icon="{StaticResource Icon.Balloon}" Text="Позиции в BOM" Command="{Binding WritePositionsCommand}"
                                                  ToolTip="Сохранить спецификацию и записать номера позиций в спецификацию Inventor (BOM), чтобы выноски совпадали" />
                         </StackPanel>

@@ -84,6 +84,32 @@ public partial class SpecificationWindow : Window, IDialogService
     public bool EditReserves(ReserveSettingsViewModel viewModel) =>
         new ReserveSettingsWindow(viewModel) { Owner = this }.ShowDialog() == true;
 
+    public string? AskExportPath(string defaultPath)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Экспорт спецификации в Excel",
+            Filter = "Книга Excel (*.xlsx)|*.xlsx",
+            DefaultExt = ".xlsx",
+            FileName = System.IO.Path.GetFileName(defaultPath),
+            InitialDirectory = System.IO.Path.GetDirectoryName(defaultPath),
+            OverwritePrompt = true,
+        };
+        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+    }
+
+    public void OpenFile(string path)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Warning($"Не удалось открыть файл: {ex.Message}");
+        }
+    }
+
     public bool EditComponentProperties(AssignSectionViewModel viewModel) =>
         new AssignSectionWindow(viewModel) { Owner = this }.ShowDialog() == true;
 

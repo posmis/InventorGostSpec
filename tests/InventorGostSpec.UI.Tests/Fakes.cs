@@ -43,6 +43,11 @@ internal sealed class FakeHost : ISpecificationHost
     public string? ReadComponentNote(string componentKey) =>
         Components.All(c => c.Key != componentKey) ? null : Notes.TryGetValue(componentKey, out var note) ? note : "";
 
+    public string ExportFolder { get; set; } = Path.GetTempPath();
+
+    public ExportInfo GetExportInfo() =>
+        new(new TitleBlock { Designation = "АБВГ.301234.001", Name = "Привод" }, Path.Combine(ExportFolder, "spec.xlsx"));
+
     public string GetAutoSectionId(string componentKey)
     {
         var component = Components.Single(c => c.Key == componentKey);
@@ -102,6 +107,15 @@ internal sealed class FakeDialogs : IDialogService
     public Action<ReserveSettingsViewModel>? OnReserves { get; set; }
 
     public Action<GroupViewModel>? OnGroup { get; set; }
+
+    /// <summary>Путь, который «выбирает» пользователь при экспорте; <c>null</c> — отмена.</summary>
+    public Func<string, string?> ExportPath { get; set; } = path => path;
+
+    public List<string> OpenedFiles { get; } = new();
+
+    public string? AskExportPath(string defaultPath) => ExportPath(defaultPath);
+
+    public void OpenFile(string path) => OpenedFiles.Add(path);
 
     public bool Confirm(string text) => ConfirmAnswer;
 

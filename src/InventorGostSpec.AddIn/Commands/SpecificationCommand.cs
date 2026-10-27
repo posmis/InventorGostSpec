@@ -118,6 +118,30 @@ internal sealed class SpecificationCommand : AddInCommand
                 : PropertyAccess.Get(item.Target.PropertySets, PropertyAccess.SummarySet, PropertyAccess.Comments);
         }
 
+        public ExportInfo GetExportInfo()
+        {
+            var document = (Document)_assembly;
+            var sets = document.PropertySets;
+            string Get(string set, string name) => PropertyAccess.TryGet(sets, set, name);
+
+            var designation = Designations.WithoutAssemblyDrawingCode(Get(PropertyAccess.DesignTrackingSet, PropertyAccess.PartNumber));
+            var name = Get(PropertyAccess.DesignTrackingSet, PropertyAccess.Description);
+            var title = new TitleBlock
+            {
+                Designation = designation,
+                Name = name.Length > 0 ? name : Get(PropertyAccess.SummarySet, PropertyAccess.Title),
+                Developer = Get(PropertyAccess.DesignTrackingSet, PropertyAccess.Designer),
+                Checker = Get(PropertyAccess.DesignTrackingSet, PropertyAccess.CheckedBy),
+                Approver = Get(PropertyAccess.DesignTrackingSet, PropertyAccess.EngineeringApprovedBy),
+                Organization = Get(PropertyAccess.DocumentSummarySet, PropertyAccess.Company),
+            };
+
+            var folder = System.IO.Path.GetDirectoryName(document.FullFileName) ?? "";
+            var baseName = designation.Length > 0 ? designation : System.IO.Path.GetFileNameWithoutExtension(document.FullFileName);
+            var fileName = string.Concat($"{baseName} Спецификация.xlsx".Split(System.IO.Path.GetInvalidFileNameChars()));
+            return new ExportInfo(title, System.IO.Path.Combine(folder, fileName));
+        }
+
         public string GetAutoSectionId(string componentKey) =>
             FindItem(componentKey) is { } item
                 ? SectionResolver.GetDefault(item.Target.Kind, item.Target.IsContentCenter)

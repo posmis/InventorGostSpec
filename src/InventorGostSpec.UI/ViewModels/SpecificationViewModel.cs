@@ -61,6 +61,7 @@ public sealed class SpecificationViewModel : ObservableObject
         ReservesCommand = new RelayCommand(EditReserves);
         SaveCommand = new RelayCommand(Save, () => IsDirty);
         WritePositionsCommand = new RelayCommand(WritePositions);
+        ExportExcelCommand = new RelayCommand(ExportExcel, () => !IsEmpty);
         InsertComponentNoteCommand = new RelayCommand(InsertComponentNote, () => TargetRows.Any(CanEditComponent));
         SetSortGroupCommand = new RelayCommand(SetSortGroup, p => p is string && TargetRows.Any(r => r.Kind != RowKind.Note));
         EditComponentCommand = new RelayCommand(EditComponent, () => TargetRows.Any(CanEditComponent));
@@ -171,6 +172,9 @@ public sealed class SpecificationViewModel : ObservableObject
     public ICommand SaveCommand { get; }
     public ICommand WritePositionsCommand { get; }
     public ICommand NextChangeCommand { get; }
+
+    /// <summary>Экспорт в Excel для ручной правки и последующего вывода в PDF по ГОСТ.</summary>
+    public ICommand ExportExcelCommand { get; }
 
     /// <summary>Вставить в графу «Примечание» выбранных строк примечание из свойств их деталей.</summary>
     public ICommand InsertComponentNoteCommand { get; }
@@ -555,6 +559,36 @@ public sealed class SpecificationViewModel : ObservableObject
         }
 
         Changed(rebuild: true);
+    }
+
+    /// <summary>
+    /// Экспорт текущего состояния окна (в том числе несохранённого) в Excel.
+    /// Резервные строки выгружаются, если включено «Показывать резерв».
+    /// </summary>
+    private void ExportExcel()
+    {
+        CommitEdits?.Invoke();
+        var info = _host.GetExportInfo();
+        var path = _dialogs.AskExportPath(info.DefaultPath);
+        if (path is null)
+        {
+            return;
+        }
+
+        try
+        {
+            Excel.ExcelExporter.Export(Specification, _context, info.TitleBlock, path);
+        }
+        catch (System.IO.IOException ex)
+        {
+            _dialogs.Warning($"Не удалось записать файл. Возможно, он открыт в Excel.\n\n{ex.Message}");
+            return;
+        }
+
+        if (_dialogs.Confirm($"Спецификация выгружена:\n{path}\n\nОткрыть файл?"))
+        {
+            _dialogs.OpenFile(path);
+        }
     }
 
     /// <summary>

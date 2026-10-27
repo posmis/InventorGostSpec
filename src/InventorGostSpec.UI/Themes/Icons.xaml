@@ -332,6 +332,24 @@
             </DrawingGroup>
         </DrawingImage.Drawing>
     </DrawingImage>
+    <DrawingImage x:Key="Icon.Excel">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="Transparent" Geometry="M 0 0 L 16 0 L 16 16 L 0 16 Z" />
+                <GeometryDrawing Brush="#FFFFFF" Geometry="M 2.5 2.5 L 13.5 2.5 L 13.5 13.5 L 2.5 13.5 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#3E9B4F" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#3E9B4F" Geometry="M 3 3 L 13 3 L 13 5.5 L 3 5.5 Z" />
+                <GeometryDrawing Geometry="M 6.5 6 L 6.5 13 M 3 8.5 L 13 8.5 M 3 11 L 13 11">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#9E9E9E" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
     <DrawingImage x:Key="Icon.Search">
         <DrawingImage.Drawing>
             <DrawingGroup>

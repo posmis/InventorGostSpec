@@ -29,6 +29,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\InventorGostSpec.Core\InventorGostSpec.Core.csproj" />
+    <ProjectReference Include="..\..\src\InventorGostSpec.Excel\InventorGostSpec.Excel.csproj" />
   </ItemGroup>
 
 </Project>

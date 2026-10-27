@@ -42,9 +42,15 @@ public interface ISpecificationHost
     /// </summary>
     string? ReadComponentNote(string componentKey);
 
+    /// <summary>Данные основной надписи (из iProperties сборки) и путь к файлу экспорта по умолчанию.</summary>
+    ExportInfo GetExportInfo();
+
     /// <summary>Записывает непредвиденную ошибку окна в журнал.</summary>
     void ReportError(Exception exception);
 }
+
+/// <param name="DefaultPath">Путь к файлу Excel по умолчанию (папка сборки).</param>
+public sealed record ExportInfo(TitleBlock TitleBlock, string DefaultPath);
 
 /// <summary>Диалоги, которые показывает окно спецификации.</summary>
 public interface IDialogService
@@ -65,4 +71,10 @@ public interface IDialogService
     bool EditGroup(GroupViewModel viewModel);
 
     bool EditComponentProperties(AssignSectionViewModel viewModel);
+
+    /// <summary>Выбор файла для сохранения Excel. <c>null</c> — отмена.</summary>
+    string? AskExportPath(string defaultPath);
+
+    /// <summary>Открывает файл в связанной программе (Excel).</summary>
+    void OpenFile(string path);
 }

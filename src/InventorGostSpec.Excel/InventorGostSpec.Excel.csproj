@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>InventorGostSpec.Excel</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InventorGostSpec.Core\InventorGostSpec.Core.csproj" />
+  </ItemGroup>
+
+</Project>

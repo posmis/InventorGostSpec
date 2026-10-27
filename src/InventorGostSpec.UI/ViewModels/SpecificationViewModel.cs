@@ -87,6 +87,7 @@ public sealed class SpecificationViewModel : ObservableObject
         InsertSectionCommand = new RelayCommand(InsertSection, p => p is string id && InsertableSections().Any(o => o.Id == id));
         HideSectionCommand = new RelayCommand(HideSection, () => SelectedEmptyInsertedSection() is not null);
         DrawingFormatsCommand = new RelayCommand(FindDrawingFormats, () => Specification.Rows.Any(IsPartWithModel));
+        SetDocumentTypeCommand = new RelayCommand(SetDocumentType, p => p is string && TargetRows.Any(IsDocumentRow));
 
         Rebuild();
         _isDirty = isNew;
@@ -242,6 +243,14 @@ public sealed class SpecificationViewModel : ObservableObject
     /// записываются в iProperty SPEC_Format детали.
     /// </summary>
     public ICommand DrawingFormatsCommand { get; }
+
+    /// <summary>Тип документа (параметр — код «СБ», «ТУ»…) выбранных строк «Документации»: код в обозначении и наименование.</summary>
+    public ICommand SetDocumentTypeCommand { get; }
+
+    /// <summary>Пункты меню «Тип документа»: «СБ — Сборочный чертеж».</summary>
+    public IReadOnlyList<Option> DocumentTypeOptions { get; } = Core.Sorting.DocumentCodes.Common
+        .Select(code => new Option(code, $"{code} — {Core.Sorting.DocumentCodes.NameOf(code)}"))
+        .ToList();
 
     /// <summary>Резерв, который получает вставленный раздел, если у него резерва нет.</summary>
     public const int InsertedSectionReserve = 3;
@@ -430,7 +439,9 @@ public sealed class SpecificationViewModel : ObservableObject
     private void AddItem()
     {
         var selected = SelectedRow!;
-        var values = new ComponentSnapshot { SectionId = SectionFor(selected), Quantity = "1" };
+        // У документов количество не пишется.
+        var section = SectionFor(selected);
+        var values = new ComponentSnapshot { SectionId = section, Quantity = ComponentSnapshot.IsDocument(section) ? "" : "1" };
         var row = SpecificationEditor.AddManualItem(Specification, _context, values, selected.RowId, selected.GroupId);
         Changed(rebuild: true, selectRowId: row.Id);
         RequestEdit(row.Id, SpecColumn.Name);
@@ -528,6 +539,23 @@ public sealed class SpecificationViewModel : ObservableObject
         _context = CreateContext();
         Changed(rebuild: true);
         SelectedRow = Rows.FirstOrDefault(r => r.IsHeader && r.SectionId == section.Id);
+    }
+
+    private static bool IsDocumentRow(SpecRow row) => row.Kind != RowKind.Note && ComponentSnapshot.IsDocument(row.SectionId);
+
+    private void SetDocumentType(object? parameter)
+    {
+        if (parameter is not string code)
+        {
+            return;
+        }
+
+        foreach (var row in TargetRows.Where(IsDocumentRow).ToList())
+        {
+            SpecificationEditor.SetDocumentType(Specification, _context, row, code);
+        }
+
+        Changed(rebuild: true);
     }
 
     /// <summary>Строка детали, у которой есть модель в сборке.</summary>

@@ -160,8 +160,14 @@ public static class SpecificationChecker
                     $"{Describe(row)}: не указан формат (для детали без чертежа — «БЧ»).", row.Id));
             }
 
-            if (!string.Equals(row.SectionId, SectionIds.Documentation, StringComparison.OrdinalIgnoreCase) &&
-                row.Get(SpecColumn.Quantity).Length == 0)
+            if (ComponentSnapshot.IsDocument(row.SectionId) && row.Get(SpecColumn.Designation).Length > 0 &&
+                DocumentCodes.ExtractCode(row.Get(SpecColumn.Designation)).Length == 0)
+            {
+                issues.Add(new SpecIssue(IssueSeverity.Warning,
+                    $"{Describe(row)}: в обозначении документа нет кода (СБ, ТУ, Э3…). Выберите «Тип документа» в контекстном меню.", row.Id));
+            }
+
+            if (!ComponentSnapshot.IsDocument(row.SectionId) && row.Get(SpecColumn.Quantity).Length == 0)
             {
                 issues.Add(new SpecIssue(IssueSeverity.Warning, $"{Describe(row)}: не указано количество.", row.Id));
             }

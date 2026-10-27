@@ -170,7 +170,7 @@ public static class SpecificationUpdater
         foreach (var key in order)
         {
             var snapshot = ComponentSnapshot.FromComponent(first[key]);
-            snapshot.Quantity = ComponentSnapshot.FormatQuantity(quantities[key]);
+            snapshot.Quantity = ComponentSnapshot.IsDocument(snapshot.SectionId) ? "" : ComponentSnapshot.FormatQuantity(quantities[key]);
             result[key] = snapshot;
         }
 

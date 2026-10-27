@@ -349,3 +349,40 @@ public class DrawingFormatTests
         Assert.Equal("", vm.Rows.Single(r => r.Name == "Корпус").Format);
     }
 }
+
+public class DocumentRowTests
+{
+    private readonly FakeHost _host = new();
+    private readonly FakeDialogs _dialogs = new();
+
+    private SpecificationViewModel Open()
+    {
+        _host.Components.Add(new ComponentData { Key = "a.ipt", Kind = ComponentKind.Part, Designation = "А.001", Name = "Корпус", Quantity = 1 });
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, _host.Components, SpecificationContext.Create(_host.Settings, spec), DateTime.UtcNow);
+        return new SpecificationViewModel(_host, _dialogs, spec, post: action => action());
+    }
+
+    [Fact]
+    public void Document_added_by_hand_has_no_quantity_and_type_menu_fills_it()
+    {
+        var vm = Open();
+        vm.InsertSectionCommand.Execute(SectionIds.Documentation);
+        vm.AddItemCommand.Execute(null);
+        var row = vm.SelectedRow!;
+        Assert.Equal("", row.Quantity);
+
+        row.Designation = "АБВГ.301234.001";
+        vm.SelectedRow = vm.Rows.Single(r => r.RowId == row.RowId);
+        Assert.Contains(vm.DocumentTypeOptions, o => o.Id == "ТУ" && o.Name == "ТУ — Технические условия");
+
+        vm.SetDocumentTypeCommand.Execute("СБ");
+
+        var updated = vm.Rows.Single(r => r.RowId == row.RowId);
+        Assert.Equal("АБВГ.301234.001СБ", updated.Designation);
+        Assert.Equal("Сборочный чертеж", updated.Name);
+
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Корпус");
+        Assert.False(vm.SetDocumentTypeCommand.CanExecute("СБ")); // не документ
+    }
+}

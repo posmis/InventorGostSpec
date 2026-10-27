@@ -128,7 +128,12 @@ public static class ExcelExporter
 
                 sheet.Cell(row, ExcelFormat.DesignationColumn).Value = item.Get(SpecColumn.Designation);
                 sheet.Cell(row, ExcelFormat.NameColumn).Value = item.Get(SpecColumn.Name);
-                SetQuantity(sheet.Cell(row, ExcelFormat.QuantityColumn), item.Get(SpecColumn.Quantity));
+                // У документов количество не пишется (ГОСТ 2.106).
+                if (!ComponentSnapshot.IsDocument(item.SectionId))
+                {
+                    SetQuantity(sheet.Cell(row, ExcelFormat.QuantityColumn), item.Get(SpecColumn.Quantity));
+                }
+
                 sheet.Cell(row, ExcelFormat.UnitColumn).Value = item.Get(SpecColumn.Unit);
                 sheet.Cell(row, ExcelFormat.NoteColumn).Value = itemNote;
                 break;

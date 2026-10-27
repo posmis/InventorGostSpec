@@ -431,6 +431,15 @@ public partial class SpecificationWindow : Window, IDialogService
         menu.IsOpen = true;
     }
 
+    private void OnDocumentTypeClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { DataContext: Option option } && _viewModel?.SetDocumentTypeCommand is { } command &&
+            command.CanExecute(option.Id))
+        {
+            command.Execute(option.Id);
+        }
+    }
+
     private void OnSortGroupClick(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { DataContext: Option option } && _viewModel?.SetSortGroupCommand is { } command &&

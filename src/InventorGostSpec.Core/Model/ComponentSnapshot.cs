@@ -1,6 +1,7 @@
 using System.Globalization;
 using InventorGostSpec.Core.Parsing;
 using InventorGostSpec.Core.Sections;
+using InventorGostSpec.Core.Sorting;
 
 namespace InventorGostSpec.Core.Model;
 
@@ -78,6 +79,16 @@ public sealed class ComponentSnapshot
             snapshot.Designation = "";
         }
 
+        // Документ: количество не пишется (ГОСТ 2.106), наименование — по коду документа, если не задано.
+        if (IsDocument(snapshot.SectionId))
+        {
+            snapshot.Quantity = "";
+            if (snapshot.Name.Length == 0)
+            {
+                snapshot.Name = DocumentCodes.NameOfDesignation(snapshot.Designation);
+            }
+        }
+
         // Если поля для сортировки не заполнены, пытаемся разобрать наименование,
         // например «Болт М12х60 ГОСТ 7798-70».
         if (snapshot.SortName.Length == 0 || snapshot.StandardNumber.Length == 0)
@@ -101,6 +112,10 @@ public sealed class ComponentSnapshot
 
         return snapshot;
     }
+
+    /// <summary>Раздел документов: у строк нет количества и позиции, наименование — тип документа.</summary>
+    public static bool IsDocument(string? sectionId) =>
+        string.Equals(sectionId, SectionIds.Documentation, StringComparison.OrdinalIgnoreCase);
 
     public static string FormatQuantity(decimal quantity) =>
         quantity == 0 ? "" : quantity.ToString("0.###", RuCulture);

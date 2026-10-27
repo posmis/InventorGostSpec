@@ -24,6 +24,100 @@ public static class DocumentCodes
     private static readonly Regex Instruction = new(@"^И\d$", RegexOptions.CultureInvariant);
     private static readonly Regex OtherDocument = new(@"^Д\d$", RegexOptions.CultureInvariant);
 
+    /// <summary>Наименования документов по коду (ГОСТ 2.102, 2.601, 2.602) — графа «Наименование» в разделе «Документация».</summary>
+    private static readonly Dictionary<string, string> Names = new()
+    {
+        ["СБ"] = "Сборочный чертеж",
+        ["ВО"] = "Чертеж общего вида",
+        ["ТЧ"] = "Теоретический чертеж",
+        ["ГЧ"] = "Габаритный чертеж",
+        ["МЭ"] = "Электромонтажный чертеж",
+        ["МЧ"] = "Монтажный чертеж",
+        ["УЧ"] = "Упаковочный чертеж",
+        ["ВС"] = "Ведомость спецификаций",
+        ["ВД"] = "Ведомость ссылочных документов",
+        ["ВП"] = "Ведомость покупных изделий",
+        ["ВИ"] = "Ведомость разрешения применения покупных изделий",
+        ["ДП"] = "Ведомость держателей подлинников",
+        ["ПТ"] = "Ведомость технического предложения",
+        ["ЭП"] = "Ведомость эскизного проекта",
+        ["ТП"] = "Ведомость технического проекта",
+        ["ПЗ"] = "Пояснительная записка",
+        ["ТУ"] = "Технические условия",
+        ["ПМ"] = "Программа и методика испытаний",
+        ["ТБ"] = "Таблицы",
+        ["РР"] = "Расчеты",
+        ["ВЭ"] = "Ведомость эксплуатационных документов",
+        ["РЭ"] = "Руководство по эксплуатации",
+        ["ИМ"] = "Инструкция по монтажу, пуску, регулированию и обкатке изделия",
+        ["ФО"] = "Формуляр",
+        ["ПС"] = "Паспорт",
+        ["ЭТ"] = "Этикетка",
+        ["КИ"] = "Каталог изделия",
+        ["ЗИ"] = "Ведомость ЗИП",
+        ["РС"] = "Руководство по ремонту",
+        ["ВРД"] = "Ведомость документов для ремонта",
+    };
+
+    private static readonly Dictionary<char, string> SchemeKinds = new()
+    {
+        ['Э'] = "электрическая", ['Г'] = "гидравлическая", ['П'] = "пневматическая", ['Х'] = "газовая",
+        ['К'] = "кинематическая", ['В'] = "вакуумная", ['Л'] = "оптическая", ['Р'] = "энергетическая",
+        ['Е'] = "деления", ['С'] = "комбинированная",
+    };
+
+    private static readonly string[] SchemeTypes =
+    {
+        "объединенная", "структурная", "функциональная", "принципиальная", "соединений", "подключения", "общая", "расположения",
+    };
+
+    /// <summary>Частые документы — для меню «Тип документа».</summary>
+    public static readonly IReadOnlyList<string> Common = new[]
+    {
+        "СБ", "ВО", "ГЧ", "МЭ", "МЧ", "УЧ", "Э3", "Э4", "Э5", "ПЭ3", "ВП", "ПЗ", "ТУ", "ПМ", "РЭ", "ПС", "ФО", "ЭТ",
+    };
+
+    /// <summary>
+    /// Наименование документа по коду: «СБ» — «Сборочный чертеж», «Э3» — «Схема электрическая принципиальная»,
+    /// «ПЭ3» — «Перечень элементов». Пустая строка — код неизвестен (наименование вписывается вручную).
+    /// </summary>
+    public static string NameOf(string? code)
+    {
+        code = NaturalComparer.Normalize(code ?? "");
+        if (Names.TryGetValue(code, out var name))
+        {
+            return name;
+        }
+
+        if (code.Length == 3 && code[0] == 'П' && Scheme.IsMatch(code[1..]))
+        {
+            return "Перечень элементов";
+        }
+
+        if (Scheme.IsMatch(code) && SchemeKinds.TryGetValue(code[0], out var kind) && code[1] - '0' < SchemeTypes.Length)
+        {
+            return $"Схема {kind} {SchemeTypes[code[1] - '0']}";
+        }
+
+        return "";
+    }
+
+    /// <summary>Наименование документа по коду в конце обозначения («АБВГ.301234.001СБ» → «Сборочный чертеж»).</summary>
+    public static string NameOfDesignation(string? designation) => NameOf(ExtractCode(designation));
+
+    /// <summary>Обозначение с другим кодом документа: прежний код в конце заменяется («…001СБ» + «ТУ» → «…001ТУ»).</summary>
+    public static string WithCode(string? designation, string code)
+    {
+        var text = (designation ?? "").Trim();
+        var current = ExtractCode(text);
+        if (current.Length > 0)
+        {
+            text = text[..^current.Length].TrimEnd();
+        }
+
+        return text + code.Trim();
+    }
+
     /// <summary>Код документа из обозначения. Пустая строка — код отсутствует.</summary>
     public static string ExtractCode(string? designation)
     {

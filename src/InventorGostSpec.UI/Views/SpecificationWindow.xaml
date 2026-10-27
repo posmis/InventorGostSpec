@@ -341,6 +341,15 @@
                                 </Style>
                             </MenuItem.ItemContainerStyle>
                         </MenuItem>
+                        <MenuItem Header="Тип документа" ItemsSource="{Binding DocumentTypeOptions}"
+                                  ToolTip="Для строк раздела «Документация»: код в конце обозначения (СБ, ТУ, Э3…) и наименование документа">
+                            <MenuItem.ItemContainerStyle>
+                                <Style TargetType="MenuItem">
+                                    <Setter Property="Header" Value="{Binding Name}" />
+                                    <EventSetter Event="Click" Handler="OnDocumentTypeClick" />
+                                </Style>
+                            </MenuItem.ItemContainerStyle>
+                        </MenuItem>
                         <MenuItem Header="Удалить группу" Command="{Binding DeleteGroupCommand}" />
                         <MenuItem Header="Убрать пустой раздел" Command="{Binding HideSectionCommand}"
                                   ToolTip="Убрать вставленный раздел, в котором нет строк (выберите его заголовок)" />

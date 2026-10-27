@@ -19,6 +19,7 @@ public static class SpecificationEditor
     {
         value = value?.Trim() ?? "";
         var oldSection = row.SectionId;
+        var oldDesignation = row.Get(SpecColumn.Designation);
 
         switch (column)
         {
@@ -63,9 +64,48 @@ public static class SpecificationEditor
             row.Source.Set(column, value);
         }
 
+        if (column == SpecColumn.Designation)
+        {
+            FillDocumentName(spec, context, row, oldDesignation);
+        }
+
         if (column == SpecColumn.Section && !string.Equals(oldSection, row.SectionId, StringComparison.OrdinalIgnoreCase))
         {
             OnSectionChanged(spec, context, row);
+        }
+    }
+
+    /// <summary>
+    /// Тип документа строки «Документации»: код в конце обозначения заменяется («…001» → «…001СБ»),
+    /// наименование — по коду («Сборочный чертеж»).
+    /// </summary>
+    public static void SetDocumentType(Specification spec, SpecificationContext context, SpecRow row, string code)
+    {
+        var designation = Sorting.DocumentCodes.WithCode(row.Get(SpecColumn.Designation), code);
+        var name = Sorting.DocumentCodes.NameOf(code);
+        SetCell(spec, context, row, SpecColumn.Designation, designation);
+        if (name.Length > 0)
+        {
+            SetCell(spec, context, row, SpecColumn.Name, name);
+        }
+    }
+
+    /// <summary>
+    /// В «Документации» наименование подставляется по коду документа, если оно пустое или было подставлено
+    /// по прежнему коду (вписанное вручную не затирается).
+    /// </summary>
+    private static void FillDocumentName(Specification spec, SpecificationContext context, SpecRow row, string oldDesignation)
+    {
+        if (!ComponentSnapshot.IsDocument(row.SectionId))
+        {
+            return;
+        }
+
+        var name = Sorting.DocumentCodes.NameOfDesignation(row.Get(SpecColumn.Designation));
+        var current = row.Get(SpecColumn.Name);
+        if (name.Length > 0 && (current.Length == 0 || current == Sorting.DocumentCodes.NameOfDesignation(oldDesignation)))
+        {
+            SetCell(spec, context, row, SpecColumn.Name, name);
         }
     }
 

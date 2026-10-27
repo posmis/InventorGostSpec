@@ -515,6 +515,7 @@ public class SpecificationViewModelTests
 
             using var workbook = new ClosedXML.Excel.XLWorkbook(path);
             Assert.Contains(workbook.Worksheet("Спецификация").ColumnsUsed().First().CellsUsed(), c => c.GetString() == "Изделие");
+            Assert.Equal("Лист PDF", workbook.Worksheet("Спецификация").Cell(1, 10).GetString());
 
             _dialogs.ExportPath = _ => null;
             vm.ExportExcelCommand.Execute(null);

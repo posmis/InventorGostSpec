@@ -27,6 +27,14 @@ public static class ExcelFormat
     public const int UnitColumn = 8;
     public const int NoteColumn = 9;
 
+    /// <summary>
+    /// Служебная колонка разметки листов: номер листа PDF у первой строки каждого листа.
+    /// Заполняется при выгрузке и командой утилиты PDF; при чтении не используется.
+    /// </summary>
+    public const int SheetColumn = 10;
+
+    public const string SheetColumnTitle = "Лист PDF";
+
     /// <summary>Значения колонки «Тип строки».</summary>
     public static class RowTypes
     {
@@ -45,7 +53,13 @@ public static class ExcelFormat
         /// <summary>Пустая строка резервной позиции.</summary>
         public const string Reserve = "Резерв";
 
-        public static readonly string[] All = { Group, Section, Item, Text, Reserve };
+        /// <summary>Пустая строка, добавленная вручную (например, чтобы сдвинуть запись на следующий лист).</summary>
+        public const string Blank = "Пустая";
+
+        /// <summary>Разрыв листа: следующие строки начинаются с нового листа.</summary>
+        public const string PageBreak = "Новый лист";
+
+        public static readonly string[] All = { Group, Section, Item, Text, Reserve, Blank, PageBreak };
     }
 
     /// <summary>Поля листа «Основная надпись» (колонка A — поле, B — значение).</summary>
@@ -61,6 +75,9 @@ public static class ExcelFormat
         public const string NormControl = "Н. контр.";
         public const string Approver = "Утвердил";
         public const string FirstUse = "Перв. примен.";
+
+        /// <summary>Высота шрифта наименования, мм (2,5; 3,5; 5; 7; 10…). Пусто — 5.</summary>
+        public const string NameHeight = "Шрифт наименования, мм";
     }
 
     /// <summary>

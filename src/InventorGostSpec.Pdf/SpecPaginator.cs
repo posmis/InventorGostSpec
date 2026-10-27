@@ -31,6 +31,9 @@ public sealed class PrintLine
     /// </summary>
     public bool IsSpacer { get; init; }
 
+    /// <summary>Индекс строки файла Excel, из которой получена строка (для разметки листов в Excel).</summary>
+    public int SourceRow { get; internal set; } = -1;
+
     public bool IsBlank =>
         Format.Length == 0 && Zone.Length == 0 && Position.Length == 0 && Designation.Length == 0
         && Name.Length == 0 && Quantity.Length == 0 && Note.Length == 0;
@@ -61,12 +64,27 @@ public static class SpecPaginator
     /// <param name="measure">Ширина текста в мм при заданной высоте прописных букв.</param>
     public static List<List<PrintLine>> Paginate(IReadOnlyList<SheetRow> rows, Func<string, double, double> measure)
     {
-        var blocks = rows.Select(row => ToBlock(row, measure)).ToList();
+        var blocks = rows.Select((row, index) =>
+        {
+            var block = ToBlock(row, measure);
+            block.Lines.ForEach(line => line.SourceRow = index);
+            return block;
+        }).ToList();
         var pages = new List<List<PrintLine>> { new() };
 
         for (var i = 0; i < blocks.Count; i++)
         {
             var page = pages[^1];
+            if (blocks[i].PageBreak)
+            {
+                if (page.Count > 0)
+                {
+                    pages.Add(new List<PrintLine>());
+                }
+
+                continue;
+            }
+
             var lines = Trim(blocks[i].Lines, page);
             if (lines.Count == 0)
             {
@@ -118,7 +136,7 @@ public static class SpecPaginator
         return pages;
     }
 
-    private sealed record Block(List<PrintLine> Lines, bool KeepWithNext);
+    private sealed record Block(List<PrintLine> Lines, bool KeepWithNext, bool PageBreak = false);
 
     /// <summary>Сколько строк следующих блоков должно встать на тот же лист, что и заголовок.</summary>
     private static int KeptLines(List<Block> blocks, int index)
@@ -164,11 +182,17 @@ public static class SpecPaginator
                 return new Block(lines, true);
             }
 
-            case ExcelFormat.RowTypes.Text:
+            // Текстовая строка без текста — пустая строка (так её можно добавить и из окна спецификации).
+            case ExcelFormat.RowTypes.Text when row.Name.Trim().Length > 0:
                 return new Block(Wrap(row.Name, nameWidth, measure).Select(text => new PrintLine { Name = text }).ToList(), false);
+
+            case ExcelFormat.RowTypes.PageBreak:
+                return new Block(new List<PrintLine>(), false, PageBreak: true);
 
             // Резерв — просто свободная строка, номер позиции не печатается.
             case "":
+            case ExcelFormat.RowTypes.Text:
+            case ExcelFormat.RowTypes.Blank:
             case ExcelFormat.RowTypes.Reserve:
                 return new Block(new List<PrintLine> { PrintLine.Blank }, false);
 

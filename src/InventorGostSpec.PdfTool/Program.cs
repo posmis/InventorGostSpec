@@ -12,6 +12,7 @@ namespace InventorGostSpec.PdfTool;
 /// <item><c>InventorGostSpec.PdfTool.exe</c> — окно (можно перетащить на exe файл Excel);</item>
 /// <item><c>InventorGostSpec.PdfTool.exe файл.xlsx --output файл.pdf [--font "GOST type B"] [--open]</c> —
 /// без окна, для вызова из аддина: код возврата 0 — успех, иначе текст ошибки в stderr.</item>
+/// <item><c>InventorGostSpec.PdfTool.exe файл.xlsx [--font …] --mark-sheets</c> — разметить листы PDF в файле Excel.</item>
 /// </list>
 /// </summary>
 public static class Program
@@ -29,6 +30,20 @@ public static class Program
             return 2;
         }
 
+        if (arguments.MarkSheets)
+        {
+            try
+            {
+                ExcelSheetMarker.Mark(arguments.Input!, Options(arguments));
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine(Describe(ex));
+                return 1;
+            }
+        }
+
         if (arguments.Output is null)
         {
             var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
@@ -37,12 +52,7 @@ public static class Program
 
         try
         {
-            var settings = ToolSettings.Load();
-            var options = new PdfOptions
-            {
-                Font = arguments.Font ?? (settings.Font.Length > 0 ? settings.Font : null),
-            };
-            Convert(arguments.Input!, arguments.Output, options);
+            Convert(arguments.Input!, arguments.Output, Options(arguments));
             if (arguments.Open)
             {
                 Process.Start(new ProcessStartInfo(arguments.Output) { UseShellExecute = true });
@@ -55,6 +65,14 @@ public static class Program
             Console.Error.WriteLine(Describe(ex));
             return 1;
         }
+    }
+
+    /// <summary>Шрифт из параметра --font, иначе из настроек утилиты.</summary>
+    private static PdfOptions Options(Arguments arguments)
+    {
+        var options = PdfSettings.Load().ToOptions();
+        options.Font = arguments.Font ?? options.Font;
+        return options;
     }
 
     /// <summary>Excel → PDF. Возвращает число листов.</summary>
@@ -79,6 +97,7 @@ public static class Program
         public string? Output { get; private set; }
         public string? Font { get; private set; }
         public bool Open { get; private set; }
+        public bool MarkSheets { get; private set; }
         public string? Error { get; private set; }
 
         public static Arguments Parse(string[] args)
@@ -108,6 +127,9 @@ public static class Program
                     case "--open":
                         result.Open = true;
                         break;
+                    case "--mark-sheets":
+                        result.MarkSheets = true;
+                        break;
                     default:
                         if (args[i].StartsWith('-') || result.Input is not null)
                         {
@@ -125,7 +147,7 @@ public static class Program
                 }
             }
 
-            if (result.Output is not null && result.Input is null)
+            if ((result.Output is not null || result.MarkSheets) && result.Input is null)
             {
                 result.Error = "Не указан файл Excel.";
             }

@@ -11,6 +11,8 @@
   <ItemGroup>
     <ProjectReference Include="..\InventorGostSpec.Core\InventorGostSpec.Core.csproj" />
     <ProjectReference Include="..\InventorGostSpec.Excel\InventorGostSpec.Excel.csproj" />
+    <!-- Разметка листов PDF в выгружаемом Excel. -->
+    <ProjectReference Include="..\InventorGostSpec.Pdf\InventorGostSpec.Pdf.csproj" />
   </ItemGroup>
 
 </Project>

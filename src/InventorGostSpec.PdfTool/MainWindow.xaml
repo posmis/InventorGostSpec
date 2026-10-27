@@ -62,6 +62,8 @@
         </Border>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Разметить листы в Excel" Margin="0,0,8,0" Click="OnMarkSheets"
+                    ToolTip="Отметить в файле Excel границы листов PDF: жирная линия под последней строкой листа и номер листа в колонке «Лист PDF». Нужно после ручной правки. Файл Excel должен быть закрыт." />
             <Button x:Name="CreateButton" Content="Создать PDF" IsDefault="True" Click="OnCreate" FontWeight="SemiBold" />
             <Button Content="Закрыть" IsCancel="True" Margin="8,0,0,0" Click="OnClose" />
         </StackPanel>

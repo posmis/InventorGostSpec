@@ -27,6 +27,9 @@ public sealed class TitleBlock
     /// <summary>Первичное применение.</summary>
     public string FirstUse { get; set; } = "";
 
+    /// <summary>Высота шрифта наименования в основной надписи, мм; <c>null</c> — 5 мм. Задаёт пользователь.</summary>
+    public double? NameTextHeight { get; set; }
+
     /// <summary>Изменения документа (графы «Изм.», «Лист», «№ докум.» основной надписи) — по порядку внесения.</summary>
     public List<ChangeRecord> Changes { get; set; } = new();
 }

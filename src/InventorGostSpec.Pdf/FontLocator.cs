@@ -19,8 +19,12 @@ public sealed record InstalledFont(string Family, string Style, string Path)
 /// </summary>
 public static class FontLocator
 {
-    /// <summary>Шрифт, поставляемый с утилитой (папка Fonts рядом с программой), — по умолчанию.</summary>
-    public static string BundledFontPath => Path.Combine(AppContext.BaseDirectory, "Fonts", "gost_merged.ttf");
+    /// <summary>
+    /// Шрифт, поставляемый с утилитой (папка Fonts рядом с библиотекой), — по умолчанию.
+    /// Путь от библиотеки, а не от программы: в аддине программа — сам Inventor.
+    /// </summary>
+    public static string BundledFontPath =>
+        Path.Combine(Path.GetDirectoryName(typeof(FontLocator).Assembly.Location) ?? AppContext.BaseDirectory, "Fonts", "gost_merged.ttf");
 
     /// <summary>Шрифты ГОСТ 2.304 в порядке предпочтения: КОМПАС, AutoCAD, свободные.</summary>
     public static readonly string[] GostFamilies =

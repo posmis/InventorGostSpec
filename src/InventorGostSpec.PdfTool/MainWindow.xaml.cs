@@ -10,7 +10,7 @@ namespace InventorGostSpec.PdfTool;
 public partial class MainWindow : Window
 {
     private const string AutoFont = "Автоматически";
-    private readonly ToolSettings _settings = ToolSettings.Load();
+    private readonly PdfSettings _settings = PdfSettings.Load();
     private string _suggestedOutput = "";
 
     public MainWindow(string? input)
@@ -120,15 +120,11 @@ public partial class MainWindow : Window
             return;
         }
 
-        var font = FontBox.Text.Trim();
-        _settings.Font = font == AutoFont ? "" : font;
-        _settings.OpenAfter = OpenBox.IsChecked == true;
-        _settings.Save();
-
+        SaveSettings();
         try
         {
             Cursor = System.Windows.Input.Cursors.Wait;
-            var options = new PdfOptions { Font = _settings.Font.Length > 0 ? _settings.Font : null };
+            var options = _settings.ToOptions();
             var pages = Program.Convert(input, output, options);
             var usedFont = FontLocator.Find(options.Font)?.Family ?? "";
             ShowStatus($"Готово: {pages} {SheetWord(pages)}, шрифт {usedFont}.\n{output}", error: false);
@@ -145,6 +141,44 @@ public partial class MainWindow : Window
         {
             Cursor = null;
         }
+    }
+
+    private void OnMarkSheets(object sender, RoutedEventArgs e)
+    {
+        var input = InputBox.Text.Trim();
+        if (!File.Exists(input))
+        {
+            ShowStatus("Укажите существующий файл Excel.", error: true);
+            return;
+        }
+
+        SaveSettings();
+        try
+        {
+            Cursor = System.Windows.Input.Cursors.Wait;
+            var pages = ExcelSheetMarker.Mark(input, _settings.ToOptions());
+            ShowStatus($"Листы размечены в Excel: {pages} {SheetWord(pages)}. Границы — жирная линия, номер — в колонке «Лист PDF».", error: false);
+        }
+        catch (IOException ex)
+        {
+            ShowStatus($"Не удалось записать файл Excel. Закройте его в Excel и повторите.\n{ex.Message}", error: true);
+        }
+        catch (Exception ex)
+        {
+            ShowStatus(Program.Describe(ex), error: true);
+        }
+        finally
+        {
+            Cursor = null;
+        }
+    }
+
+    private void SaveSettings()
+    {
+        var font = FontBox.Text.Trim();
+        _settings.Font = font == AutoFont ? "" : font;
+        _settings.OpenAfter = OpenBox.IsChecked == true;
+        _settings.Save();
     }
 
     private void OnClose(object sender, RoutedEventArgs e) => Close();

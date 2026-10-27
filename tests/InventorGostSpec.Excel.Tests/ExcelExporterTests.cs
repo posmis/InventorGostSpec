@@ -81,6 +81,8 @@ public class ExcelExporterTests : IDisposable
         Assert.Equal(ExcelFormat.TitleFields.Designation, title.Cell(2, 1).GetString());
         Assert.Equal("АБВГ.301234.001", title.Cell(2, 2).GetString());
         Assert.Equal("Иванов", title.Cell(6, 2).GetString());
+        Assert.Equal(ExcelFormat.TitleFields.NameHeight, title.Cell(12, 1).GetString());
+        Assert.Equal(5, title.Cell(12, 2).GetValue<double>());
 
         // Изменения — текстом, без превращения «1-3» и «05.25» в даты.
         var changes = workbook.Worksheet(ExcelFormat.ChangesSheet);
@@ -109,6 +111,7 @@ public class ExcelExporterTests : IDisposable
         ExcelExporter.Export(new Specification(), SpecificationContext.Create(new SpecSettings(), new Specification()), titleBlock, _path);
 
         var changes = ExcelReader.ReadChanges(_path);
+        Assert.Equal(5, ExcelReader.Read(_path).TitleBlock.NameTextHeight);
         Assert.Equal(new[] { "1", "2" }, changes.Select(c => c.Number));
         Assert.Equal("1-3", changes[1].Sheet);
         Assert.Equal("3", changes[1].Areas);

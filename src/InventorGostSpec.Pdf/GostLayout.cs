@@ -64,8 +64,11 @@ public static class GostLayout
     /// <summary>Отступ в узкой графе «Формат», чтобы сжатый шрифт 5 был читаемым.</summary>
     public const double NarrowPadding = 0.5;
 
-    /// <summary>Наименование изделия в основной надписи — шрифт 5 (3,5, если не помещается в две строки).</summary>
+    /// <summary>Наименование изделия в основной надписи — по умолчанию шрифт 5; высоту задаёт пользователь в файле Excel.</summary>
     public const double NameTextHeight = 5;
+
+    /// <summary>Организация в основной надписи — шрифт 10, одной строкой.</summary>
+    public const double OrganizationTextHeight = 10;
 
     /// <summary>Обозначение документа в основной надписи — шрифт 7.</summary>
     public const double DesignationTextHeight = 7;

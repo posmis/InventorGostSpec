@@ -53,6 +53,24 @@ public static class ExcelReader
     }
 
     /// <summary>
+    /// Данные основной надписи, которые ведут вручную в файле Excel и которых нет в Inventor:
+    /// изменения и высота шрифта наименования. Нет файла — <c>null</c>.
+    /// </summary>
+    public static TitleBlock? ReadManualTitleData(string path)
+    {
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var workbook = new XLWorkbook(stream);
+        var title = ReadTitleBlock(workbook);
+        title.Changes = ReadChanges(workbook);
+        return title;
+    }
+
+    /// <summary>
     /// Записи листа «Изменения» — например, чтобы повторная выгрузка в тот же файл не стирала внесённые вручную
     /// изменения. Нет файла или листа — пустой список.
     /// </summary>
@@ -116,6 +134,11 @@ public static class ExcelReader
             [ExcelFormat.TitleFields.Approver] = v => title.Approver = v,
             [ExcelFormat.TitleFields.FirstUse] = v => title.FirstUse = v,
         };
+
+        setters[ExcelFormat.TitleFields.NameHeight] = v =>
+            title.NameTextHeight = double.TryParse(v.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var height) && height > 0
+                ? height
+                : null;
 
         var last = sheet.LastRowUsed()?.RowNumber() ?? 1;
         for (var row = 2; row <= last; row++)

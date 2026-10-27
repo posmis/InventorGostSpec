@@ -15,11 +15,7 @@ public static class GostPdfWriter
     /// <summary>Записывает PDF и возвращает число листов.</summary>
     public static int Write(SpecificationFile file, PdfOptions options, string outputPath)
     {
-        var font = FontLocator.Find(options.Font)
-            ?? throw new InvalidOperationException(string.IsNullOrWhiteSpace(options.Font)
-                ? "Не найден ни шрифт ГОСТ, ни Arial."
-                : $"Шрифт «{options.Font}» не найден. Укажите установленный шрифт TrueType или путь к файлу .ttf.");
-        var text = new GostText(GostFontResolver.Register(font.Path));
+        var text = CreateText(options);
         var pages = SpecPaginator.Paginate(file.Rows, text.Measure);
 
         using var document = new PdfDocument();
@@ -39,6 +35,19 @@ public static class GostPdfWriter
 
         document.Save(outputPath);
         return pages.Count;
+    }
+
+    /// <summary>Раскладка строк по листам — как в PDF (для разметки листов в Excel).</summary>
+    public static List<List<PrintLine>> Paginate(SpecificationFile file, PdfOptions options) =>
+        SpecPaginator.Paginate(file.Rows, CreateText(options).Measure);
+
+    private static GostText CreateText(PdfOptions options)
+    {
+        var font = FontLocator.Find(options.Font)
+            ?? throw new InvalidOperationException(string.IsNullOrWhiteSpace(options.Font)
+                ? "Не найден ни шрифт ГОСТ, ни Arial."
+                : $"Шрифт «{options.Font}» не найден. Укажите установленный шрифт TrueType или путь к файлу .ttf.");
+        return new GostText(GostFontResolver.Register(font.Path));
     }
 
     /// <summary>Входит ли лист в графу «Лист» записи изменения («2», «1-3», «1, 4»). Без номеров — только первый лист.</summary>
@@ -190,16 +199,17 @@ public static class GostPdfWriter
 
             // Наименование (графа 1), литера, лист, листов, организация.
             _gfx.DrawLine(Thick, 155, top + 15, 155, FrameBottom);
-            // Шрифт 5, а если наименование не помещается в две строки — 3,5.
-            var nameHeight = NameTextHeight;
-            var nameLines = SpecPaginator.Wrap(_title.Name, 66, (s, _) => _text.Measure(s, nameHeight));
-            if (nameLines.Count > 2)
+            // Высота шрифта наименования — из файла (задаёт пользователь), по умолчанию 5.
+            // Строк — сколько поместится по высоте графы; лишнее дописывается в последнюю строку со сжатием.
+            var nameHeight = _title.NameTextHeight ?? NameTextHeight;
+            var nameLines = SpecPaginator.Wrap(_title.Name, 66, _text.Measure, nameHeight);
+            var maxLines = Math.Max(1, (int)((25 - 2 - nameHeight) / (nameHeight * LineSpacing)) + 1);
+            if (nameLines.Count > maxLines)
             {
-                nameHeight = TextHeight;
-                nameLines = SpecPaginator.Wrap(_title.Name, 66, (s, _) => _text.Measure(s, nameHeight));
+                nameLines = nameLines.Take(maxLines - 1).Append(string.Join(" ", nameLines.Skip(maxLines - 1))).ToList();
             }
 
-            _text.DrawLines(_gfx, nameLines.Take(3).ToList(), 85, top + 15, 70, 25, nameHeight, TextAlign.Center);
+            _text.DrawLines(_gfx, nameLines, 85, top + 15, 70, 25, nameHeight, TextAlign.Center);
 
             _gfx.DrawLine(Thick, 155, top + 20, FrameRight, top + 20);
             _gfx.DrawLine(Thick, 155, top + 25, FrameRight, top + 25);
@@ -224,8 +234,9 @@ public static class GostPdfWriter
             }
 
             _text.DrawInBox(_gfx, _count.ToString(), 185, top + 20, 20, 5, TextHeight, TextAlign.Center);
-            var organization = SpecPaginator.Wrap(_title.Organization, 48, _text.Measure, TextHeight).Take(3).ToList();
-            _text.DrawLines(_gfx, organization, 155, top + 25, 50, 15, TextHeight, TextAlign.Center);
+            // Организация — шрифт 10, одной строкой, при необходимости сжимается по ширине.
+            var organization = string.Join(" ", _title.Organization.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
+            _text.DrawLines(_gfx, new[] { organization }, 155, top + 25, 50, 15, OrganizationTextHeight, TextAlign.Center);
             _gfx.DrawLine(Thick, FrameLeft, top, FrameRight, top);
         }
 

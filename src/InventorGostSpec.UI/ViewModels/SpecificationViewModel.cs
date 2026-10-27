@@ -582,10 +582,7 @@ public sealed class SpecificationViewModel : ObservableObject
 
         try
         {
-            if (info.TitleBlock.Changes.Count == 0)
-            {
-                info.TitleBlock.Changes = ReadPreviousChanges(path);
-            }
+            KeepManualTitleData(info.TitleBlock, path);
 
             Excel.ExcelExporter.Export(Specification, _context, info.TitleBlock, path);
         }
@@ -595,7 +592,8 @@ public sealed class SpecificationViewModel : ObservableObject
             return;
         }
 
-        if (_dialogs.Confirm($"Спецификация выгружена:\n{path}\n\nОткрыть файл?"))
+        var sheets = MarkSheets(path);
+        if (_dialogs.Confirm($"Спецификация выгружена:\n{path}\n{sheets}\n\nОткрыть файл?"))
         {
             _dialogs.OpenFile(path);
         }
@@ -615,16 +613,13 @@ public sealed class SpecificationViewModel : ObservableObject
             return;
         }
 
-        if (info.TitleBlock.Changes.Count == 0)
+        try
         {
-            try
-            {
-                info.TitleBlock.Changes = ReadPreviousChanges(info.DefaultPath);
-            }
-            catch (System.IO.IOException)
-            {
-                // Файл Excel недоступен — PDF без изменений.
-            }
+            KeepManualTitleData(info.TitleBlock, info.DefaultPath);
+        }
+        catch (System.IO.IOException)
+        {
+            // Файл Excel недоступен — PDF без изменений.
         }
 
         var excel = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"InventorGostSpec-{Guid.NewGuid():N}.xlsx");
@@ -660,17 +655,50 @@ public sealed class SpecificationViewModel : ObservableObject
         }
     }
 
-    /// <summary>Записи «Изменения» из заменяемого файла; файл открыт в Excel — исключение, не книга Excel — пусто.</summary>
-    private static List<ChangeRecord> ReadPreviousChanges(string path)
+    /// <summary>
+    /// Разметка листов PDF в выгруженном файле (жирная линия на границе листов, колонка «Лист PDF»)
+    /// с теми же настройками шрифта, что у утилиты PDF. Возвращает строку для сообщения.
+    /// </summary>
+    private static string MarkSheets(string path)
     {
         try
         {
-            return Excel.ExcelReader.ReadChanges(path);
+            var count = Pdf.ExcelSheetMarker.Mark(path, Pdf.PdfSettings.Load().ToOptions());
+            return $"Листов PDF: {count} (границы листов отмечены жирной линией).";
+        }
+        catch (Exception ex)
+        {
+            return $"Листы не размечены: {ex.Message}";
+        }
+    }
+
+    /// <summary>
+    /// Данные, которые ведут вручную в файле Excel (изменения, высота шрифта наименования), переносятся из прежнего
+    /// файла. Файл недоступен — исключение IOException; не книга Excel — ничего не переносится.
+    /// </summary>
+    private static void KeepManualTitleData(TitleBlock title, string path)
+    {
+        TitleBlock? previous;
+        try
+        {
+            previous = Excel.ExcelReader.ReadManualTitleData(path);
         }
         catch (Exception ex) when (ex is not System.IO.IOException)
         {
-            return new List<ChangeRecord>();
+            return;
         }
+
+        if (previous is null)
+        {
+            return;
+        }
+
+        if (title.Changes.Count == 0)
+        {
+            title.Changes = previous.Changes;
+        }
+
+        title.NameTextHeight ??= previous.NameTextHeight;
     }
 
     /// <summary>

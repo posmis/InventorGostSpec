@@ -89,6 +89,12 @@ public sealed class SpecRow
     /// <summary>Группа «устанавливаемые по …» (<see cref="SpecGroup.Id"/>). Пусто — основная часть.</summary>
     public string GroupId { get; set; } = "";
 
+    /// <summary>
+    /// Файл стороннего документа (PDF и т. п.) у ручной строки «Документации» — путь относительно папки сборки
+    /// (или полный, если файл на другом диске). Пусто — строка не связана с файлом.
+    /// </summary>
+    public string DocumentFile { get; set; } = "";
+
     /// <summary>Значения до последнего обновления для колонок, которые изменились.</summary>
     public Dictionary<SpecColumn, string> PreviousValues { get; set; } = new();
 

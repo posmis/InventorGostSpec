@@ -187,3 +187,40 @@ public class ModelNotDocumentTests
         Assert.NotNull(row.Position);
     }
 }
+
+public class ExternalDocumentTests
+{
+    [Theory]
+    [InlineData(@"C:\Док\АБВГ.301234.001ТУ-Технические условия-ред2.pdf", "АБВГ.301234.001ТУ", "Технические условия")]
+    [InlineData("АБВГ.301234.001-01ТУ-Условия-копия.pdf", "АБВГ.301234.001-01ТУ", "Условия")]
+    [InlineData("АБВГ.301234.001Э3 - Схема электрическая - v2.pdf", "АБВГ.301234.001Э3", "Схема электрическая")]
+    [InlineData("АБВГ.301234.001ПЗ.docx", "АБВГ.301234.001ПЗ", "")]
+    public void Designation_and_name_from_file_name(string path, string designation, string name) =>
+        Assert.Equal((designation, name), ExternalDocuments.ParseFileName(path));
+
+    [Fact]
+    public void Document_row_gets_type_name_and_empty_format()
+    {
+        var spec = new Specification();
+        var context = TestData.Context(spec);
+
+        var row = SpecificationEditor.AddExternalDocument(spec, context, @"Документы\АБВГ.301234.001ТУ-ТУ на изделие.pdf");
+
+        Assert.Equal(RowKind.ManualItem, row.Kind);
+        Assert.Equal(SectionIds.Documentation, row.SectionId);
+        Assert.Equal("АБВГ.301234.001ТУ", row.Get(SpecColumn.Designation));
+        Assert.Equal("Технические условия", row.Get(SpecColumn.Name));
+        Assert.Equal("", row.Get(SpecColumn.Format));
+        Assert.Equal("", row.Get(SpecColumn.Quantity));
+        Assert.Null(row.Position);
+        Assert.Equal(@"Документы\АБВГ.301234.001ТУ-ТУ на изделие.pdf", row.DocumentFile);
+    }
+
+    [Fact]
+    public void Without_code_name_comes_from_file()
+    {
+        var values = ExternalDocuments.FromFile("АБВГ.301234.001-Паспорт-2024.pdf");
+
+        Assert.Equal(("АБВГ.301234.001", "Паспорт"), (values.Designation, values.Name));
+    }
+}

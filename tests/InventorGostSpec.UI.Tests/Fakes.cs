@@ -17,6 +17,8 @@ internal sealed class FakeHost : ISpecificationHost
 
     public string DocumentName => "Сборка.iam";
 
+    public string AssemblyFolder { get; set; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "Сборка");
+
     public SpecSettings LoadSettings() => Settings;
 
     public void SaveSettings(SpecSettings settings) => Settings = settings;
@@ -197,6 +199,11 @@ internal sealed class FakeDialogs : IDialogService
     public List<string> ShownInFolder { get; } = new();
 
     public void ShowInFolder(string path) => ShownInFolder.Add(path);
+
+    /// <summary>Файлы, которые «выберет» пользователь в окне выбора документов.</summary>
+    public IReadOnlyList<string>? DocumentFiles { get; set; }
+
+    public IReadOnlyList<string>? AskDocumentFiles(string folder) => DocumentFiles;
 
     public bool Confirm(string text) => ConfirmAnswer;
 

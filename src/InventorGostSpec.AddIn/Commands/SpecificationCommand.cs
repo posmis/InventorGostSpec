@@ -67,6 +67,8 @@ internal sealed class SpecificationCommand : AddInCommand
 
         public string DocumentName => ((Document)_assembly).DisplayName;
 
+        public string AssemblyFolder => BomAccess.AssemblyFolder(_assembly);
+
         public SpecSettings LoadSettings() => _context.Settings.Load();
 
         public void SaveSettings(SpecSettings settings) => _context.Settings.Save(settings);

@@ -99,6 +99,18 @@ public partial class SpecificationWindow : Window, IDialogService
         return dialog.ShowDialog(this) == true ? dialog.FileName : null;
     }
 
+    public IReadOnlyList<string>? AskDocumentFiles(string folder)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Сторонний документ в «Документацию» (имя файла: Обозначение-Наименование-Прочее)",
+            Filter = "Документы (*.pdf;*.doc;*.docx;*.xls;*.xlsx;*.dwg;*.tif)|*.pdf;*.doc;*.docx;*.xls;*.xlsx;*.dwg;*.tif|Все файлы (*.*)|*.*",
+            Multiselect = true,
+            InitialDirectory = folder,
+        };
+        return dialog.ShowDialog(this) == true ? dialog.FileNames : null;
+    }
+
     public string? AskPdfPath(string defaultPath)
     {
         var dialog = new Microsoft.Win32.SaveFileDialog

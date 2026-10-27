@@ -242,6 +242,22 @@ public static class SpecificationEditor
     }
 
     /// <summary>
+    /// Добавляет в «Документацию» сторонний документ (не из Inventor): обозначение и тип — по имени файла
+    /// (см. <see cref="ExternalDocuments"/>), формат вписывается вручную.
+    /// </summary>
+    /// <param name="documentFile">Путь, который хранится в строке (относительно папки сборки).</param>
+    public static SpecRow AddExternalDocument(
+        Specification spec,
+        SpecificationContext context,
+        string documentFile,
+        string? afterRowId = null)
+    {
+        var row = AddManualItem(spec, context, ExternalDocuments.FromFile(documentFile), afterRowId);
+        row.DocumentFile = documentFile;
+        return row;
+    }
+
+    /// <summary>
     /// Удаляет строку. Строки компонентов, которые есть в сборке, удалить нельзя —
     /// они вернутся при следующем обновлении.
     /// </summary>

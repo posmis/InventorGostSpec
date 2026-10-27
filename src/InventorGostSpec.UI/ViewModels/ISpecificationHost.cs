@@ -8,6 +8,9 @@ public interface ISpecificationHost
     /// <summary>Имя сборки для заголовка окна.</summary>
     string DocumentName { get; }
 
+    /// <summary>Папка сборки: относительно неё хранятся пути сторонних документов.</summary>
+    string AssemblyFolder { get; }
+
     SpecSettings LoadSettings();
 
     void SaveSettings(SpecSettings settings);
@@ -110,6 +113,9 @@ public interface IDialogService
     /// Показывает замечания проверки. Возвращает строку, к которой нужно перейти (<c>null</c> — просто закрыть).
     /// </summary>
     string? ShowCheckResults(CheckViewModel viewModel);
+
+    /// <summary>Выбор сторонних документов (PDF, Word…) для «Документации». <c>null</c> — отмена.</summary>
+    IReadOnlyList<string>? AskDocumentFiles(string folder);
 
     /// <summary>Открывает папку файла в Проводнике с выделенным файлом.</summary>
     void ShowInFolder(string path);

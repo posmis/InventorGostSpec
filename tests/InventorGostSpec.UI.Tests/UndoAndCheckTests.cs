@@ -405,6 +405,45 @@ public class DocumentRowTests
         Assert.False(vm.SetDocumentTypeCommand.CanExecute("СБ")); // не документ
         Assert.False(vm.CanSetDocumentType); // пункта меню нет
     }
+
+    [Fact]
+    public void External_document_only_from_documentation_and_shows_its_folder()
+    {
+        var vm = Open();
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Корпус");
+        Assert.False(vm.CanAddExternalDocument); // в «Деталях» пункта нет
+
+        vm.InsertSectionCommand.Execute(SectionIds.Documentation);
+        vm.SelectedRow = vm.Rows.Single(r => r.IsHeader && r.SectionId == SectionIds.Documentation);
+        Assert.True(vm.CanAddExternalDocument);
+
+        var file = System.IO.Path.Combine(_host.AssemblyFolder, "Документы", "АБВГ.301234.001ТУ-ТУ-ред.pdf");
+        _dialogs.DocumentFiles = new[] { file };
+        vm.AddExternalDocumentCommand.Execute(null);
+
+        var row = vm.Rows.Single(r => r.Designation == "АБВГ.301234.001ТУ");
+        Assert.Equal(("Технические условия", "", ""), (row.Name, row.Format, row.Quantity));
+        Assert.Equal(System.IO.Path.Combine("Документы", "АБВГ.301234.001ТУ-ТУ-ред.pdf"), row.Row!.DocumentFile);
+
+        // Второй раз тот же файл не добавляется.
+        vm.AddExternalDocumentCommand.Execute(null);
+        Assert.Single(vm.Rows, r => r.Designation == "АБВГ.301234.001ТУ");
+
+        // «Показать файл в папке»: файла пока нет — предупреждение, есть — папка.
+        vm.SelectedRow = vm.Rows.Single(r => r.RowId == row.RowId);
+        Assert.True(vm.ShowComponentFileCommand.CanExecute(null));
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(file)!);
+        System.IO.File.WriteAllText(file, "");
+        try
+        {
+            vm.ShowComponentFileCommand.Execute(null);
+            Assert.Equal(file, Assert.Single(_dialogs.ShownInFolder));
+        }
+        finally
+        {
+            System.IO.File.Delete(file);
+        }
+    }
 }
 
 public class ResetSectionsTests

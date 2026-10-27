@@ -311,6 +311,9 @@
                         <MenuItem Header="Добавить изделие" InputGestureText="Insert" Command="{Binding AddItemCommand}">
                             <MenuItem.Icon><Image Style="{StaticResource MenuIcon}" Source="{StaticResource Icon.AddItem}" /></MenuItem.Icon>
                         </MenuItem>
+                        <MenuItem Header="Добавить сторонний документ…" Command="{Binding AddExternalDocumentCommand}"
+                                  Visibility="{Binding CanAddExternalDocument, Converter={StaticResource BoolToVisibility}}"
+                                  ToolTip="Документ не из Inventor (PDF, Word…). Имя файла: «Обозначение-Наименование-Прочее». Наименование — тип документа по коду в обозначении, формат вписывается вручную." />
                         <MenuItem Header="Добавить текст" InputGestureText="Ctrl+T" Command="{Binding AddNoteCommand}">
                             <MenuItem.Icon><Image Style="{StaticResource MenuIcon}" Source="{StaticResource Icon.AddText}" /></MenuItem.Icon>
                         </MenuItem>
@@ -373,8 +376,8 @@
                             </MenuItem.ItemContainerStyle>
                         </MenuItem>
                         <Separator />
-                        <MenuItem Header="Показать файл компонента в папке" Command="{Binding ShowComponentFileCommand}"
-                                  ToolTip="Открыть папку детали или сборки (у строки чертежа — папку чертежа) с выделенным файлом" />
+                        <MenuItem Header="Показать файл в папке" Command="{Binding ShowComponentFileCommand}"
+                                  ToolTip="Открыть папку детали или сборки (у строки чертежа или стороннего документа — папку документа) с выделенным файлом" />
                         <MenuItem Header="Показать чертёж в папке" Command="{Binding ShowDrawingFileCommand}"
                                   ToolTip="Найти чертёж компонента в папках проекта и открыть его папку с выделенным файлом" />
                         <Separator />

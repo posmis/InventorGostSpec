@@ -89,7 +89,8 @@ public sealed class SpecificationViewModel : ObservableObject
         DrawingFormatsCommand = new RelayCommand(FindDrawingFormats, () => Specification.Rows.Any(IsPartWithModel));
         SetDocumentTypeCommand = new RelayCommand(SetDocumentType, p => p is string && TargetRows.Any(IsDocumentRow));
         ResetSectionsCommand = new RelayCommand(ResetSections, p => ResetSectionRows(p).Any());
-        ShowComponentFileCommand = new RelayCommand(ShowComponentFile, () => SelectedComponent() is not null);
+        ShowComponentFileCommand = new RelayCommand(ShowComponentFile, () => SelectedComponent() is not null || SelectedDocumentFile() is not null);
+        AddExternalDocumentCommand = new RelayCommand(AddExternalDocument, () => CanAddExternalDocument);
         ShowDrawingFileCommand = new RelayCommand(ShowDrawingFile, () => SelectedComponent() is { } row && SpecificationEditor.IsModelRow(row));
 
         Rebuild();
@@ -123,6 +124,7 @@ public sealed class SpecificationViewModel : ObservableObject
         _selectedRows = rows.OrderBy(r => Rows.IndexOf(r)).ToList();
         UpdateStatus();
         OnPropertyChanged(nameof(CanSetDocumentType));
+        OnPropertyChanged(nameof(CanAddExternalDocument));
     }
 
     /// <summary>Пункт «Тип документа» — только для строк раздела «Документация».</summary>
@@ -151,6 +153,7 @@ public sealed class SpecificationViewModel : ObservableObject
             if (SetField(ref _selectedRow, value))
             {
                 OnPropertyChanged(nameof(CanSetDocumentType));
+                OnPropertyChanged(nameof(CanAddExternalDocument));
             }
         }
     }
@@ -266,6 +269,13 @@ public sealed class SpecificationViewModel : ObservableObject
 
     /// <summary>Показать файл компонента выбранной строки в Проводнике.</summary>
     public ICommand ShowComponentFileCommand { get; }
+
+    /// <summary>Сторонний документ (PDF и т. п.) в «Документацию» — из меню строк этого раздела.</summary>
+    public ICommand AddExternalDocumentCommand { get; }
+
+    /// <summary>Выбрана строка или заголовок раздела «Документация».</summary>
+    public bool CanAddExternalDocument =>
+        SelectedRow is { IsGroupHeader: false } selected && ComponentSnapshot.IsDocument(selected.SectionId);
 
     /// <summary>Найти чертёж компонента выбранной строки и показать его в Проводнике.</summary>
     public ICommand ShowDrawingFileCommand { get; }
@@ -648,8 +658,78 @@ public sealed class SpecificationViewModel : ObservableObject
     private SpecRow? SelectedComponent() =>
         SelectedRow?.Row is { Kind: RowKind.Component, IsRemoved: false, ComponentKey: not null } row ? row : null;
 
+    /// <summary>Полный путь стороннего документа у выбранной строки; <c>null</c> — строка не связана с файлом.</summary>
+    private string? SelectedDocumentFile() =>
+        SelectedRow?.Row is { Kind: RowKind.ManualItem, DocumentFile.Length: > 0 } row
+            ? System.IO.Path.GetFullPath(System.IO.Path.Combine(_host.AssemblyFolder, row.DocumentFile))
+            : null;
+
+    private void AddExternalDocument()
+    {
+        var folder = _host.AssemblyFolder;
+        var files = _dialogs.AskDocumentFiles(folder);
+        if (files is null || files.Count == 0)
+        {
+            return;
+        }
+
+        var existing = Specification.Rows
+            .Where(r => r.DocumentFile.Length > 0)
+            .Select(r => System.IO.Path.GetFullPath(System.IO.Path.Combine(folder, r.DocumentFile)))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var afterRowId = SelectedRow?.RowId;
+        var skipped = new List<string>();
+        SpecRow? last = null;
+        foreach (var file in files)
+        {
+            if (!existing.Add(System.IO.Path.GetFullPath(file)))
+            {
+                skipped.Add(System.IO.Path.GetFileName(file));
+                continue;
+            }
+
+            last = SpecificationEditor.AddExternalDocument(Specification, _context, StoredPath(folder, file), afterRowId);
+            afterRowId = last.Id;
+        }
+
+        if (last is not null)
+        {
+            // Формат стороннего документа неизвестен — вписывается вручную.
+            Changed(rebuild: true, selectRowId: last.Id);
+            RequestEdit(last.Id, SpecColumn.Format);
+        }
+
+        if (skipped.Count > 0)
+        {
+            _dialogs.Info("Эти документы уже есть в спецификации:\n" + string.Join("\n", skipped));
+        }
+    }
+
+    /// <summary>
+    /// Путь документа для хранения: относительно папки сборки (на другом ПК с той же структурой папок, например в облаке,
+    /// он найдётся), на другом диске — полный.
+    /// </summary>
+    private static string StoredPath(string folder, string file) =>
+        string.Equals(System.IO.Path.GetPathRoot(folder), System.IO.Path.GetPathRoot(file), StringComparison.OrdinalIgnoreCase)
+            ? System.IO.Path.GetRelativePath(folder, file)
+            : file;
+
     private void ShowComponentFile()
     {
+        if (SelectedDocumentFile() is { } document)
+        {
+            if (System.IO.File.Exists(document))
+            {
+                _dialogs.ShowInFolder(document);
+            }
+            else
+            {
+                _dialogs.Warning($"Файл документа не найден:\n{document}");
+            }
+
+            return;
+        }
+
         if (SelectedComponent() is not { } row)
         {
             return;

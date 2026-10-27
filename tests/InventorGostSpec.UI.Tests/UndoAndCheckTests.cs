@@ -431,12 +431,13 @@ public class DocumentRowTests
 
         // «Показать файл в папке»: файла пока нет — предупреждение, есть — папка.
         vm.SelectedRow = vm.Rows.Single(r => r.RowId == row.RowId);
-        Assert.True(vm.ShowComponentFileCommand.CanExecute(null));
+        Assert.True(vm.IsDocumentSelected);
+        Assert.True(vm.ShowDocumentFileCommand.CanExecute(null));
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(file)!);
         System.IO.File.WriteAllText(file, "");
         try
         {
-            vm.ShowComponentFileCommand.Execute(null);
+            vm.ShowDocumentFileCommand.Execute(null);
             Assert.Equal(file, Assert.Single(_dialogs.ShownInFolder));
         }
         finally
@@ -574,9 +575,24 @@ public class ShowInFolderTests
         Assert.Equal(2, _dialogs.Warnings.Count);
         Assert.Contains("Чертёж компонента «А.001 Корпус» не найден", _dialogs.Warnings[1]);
 
+        // У документа — один пункт «Показать документ в папке».
         vm.SelectedRow = vm.Rows.Single(r => r.Name == "Сборочный чертеж");
-        Assert.True(vm.ShowComponentFileCommand.CanExecute(null));
+        Assert.True(vm.IsDocumentSelected);
+        Assert.False(vm.ShowComponentFileCommand.CanExecute(null));
         Assert.False(vm.ShowDrawingFileCommand.CanExecute(null));
+        Assert.True(vm.ShowDocumentFileCommand.CanExecute(null));
+        var drawing = Path.GetTempFileName();
+        try
+        {
+            _host.Files["drawing:Привод.idw"] = drawing;
+            vm.ShowDocumentFileCommand.Execute(null);
+            Assert.Equal(drawing, Assert.Single(_dialogs.ShownInFolder));
+        }
+        finally
+        {
+            File.Delete(drawing);
+        }
+
         vm.SelectedRow = vm.Rows.First(r => r.IsHeader);
         Assert.False(vm.ShowComponentFileCommand.CanExecute(null));
     }

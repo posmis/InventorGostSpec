@@ -89,9 +89,10 @@ public sealed class SpecificationViewModel : ObservableObject
         DrawingFormatsCommand = new RelayCommand(FindDrawingFormats, () => Specification.Rows.Any(IsPartWithModel));
         SetDocumentTypeCommand = new RelayCommand(SetDocumentType, p => p is string && TargetRows.Any(IsDocumentRow));
         ResetSectionsCommand = new RelayCommand(ResetSections, p => ResetSectionRows(p).Any());
-        ShowComponentFileCommand = new RelayCommand(ShowComponentFile, () => SelectedComponent() is not null || SelectedDocumentFile() is not null);
+        ShowComponentFileCommand = new RelayCommand(ShowComponentFile, () => SelectedComponent() is not null && !IsDocumentSelected);
+        ShowDocumentFileCommand = new RelayCommand(ShowDocumentFile, () => IsDocumentSelected && (SelectedDocumentFile() is not null || SelectedComponent() is not null));
         AddExternalDocumentCommand = new RelayCommand(AddExternalDocument, () => CanAddExternalDocument);
-        ShowDrawingFileCommand = new RelayCommand(ShowDrawingFile, () => SelectedComponent() is { } row && SpecificationEditor.IsModelRow(row));
+        ShowDrawingFileCommand = new RelayCommand(ShowDrawingFile, () => SelectedComponent() is { } row && SpecificationEditor.IsModelRow(row) && !IsDocumentSelected);
 
         Rebuild();
         _isDirty = isNew;
@@ -125,6 +126,8 @@ public sealed class SpecificationViewModel : ObservableObject
         UpdateStatus();
         OnPropertyChanged(nameof(CanSetDocumentType));
         OnPropertyChanged(nameof(CanAddExternalDocument));
+        OnPropertyChanged(nameof(IsDocumentSelected));
+        OnPropertyChanged(nameof(IsNotDocumentSelected));
     }
 
     /// <summary>Пункт «Тип документа» — только для строк раздела «Документация».</summary>
@@ -154,6 +157,8 @@ public sealed class SpecificationViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(CanSetDocumentType));
                 OnPropertyChanged(nameof(CanAddExternalDocument));
+                OnPropertyChanged(nameof(IsDocumentSelected));
+                OnPropertyChanged(nameof(IsNotDocumentSelected));
             }
         }
     }
@@ -269,6 +274,17 @@ public sealed class SpecificationViewModel : ObservableObject
 
     /// <summary>Показать файл компонента выбранной строки в Проводнике.</summary>
     public ICommand ShowComponentFileCommand { get; }
+
+    /// <summary>Папка документа строки «Документации»: найденного чертежа или стороннего файла.</summary>
+    public ICommand ShowDocumentFileCommand { get; }
+
+    /// <summary>
+    /// Выбрана строка «Документации»: в меню один пункт «Показать документ в папке»
+    /// вместо пунктов файла компонента и чертежа.
+    /// </summary>
+    public bool IsDocumentSelected => SelectedRow?.Row is { } row && IsDocumentRow(row);
+
+    public bool IsNotDocumentSelected => !IsDocumentSelected;
 
     /// <summary>Сторонний документ (PDF и т. п.) в «Документацию» — из меню строк этого раздела.</summary>
     public ICommand AddExternalDocumentCommand { get; }
@@ -714,22 +730,21 @@ public sealed class SpecificationViewModel : ObservableObject
             ? System.IO.Path.GetRelativePath(folder, file)
             : file;
 
-    private void ShowComponentFile()
+    private void ShowDocumentFile()
     {
-        if (SelectedDocumentFile() is { } document)
+        var document = SelectedDocumentFile()
+            ?? (SelectedComponent() is { } row ? TryHost<string>(() => _host.GetComponentFile(row.ComponentKey!)) : null);
+        if (document is null || !System.IO.File.Exists(document))
         {
-            if (System.IO.File.Exists(document))
-            {
-                _dialogs.ShowInFolder(document);
-            }
-            else
-            {
-                _dialogs.Warning($"Файл документа не найден:\n{document}");
-            }
-
+            _dialogs.Warning(document is null ? "Строка документа не связана с файлом." : $"Файл документа не найден:\n{document}");
             return;
         }
 
+        _dialogs.ShowInFolder(document);
+    }
+
+    private void ShowComponentFile()
+    {
         if (SelectedComponent() is not { } row)
         {
             return;

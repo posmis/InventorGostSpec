@@ -30,7 +30,7 @@ public static class SpecificationEditor
                 row.Position = int.TryParse(value, out var position) && position > 0 ? position : null;
                 return;
             case SpecColumn.SortGroup:
-                row.SortGroup = int.TryParse(value, out var group) && group >= 0 ? group : null;
+                row.SortGroup = int.TryParse(value, out var group) && group >= 0 ? group : 0;
                 return;
         }
 

@@ -77,18 +77,19 @@ public class EditorTests
     public void Sort_groups_have_priority_over_gost_order()
     {
         var (spec, context) = Build();
-        SpecificationEditor.SetCell(spec, context, TestData.ByName(spec, "Третья"), SpecColumn.SortGroup, "0");
+        Assert.All(spec.Rows, r => Assert.Equal(0, r.SortGroup));
+        SpecificationEditor.SetCell(spec, context, TestData.ByName(spec, "Первая"), SpecColumn.SortGroup, "2");
         SpecificationEditor.SetCell(spec, context, TestData.ByName(spec, "Вторая"), SpecColumn.SortGroup, "1");
 
         SpecificationEditor.Reset(spec, context);
 
-        // Группа 0, группа 1, затем без группы; разделы не смешиваются.
+        // Группа 0 (по умолчанию), затем 1, затем 2; разделы не смешиваются.
         Assert.Equal(new[] { "Третья", "Вторая", "Первая", "Болт М8х20 ГОСТ 7798-70" }, TestData.Names(spec));
         Assert.Equal(new int?[] { 1, 2, 3, 6 }, spec.Rows.Select(r => r.Position));
-        Assert.Equal("0", TestData.ByName(spec, "Третья").Get(SpecColumn.SortGroup));
+        Assert.Equal("2", TestData.ByName(spec, "Первая").Get(SpecColumn.SortGroup));
 
-        SpecificationEditor.SetCell(spec, context, TestData.ByName(spec, "Третья"), SpecColumn.SortGroup, "");
-        Assert.Null(TestData.ByName(spec, "Третья").SortGroup);
+        SpecificationEditor.SetCell(spec, context, TestData.ByName(spec, "Первая"), SpecColumn.SortGroup, "");
+        Assert.Equal(0, TestData.ByName(spec, "Первая").SortGroup);
     }
 
     [Fact]

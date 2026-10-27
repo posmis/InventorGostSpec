@@ -171,12 +171,12 @@ public sealed class SpecificationViewModel : ObservableObject
     public ICommand WritePositionsCommand { get; }
     public ICommand NextChangeCommand { get; }
 
-    /// <summary>Группа сортировки выбранных строк: параметр — число или пустая строка (без группы).</summary>
+    /// <summary>Группа сортировки выбранных строк: параметр — число (по умолчанию у всех строк 0).</summary>
     public ICommand SetSortGroupCommand { get; }
 
     /// <summary>Варианты для подменю «Группа сортировки».</summary>
     public IReadOnlyList<Option> SortGroupOptions { get; } =
-        new[] { new Option("", "Без группы") }.Concat(Enumerable.Range(0, 10).Select(i => new Option(i.ToString(), i.ToString()))).ToList();
+        Enumerable.Range(0, 10).Select(i => new Option(i.ToString(), i.ToString())).ToList();
 
     /// <summary>Свойства компонента (раздел, формат, поля сортировки) — записываются в его iProperties.</summary>
     public ICommand EditComponentCommand { get; }
@@ -242,7 +242,7 @@ public sealed class SpecificationViewModel : ObservableObject
 
         if (column == SpecColumn.SortGroup && value.Length > 0 && !(int.TryParse(value, out var group) && group >= 0))
         {
-            _dialogs.Warning("Группа сортировки — целое число от 0: чем меньше, тем выше в разделе. Пусто — без группы.");
+            _dialogs.Warning("Группа сортировки — целое число от 0 (по умолчанию 0): чем меньше, тем выше в разделе.");
             rowViewModel.Refresh();
             return;
         }

@@ -173,7 +173,7 @@ public partial class SpecificationWindow : Window, IDialogService
         });
 
         AddColumn(SpecColumn.SortGroup, "Гр.", 40, center: true,
-            "Группа сортировки (только в этой спецификации): внутри раздела меньшее число — выше, без группы — после всех.\n" +
+            "Группа сортировки (только в этой спецификации, по умолчанию 0): внутри раздела меньшее число — выше.\n" +
             "Порядок применяется кнопкой «По ГОСТ».");
         AddColumn(SpecColumn.Format, "Формат", 58, center: true);
         AddColumn(SpecColumn.Zone, "Зона", 50, center: true);

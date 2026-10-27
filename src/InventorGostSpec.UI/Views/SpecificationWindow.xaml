@@ -265,7 +265,7 @@
                         </MenuItem>
                         <MenuItem Header="Удалить группу" Command="{Binding DeleteGroupCommand}" />
                         <MenuItem Header="Группа сортировки" ItemsSource="{Binding SortGroupOptions}"
-                                  ToolTip="Только в этой спецификации: внутри раздела меньшее число — выше. Применяется кнопкой «По ГОСТ».">
+                                  ToolTip="Только в этой спецификации, по умолчанию 0: внутри раздела меньшее число — выше. Применяется кнопкой «По ГОСТ».">
                             <MenuItem.Icon><Image Style="{StaticResource MenuIcon}" Source="{StaticResource Icon.Sort}" /></MenuItem.Icon>
                             <MenuItem.ItemContainerStyle>
                                 <Style TargetType="MenuItem">

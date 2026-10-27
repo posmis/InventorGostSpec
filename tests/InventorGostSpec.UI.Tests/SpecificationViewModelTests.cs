@@ -462,10 +462,11 @@ public class SpecificationViewModelTests
     public void Sort_group_is_set_for_selected_rows_and_applied_by_gost_sort()
     {
         var vm = Open();
-        vm.SetSelectedRows(new[] { RowByName(vm, "Ось") });
+        Assert.Equal("0", RowByName(vm, "Корпус").SortGroup);
+        vm.SetSelectedRows(new[] { RowByName(vm, "Корпус") });
 
-        vm.SetSortGroupCommand.Execute("0");
-        Assert.Equal("0", RowByName(vm, "Ось").SortGroup);
+        vm.SetSortGroupCommand.Execute("1");
+        Assert.Equal("1", RowByName(vm, "Корпус").SortGroup);
         // Ручной порядок не меняется, пока не нажата «По ГОСТ».
         Assert.Equal(new[] { "Корпус", "Ось" }, vm.Rows.Where(r => r.Kind == SpecRowKind.Component).Select(r => r.Name).Take(2));
 
@@ -474,10 +475,7 @@ public class SpecificationViewModelTests
 
         RowByName(vm, "Корпус").SortGroup = "x";
         Assert.Single(_dialogs.Warnings);
-
-        vm.SetSelectedRows(new[] { RowByName(vm, "Ось") });
-        vm.SetSortGroupCommand.Execute("");
-        Assert.Equal("", RowByName(vm, "Ось").SortGroup);
+        Assert.Equal(10, vm.SortGroupOptions.Count);
     }
 
     [Fact]

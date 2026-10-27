@@ -56,6 +56,8 @@ internal sealed class GostText
             return 0;
         }
 
+        // В однострочной графе (обозначение, подписи) ручной перенос строки — просто пробел.
+        text = string.Join(" ", text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries));
         var width = Measure(text, capHeight);
         var scale = width > maxWidth && width > 0 ? maxWidth / width : 1;
         var drawn = width * scale;

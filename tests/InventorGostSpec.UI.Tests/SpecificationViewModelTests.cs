@@ -421,18 +421,17 @@ public class AssignSectionViewModelTests
 public class StandardNamesViewModelTests
 {
     [Fact]
-    public void Statuses_and_default_selection()
+    public void File_name_is_written_as_is()
     {
         var vm = new StandardNamesViewModel(new[]
         {
-            new StandardNameCandidate("a", "Болт ГОСТ 7798-70 M12x60", "ГОСТ 7798-70 - М12 x 60", false),
-            new StandardNameCandidate("b", "Болт М8х20 ГОСТ 7798-70", "Болт М8х20 ГОСТ 7798-70", false),
-            new StandardNameCandidate("c", "ГОСТ 5915-70 М12", "", false),
+            new StandardNameCandidate("a", "ГОСТ ISO 7380-1-M4x8", "Винт", false),
+            new StandardNameCandidate("b", "Гайка барашек DIN 315 - M8 - St - C", "Гайка барашек DIN 315 - M8 - St - C", false),
         });
 
         var changed = vm.Items.Single(i => i.Candidate.Key == "a");
         Assert.Equal(StandardNameStatus.Change, changed.Status);
-        Assert.Equal("Болт М12х60 ГОСТ 7798-70", changed.Proposed);
+        Assert.Equal("ГОСТ ISO 7380-1-M4x8", changed.Proposed);
         Assert.True(changed.IsSelected);
 
         var ok = vm.Items.Single(i => i.Candidate.Key == "b");
@@ -440,45 +439,18 @@ public class StandardNamesViewModelTests
         Assert.False(ok.IsSelected);
         Assert.Same(ok, vm.Items.Last());
 
-        var review = vm.Items.Single(i => i.Candidate.Key == "c");
-        Assert.Equal(StandardNameStatus.Review, review.Status);
-        Assert.False(review.IsSelected);
-
         Assert.Equal(new[] { changed }, vm.GetChanges());
-    }
-
-    [Fact]
-    public void Name_missing_in_file_is_taken_from_current_description()
-    {
-        var item = new StandardNameItem(new StandardNameCandidate("a", "ГОСТ 7798-70 M12x60", "Болт ГОСТ 7798-70", false));
-
-        Assert.Equal("Болт М12х60 ГОСТ 7798-70", item.Proposed);
-        Assert.Equal(StandardNameStatus.Change, item.Status);
-    }
-
-    [Fact]
-    public void Foreign_standard_is_marked_and_skipped()
-    {
-        var vm = new StandardNamesViewModel(new[]
-        {
-            new StandardNameCandidate("a", "Гайка барашек DIN 315 - M8 - St - C", "Гайка барашек DIN 315 - M8 - St - C", false),
-            new StandardNameCandidate("b", "Гайка барашек DIN 315 - M8 - St - C", "Гайка", false),
-        });
-
-        Assert.All(vm.Items, i => Assert.Equal(StandardNameStatus.Foreign, i.Status));
-        Assert.All(vm.Items, i => Assert.Equal(i.Current, i.Proposed));
-        Assert.Empty(vm.GetChanges());
         vm.SelectAllCommand.Execute(null);
-        Assert.Empty(vm.GetChanges());
+        Assert.Equal(new[] { changed }, vm.GetChanges());
     }
 
     [Fact]
     public void Manual_edit_selects_item()
     {
-        var vm = new StandardNamesViewModel(new[] { new StandardNameCandidate("c", "ГОСТ 5915-70 М12", "", false) });
+        var vm = new StandardNamesViewModel(new[] { new StandardNameCandidate("c", "Гайка М12 ГОСТ 5915-70", "Гайка М12 ГОСТ 5915-70", false) });
         var item = vm.Items[0];
 
-        item.Proposed = "Гайка М12 ГОСТ 5915-70";
+        item.Proposed = "Гайка М12-6Н.5 ГОСТ 5915-70";
 
         Assert.True(item.IsSelected);
         Assert.Single(vm.GetChanges());
@@ -489,8 +461,8 @@ public class StandardNamesViewModelTests
     {
         var vm = new StandardNamesViewModel(new[]
         {
-            new StandardNameCandidate("a", "Болт ГОСТ 7798-70 M12x60", "x", true),
-            new StandardNameCandidate("b", "Болт ГОСТ 7798-70 M8x20", "y", false),
+            new StandardNameCandidate("a", "Болт М12х60 ГОСТ 7798-70", "x", true),
+            new StandardNameCandidate("b", "Болт М8х20 ГОСТ 7798-70", "y", false),
         });
 
         Assert.True(vm.Items.Single(i => i.Candidate.Key == "a").IsSelected);

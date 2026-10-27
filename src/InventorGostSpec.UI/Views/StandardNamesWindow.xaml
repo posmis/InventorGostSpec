@@ -12,7 +12,7 @@
         <Border DockPanel.Dock="Top" Background="#FFF4CC" BorderBrush="#E0C25A" BorderThickness="1" Padding="10,8" Margin="0,0,0,10">
             <TextBlock TextWrapping="Wrap">
                 <Run FontWeight="SemiBold" Text="Внимание. " />
-                <Run Text="Наименование (Description) записывается в файлы стандартных изделий и изменится во всех сборках, где они используются. Новое наименование строится из имени файла. Изделия по зарубежным стандартам (DIN, ISO, EN) не меняются. Проверьте колонку «Станет» — её можно исправить вручную. Изменения можно отменить через «Отменить» (Ctrl+Z) до сохранения сборки." />
+                <Run Text="Наименование (Description) записывается в файлы стандартных изделий и изменится во всех сборках, где они используются. В наименование записывается имя файла как есть. Колонку «Станет» можно исправить вручную. Изменения можно отменить через «Отменить» (Ctrl+Z) до сохранения сборки." />
             </TextBlock>
         </Border>
 
@@ -36,9 +36,6 @@
                     <Style.Triggers>
                         <DataTrigger Binding="{Binding IsSkipped}" Value="True">
                             <Setter Property="Foreground" Value="#888" />
-                        </DataTrigger>
-                        <DataTrigger Binding="{Binding Status}" Value="Review">
-                            <Setter Property="Background" Value="#FBE1E1" />
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>

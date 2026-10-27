@@ -1,6 +1,5 @@
 using InventorGostSpec.AddIn.Infrastructure;
 using InventorGostSpec.AddIn.InventorApi;
-using InventorGostSpec.Core.Parsing;
 using InventorGostSpec.Core.Sections;
 using InventorGostSpec.Core.Storage;
 using InventorGostSpec.UI;
@@ -10,8 +9,8 @@ using InventorGostSpec.UI.Views;
 namespace InventorGostSpec.AddIn.Commands;
 
 /// <summary>
-/// Приведение наименований (Description) стандартных изделий сборки к виду для спецификации
-/// по имени файла: «Болт М12х60 ГОСТ 7798-70». Со спецификацией не связана.
+/// Запись имени файла стандартного изделия в его наименование (Description) — как есть, без перестановок.
+/// Со спецификацией не связана.
 /// </summary>
 internal sealed class StandardNamesCommand : AddInCommand
 {
@@ -22,7 +21,7 @@ internal sealed class StandardNamesCommand : AddInCommand
     public override string DisplayName => "Наименования\nстандартных";
 
     public override string Description =>
-        "Записать наименования стандартных изделий сборки по именам их файлов в виде «Болт М12х60 ГОСТ 7798-70». " +
+        "Записать в наименование (Description) стандартных изделий сборки имя их файла. " +
         "Перед записью показывается, что было и что станет.";
 
     public override string IconName => "standard-names";
@@ -112,19 +111,8 @@ internal sealed class StandardNamesCommand : AddInCommand
         context.Messages.Info(message);
     }
 
-    /// <summary>
-    /// Записывает наименование и поля сортировки: они выводятся из наименования
-    /// и иначе остались бы от старого.
-    /// </summary>
-    private static void Rename(ComponentTarget target, string name)
-    {
+    private static void Rename(ComponentTarget target, string name) =>
         PropertyAccess.Set(target.PropertySets, PropertyAccess.DesignTrackingSet, PropertyAccess.Description, name);
-
-        var parts = StandardDesignationParser.Parse(name);
-        target.Set(PropertyNames.SortName, parts.Name);
-        target.Set(PropertyNames.StandardNumber, parts.StandardNumber);
-        target.Set(PropertyNames.Parameters, parts.Parameters);
-    }
 
     private static HashSet<string> SelectedFiles(AssemblyDocument assembly)
     {

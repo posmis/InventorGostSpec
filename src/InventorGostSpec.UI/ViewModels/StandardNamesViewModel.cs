@@ -1,28 +1,21 @@
 using System.Windows.Input;
-using InventorGostSpec.Core.Parsing;
 
 namespace InventorGostSpec.UI.ViewModels;
 
 /// <summary>Стандартное изделие для переименования (данные из Inventor).</summary>
 /// <param name="Key">Полный путь к файлу.</param>
-/// <param name="FileName">Имя файла без расширения — источник наименования.</param>
+/// <param name="FileName">Имя файла без расширения — правильное наименование.</param>
 /// <param name="CurrentName">Текущее наименование (Description).</param>
 /// <param name="IsPreselected">Компонент выбран в сборке.</param>
 public sealed record StandardNameCandidate(string Key, string FileName, string CurrentName, bool IsPreselected);
 
 public enum StandardNameStatus
 {
-    /// <summary>Наименование будет заменено.</summary>
+    /// <summary>Наименование будет заменено именем файла.</summary>
     Change,
 
-    /// <summary>Не удалось найти наименование изделия или стандарт — нужно проверить вручную.</summary>
-    Review,
-
-    /// <summary>Текущее наименование уже в нужном виде — пропускается.</summary>
+    /// <summary>Наименование уже совпадает с именем файла — пропускается.</summary>
     AlreadyOk,
-
-    /// <summary>Изделие по зарубежному стандарту (DIN, ISO): наименование не меняется.</summary>
-    Foreign,
 }
 
 public sealed class StandardNameItem : ObservableObject
@@ -34,22 +27,9 @@ public sealed class StandardNameItem : ObservableObject
     {
         Candidate = candidate;
 
-        // Наименование изделия («Болт») может быть только в текущем наименовании, а не в имени файла.
-        var fallback = StandardDesignationParser.Parse(candidate.CurrentName).Name;
-        var result = StandardNameFormatter.FromFileName(candidate.FileName, fallback);
-        _proposed = result.Text;
-
-        var currentIsForeign = StandardNameFormatter.FromFileName(candidate.CurrentName).IsForeign;
-        Status = currentIsForeign || (result.IsForeign && candidate.CurrentName.Trim().Length > 0)
-            ? StandardNameStatus.Foreign
-            : IsAlreadyOk(candidate.CurrentName, result.Text)
-                ? StandardNameStatus.AlreadyOk
-                : result.IsComplete ? StandardNameStatus.Change : StandardNameStatus.Review;
-        if (Status == StandardNameStatus.Foreign)
-        {
-            // Зарубежный стандарт: оставляем текущее наименование как есть.
-            _proposed = candidate.CurrentName.Trim();
-        }
+        // Имя файла записывается как есть, без перестановок и замен.
+        _proposed = candidate.FileName.Trim();
+        Status = candidate.CurrentName.Trim() == _proposed ? StandardNameStatus.AlreadyOk : StandardNameStatus.Change;
     }
 
     public StandardNameCandidate Candidate { get; }
@@ -60,13 +40,7 @@ public sealed class StandardNameItem : ObservableObject
 
     public StandardNameStatus Status { get; }
 
-    public string StatusText => Status switch
-    {
-        StandardNameStatus.Change => "Будет изменено",
-        StandardNameStatus.Review => "Проверьте",
-        StandardNameStatus.Foreign => "Не ГОСТ — без изменений",
-        _ => "Уже в норме",
-    };
+    public string StatusText => Status == StandardNameStatus.Change ? "Будет изменено" : "Уже в норме";
 
     /// <summary>Новое наименование. Можно поправить вручную.</summary>
     public string Proposed
@@ -87,22 +61,14 @@ public sealed class StandardNameItem : ObservableObject
         set => SetField(ref _isSelected, value);
     }
 
-    /// <summary>
-    /// Наименование уже в норме: совпадает с предложенным или само имеет вид «наименование, размеры, стандарт»
-    /// (размеры обязательны — «Болт ГОСТ 7798-70» без размера в норме не считается).
-    /// </summary>
-    private static bool IsAlreadyOk(string current, string proposed) =>
-        current.Trim() == proposed ||
-        (StandardNameFormatter.IsWellFormed(current) && StandardNameFormatter.FromFileName(current).Parts.Parameters.Length > 0);
-
-    /// <summary>Наименование не меняется: уже в норме или изделие не по ГОСТ.</summary>
-    public bool IsSkipped => Status is StandardNameStatus.AlreadyOk or StandardNameStatus.Foreign;
+    /// <summary>Наименование уже совпадает с именем файла.</summary>
+    public bool IsSkipped => Status == StandardNameStatus.AlreadyOk;
 
     /// <summary>Будет ли запись действительно что-то менять.</summary>
     public bool WillChange => IsSelected && Proposed.Length > 0 && Proposed != Current.Trim();
 }
 
-/// <summary>Предпросмотр переименования стандартных изделий.</summary>
+/// <summary>Предпросмотр записи имени файла в наименование стандартных изделий.</summary>
 public sealed class StandardNamesViewModel : ObservableObject
 {
     public StandardNamesViewModel(IEnumerable<StandardNameCandidate> candidates)
@@ -117,7 +83,7 @@ public sealed class StandardNamesViewModel : ObservableObject
         var hasPreselection = Items.Any(i => i.Candidate.IsPreselected);
         foreach (var item in Items)
         {
-            item.IsSelected = item.Status == StandardNameStatus.Change && (!hasPreselection || item.Candidate.IsPreselected);
+            item.IsSelected = !item.IsSkipped && (!hasPreselection || item.Candidate.IsPreselected);
             item.PropertyChanged += (_, _) => OnPropertyChanged(nameof(Summary));
         }
 
@@ -131,17 +97,8 @@ public sealed class StandardNamesViewModel : ObservableObject
 
     public ICommand SelectNoneCommand { get; }
 
-    public string Summary
-    {
-        get
-        {
-            var toChange = Items.Count(i => i.WillChange);
-            var ok = Items.Count(i => i.IsSkipped);
-            var review = Items.Count(i => i.Status == StandardNameStatus.Review);
-            return $"Всего: {Items.Count} · будет изменено: {toChange} · уже в норме (пропущено): {ok}" +
-                   (review > 0 ? $" · требуют проверки: {review}" : "");
-        }
-    }
+    public string Summary =>
+        $"Всего: {Items.Count} · будет изменено: {Items.Count(i => i.WillChange)} · уже в норме (пропущено): {Items.Count(i => i.IsSkipped)}";
 
     /// <summary>Отмеченные изделия, у которых наименование действительно изменится.</summary>
     public IReadOnlyList<StandardNameItem> GetChanges() => Items.Where(i => i.WillChange).ToList();

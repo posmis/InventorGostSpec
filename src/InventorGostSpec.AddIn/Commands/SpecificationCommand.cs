@@ -149,6 +149,8 @@ internal sealed class SpecificationCommand : AddInCommand
 
         public string? BuildPdf(string excelPath, string pdfPath) => PdfToolRunner.Run(excelPath, pdfPath);
 
+        public string? OpenPdfSettings(string? excelPath) => PdfToolRunner.OpenWindow(excelPath);
+
         public void ReportError(Exception exception) => Log.Error("SpecificationWindow", exception);
 
         private BomItem? FindItem(string componentKey) =>

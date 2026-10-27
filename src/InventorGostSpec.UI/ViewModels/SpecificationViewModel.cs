@@ -63,6 +63,7 @@ public sealed class SpecificationViewModel : ObservableObject
         WritePositionsCommand = new RelayCommand(WritePositions);
         ExportExcelCommand = new RelayCommand(ExportExcel, () => !IsEmpty);
         ExportPdfCommand = new RelayCommand(ExportPdf, () => !IsEmpty);
+        PdfSettingsCommand = new RelayCommand(OpenPdfSettings);
         InsertComponentNoteCommand = new RelayCommand(InsertComponentNote, () => TargetRows.Any(CanEditComponent));
         SetSortGroupCommand = new RelayCommand(SetSortGroup, p => p is string && TargetRows.Any(r => r.Kind != RowKind.Note));
         EditComponentCommand = new RelayCommand(EditComponent, () => TargetRows.Any(CanEditComponent));
@@ -179,6 +180,9 @@ public sealed class SpecificationViewModel : ObservableObject
 
     /// <summary>PDF по ГОСТ: выгрузка во временный Excel и вызов утилиты PDF.</summary>
     public ICommand ExportPdfCommand { get; }
+
+    /// <summary>Настройки утилиты PDF: шрифт, размеры шрифтов, сужение текста.</summary>
+    public ICommand PdfSettingsCommand { get; }
 
     /// <summary>Вставить в графу «Примечание» выбранных строк примечание из свойств их деталей.</summary>
     public ICommand InsertComponentNoteCommand { get; }
@@ -652,6 +656,15 @@ public sealed class SpecificationViewModel : ObservableObject
         if (_dialogs.Confirm($"PDF создан:\n{path}\n\nОткрыть файл?"))
         {
             _dialogs.OpenFile(path);
+        }
+    }
+
+    private void OpenPdfSettings()
+    {
+        var excel = _host.GetExportInfo().DefaultPath;
+        if (_host.OpenPdfSettings(System.IO.File.Exists(excel) ? excel : null) is { } error)
+        {
+            _dialogs.Warning(error);
         }
     }
 

@@ -13,14 +13,46 @@ internal static class PdfToolRunner
     public static string ToolPath =>
         System.IO.Path.Combine(System.IO.Path.GetDirectoryName(typeof(PdfToolRunner).Assembly.Location) ?? "", "PdfTool", "InventorGostSpec.PdfTool.exe");
 
+    /// <summary>Окно утилиты (настройки и вывод PDF), не дожидаясь его закрытия. <c>null</c> — открыто, иначе текст ошибки.</summary>
+    public static string? OpenWindow(string? excelPath)
+    {
+        if (MissingTool() is { } missing)
+        {
+            return missing;
+        }
+
+        var start = new ProcessStartInfo(ToolPath) { UseShellExecute = false };
+        if (excelPath is not null)
+        {
+            start.ArgumentList.Add(excelPath);
+        }
+
+        try
+        {
+            Process.Start(start)?.Dispose();
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("PdfTool", ex);
+            return ex.Message;
+        }
+    }
+
+    private static string? MissingTool() =>
+        System.IO.File.Exists(ToolPath)
+            ? null
+            : $"Не найдена утилита PDF:\n{ToolPath}\n\nПересоберите решение или скопируйте папку PdfTool в папку аддина.";
+
     /// <summary><c>null</c> — PDF создан, иначе текст ошибки.</summary>
     public static string? Run(string excelPath, string pdfPath)
     {
-        var tool = ToolPath;
-        if (!System.IO.File.Exists(tool))
+        if (MissingTool() is { } missing)
         {
-            return $"Не найдена утилита PDF:\n{tool}\n\nПересоберите решение или скопируйте папку PdfTool в папку аддина.";
+            return missing;
         }
+
+        var tool = ToolPath;
 
         var start = new ProcessStartInfo(tool)
         {

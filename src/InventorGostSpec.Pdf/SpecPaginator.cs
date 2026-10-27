@@ -27,7 +27,7 @@ public sealed class PrintLine
 
     /// <summary>
     /// Свободная строка, добавленная вокруг заголовка по ГОСТ 2.106. В отличие от резервной строки,
-    /// не ставится в начале листа и после другой пустой строки.
+    /// не ставится в начале листа и две подряд.
     /// </summary>
     public bool IsSpacer { get; init; }
 
@@ -157,14 +157,15 @@ public static class SpecPaginator
     }
 
     /// <summary>
-    /// Свободная строка перед заголовком не нужна в начале листа и после другой пустой строки (например, резервной).
-    /// Резервные и пустые строки из файла остаются всегда.
+    /// Свободная строка перед заголовком не нужна в начале листа и сразу после другой такой же строки
+    /// (заголовок группы, за ним заголовок раздела). Резервные и пустые строки из файла добавляются к ней:
+    /// между разделами — одна свободная строка и ещё по строке на каждый резерв.
     /// </summary>
     private static List<PrintLine> Trim(List<PrintLine> lines, List<PrintLine> page)
     {
         var skip = 0;
-        var previousBlank = page.Count == 0 || page[^1].IsBlank;
-        while (skip < lines.Count && lines[skip].IsSpacer && previousBlank)
+        var previousSpacer = page.Count == 0 || page[^1].IsSpacer;
+        while (skip < lines.Count && lines[skip].IsSpacer && previousSpacer)
         {
             skip++;
         }

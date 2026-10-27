@@ -135,6 +135,8 @@
                         <StackPanel Orientation="Horizontal">
                             <controls:IconButton Icon="{StaticResource Icon.Excel}" Text="Excel" Command="{Binding ExportExcelCommand}"
                                                  ToolTip="Выгрузить спецификацию в Excel: для ручной правки и вывода в PDF по ГОСТ. Резервные строки выгружаются, если включено «Показывать резерв»." />
+                            <controls:IconButton Icon="{StaticResource Icon.Settings}" Text="Настройки PDF" Command="{Binding PdfSettingsCommand}"
+                                                 ToolTip="Настройки PDF: шрифт, размеры шрифтов, допустимое сужение текста. Открывает окно утилиты PDF; настройки действуют и для кнопки «PDF», и для разметки листов в Excel." />
                             <controls:IconButton Icon="{StaticResource Icon.Pdf}" Text="PDF" Command="{Binding ExportPdfCommand}"
                                                  ToolTip="Спецификация в PDF по ГОСТ 2.106 (формы 1 и 1а, основные надписи 2 и 2а). Изменения в основную надпись берутся из листа «Изменения» файла Excel рядом со сборкой. Шрифт — в утилите PDF." />
                             <controls:IconButton Icon="{StaticResource Icon.Balloon}" Text="Позиции в BOM" Command="{Binding WritePositionsCommand}"

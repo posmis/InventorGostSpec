@@ -51,6 +51,12 @@ public interface ISpecificationHost
     /// </summary>
     string? BuildPdf(string excelPath, string pdfPath);
 
+    /// <summary>
+    /// Открывает окно утилиты PDF (шрифт, размеры шрифтов, сужение), подставив файл Excel, если он есть.
+    /// <c>null</c> — открыто, иначе текст ошибки.
+    /// </summary>
+    string? OpenPdfSettings(string? excelPath);
+
     /// <summary>Записывает непредвиденную ошибку окна в журнал.</summary>
     void ReportError(Exception exception);
 }

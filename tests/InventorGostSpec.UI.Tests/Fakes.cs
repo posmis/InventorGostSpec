@@ -53,6 +53,14 @@ internal sealed class FakeHost : ISpecificationHost
 
     public string? PdfError { get; set; }
 
+    public List<string?> SettingsOpened { get; } = new();
+
+    public string? OpenPdfSettings(string? excelPath)
+    {
+        SettingsOpened.Add(excelPath);
+        return null;
+    }
+
     public string? BuildPdf(string excelPath, string pdfPath)
     {
         PdfCalls.Add((excelPath, pdfPath, File.Exists(excelPath)));

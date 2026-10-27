@@ -547,6 +547,26 @@ public class SpecificationViewModelTests
     }
 
     [Fact]
+    public void Pdf_settings_open_tool_with_existing_excel_file()
+    {
+        var vm = Open();
+        var folder = Directory.CreateTempSubdirectory().FullName;
+        _host.ExportFolder = folder;
+        try
+        {
+            vm.PdfSettingsCommand.Execute(null);
+            File.WriteAllText(Path.Combine(folder, "spec.xlsx"), "");
+            vm.PdfSettingsCommand.Execute(null);
+
+            Assert.Equal(new[] { null, Path.Combine(folder, "spec.xlsx") }, _host.SettingsOpened);
+        }
+        finally
+        {
+            Directory.Delete(folder, true);
+        }
+    }
+
+    [Fact]
     public void Search_shows_matching_rows_with_their_headers()
     {
         var vm = Open();

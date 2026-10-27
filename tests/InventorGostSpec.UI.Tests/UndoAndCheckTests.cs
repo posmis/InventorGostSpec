@@ -462,3 +462,63 @@ public class ResetSectionsTests
         Assert.False(vm.ResetSectionsCommand.CanExecute("selected"));
     }
 }
+
+public class ShowInFolderTests
+{
+    private readonly FakeHost _host = new();
+    private readonly FakeDialogs _dialogs = new();
+
+    private SpecificationViewModel Open()
+    {
+        _host.Components.AddRange(new[]
+        {
+            new ComponentData { Key = "drawing:Привод.idw", Kind = ComponentKind.Document, Designation = "А.000СБ" },
+            new ComponentData { Key = "a.ipt", Kind = ComponentKind.Part, Designation = "А.001", Name = "Корпус", Quantity = 1 },
+        });
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, _host.Components, SpecificationContext.Create(_host.Settings, spec), DateTime.UtcNow);
+        return new SpecificationViewModel(_host, _dialogs, spec, post: action => action());
+    }
+
+    [Fact]
+    public void Component_file_and_its_drawing_are_shown_in_folder()
+    {
+        var vm = Open();
+        var part = Path.GetTempFileName();
+        try
+        {
+            _host.Files["a.ipt"] = part;
+            _host.Drawings["a.ipt"] = "А3";
+            vm.SelectedRow = vm.Rows.Single(r => r.Name == "Корпус");
+
+            vm.ShowComponentFileCommand.Execute(null);
+            vm.ShowDrawingFileCommand.Execute(null);
+
+            Assert.Equal(new[] { part, "a.ipt.idw" }, _dialogs.ShownInFolder);
+        }
+        finally
+        {
+            File.Delete(part);
+        }
+    }
+
+    [Fact]
+    public void Missing_file_or_drawing_is_reported_and_drawing_row_has_no_drawing_command()
+    {
+        var vm = Open();
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Корпус");
+
+        vm.ShowComponentFileCommand.Execute(null);
+        vm.ShowDrawingFileCommand.Execute(null);
+
+        Assert.Empty(_dialogs.ShownInFolder);
+        Assert.Equal(2, _dialogs.Warnings.Count);
+        Assert.Contains("Чертёж компонента «А.001 Корпус» не найден", _dialogs.Warnings[1]);
+
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Сборочный чертеж");
+        Assert.True(vm.ShowComponentFileCommand.CanExecute(null));
+        Assert.False(vm.ShowDrawingFileCommand.CanExecute(null));
+        vm.SelectedRow = vm.Rows.First(r => r.IsHeader);
+        Assert.False(vm.ShowComponentFileCommand.CanExecute(null));
+    }
+}

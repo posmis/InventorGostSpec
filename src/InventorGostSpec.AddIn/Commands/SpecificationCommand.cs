@@ -184,6 +184,17 @@ internal sealed class SpecificationCommand : AddInCommand
             return result;
         }
 
+        public string? GetComponentFile(string componentKey)
+        {
+            const string drawingPrefix = "drawing:";
+            if (componentKey.StartsWith(drawingPrefix, StringComparison.Ordinal))
+            {
+                return System.IO.Path.GetFullPath(System.IO.Path.Combine(BomAccess.AssemblyFolder(_assembly), componentKey[drawingPrefix.Length..]));
+            }
+
+            return FindItem(componentKey)?.Target.FullFileName;
+        }
+
         public IReadOnlyDictionary<string, string> ReadBomItemNumbers() =>
             BomAccess.GetFirstLevel(_assembly)
                 .GroupBy(item => item.Key, StringComparer.OrdinalIgnoreCase)

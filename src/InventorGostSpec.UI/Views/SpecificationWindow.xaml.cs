@@ -113,6 +113,18 @@ public partial class SpecificationWindow : Window, IDialogService
         return dialog.ShowDialog(this) == true ? dialog.FileName : null;
     }
 
+    public void ShowInFolder(string path)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{path}\"");
+        }
+        catch (Exception ex)
+        {
+            Warning($"Не удалось открыть папку: {ex.Message}");
+        }
+    }
+
     public void OpenFile(string path)
     {
         try

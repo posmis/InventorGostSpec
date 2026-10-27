@@ -89,6 +89,8 @@ public sealed class SpecificationViewModel : ObservableObject
         DrawingFormatsCommand = new RelayCommand(FindDrawingFormats, () => Specification.Rows.Any(IsPartWithModel));
         SetDocumentTypeCommand = new RelayCommand(SetDocumentType, p => p is string && TargetRows.Any(IsDocumentRow));
         ResetSectionsCommand = new RelayCommand(ResetSections, p => ResetSectionRows(p).Any());
+        ShowComponentFileCommand = new RelayCommand(ShowComponentFile, () => SelectedComponent() is not null);
+        ShowDrawingFileCommand = new RelayCommand(ShowDrawingFile, () => SelectedComponent() is { } row && SpecificationEditor.IsModelRow(row));
 
         Rebuild();
         _isDirty = isNew;
@@ -251,6 +253,12 @@ public sealed class SpecificationViewModel : ObservableObject
     /// без параметра (панель) — выбранные, если их несколько, иначе все компоненты.
     /// </summary>
     public ICommand ResetSectionsCommand { get; }
+
+    /// <summary>Показать файл компонента выбранной строки в Проводнике.</summary>
+    public ICommand ShowComponentFileCommand { get; }
+
+    /// <summary>Найти чертёж компонента выбранной строки и показать его в Проводнике.</summary>
+    public ICommand ShowDrawingFileCommand { get; }
 
     /// <summary>Тип документа (параметр — код «СБ», «ТУ»…) выбранных строк «Документации»: код в обозначении и наименование.</summary>
     public ICommand SetDocumentTypeCommand { get; }
@@ -624,6 +632,46 @@ public sealed class SpecificationViewModel : ObservableObject
         }
 
         _dialogs.Info(report);
+    }
+
+    /// <summary>Выбранная строка компонента, который есть в сборке.</summary>
+    private SpecRow? SelectedComponent() =>
+        SelectedRow?.Row is { Kind: RowKind.Component, IsRemoved: false, ComponentKey: not null } row ? row : null;
+
+    private void ShowComponentFile()
+    {
+        if (SelectedComponent() is not { } row)
+        {
+            return;
+        }
+
+        var file = TryHost<string>(() => _host.GetComponentFile(row.ComponentKey!));
+        if (file is null || !System.IO.File.Exists(file))
+        {
+            _dialogs.Warning($"Файл компонента «{Describe(row)}» не найден{(file is null ? " в сборке" : $":\n{file}")}.");
+            return;
+        }
+
+        _dialogs.ShowInFolder(file);
+    }
+
+    private void ShowDrawingFile()
+    {
+        if (SelectedComponent() is not { } row)
+        {
+            return;
+        }
+
+        var found = TryHost(() => _host.FindDrawingFormats(new[] { row.ComponentKey! }));
+        if (found is null || !found.TryGetValue(row.ComponentKey!, out var drawing) || drawing.DrawingPath is null)
+        {
+            _dialogs.Warning(
+                $"Чертёж компонента «{Describe(row)}» не найден в папках проекта.\n\n" +
+                "Чертёж ищется по имени (как у модели или по обозначению) и по содержимому; подробности — в журнале аддина.");
+            return;
+        }
+
+        _dialogs.ShowInFolder(drawing.DrawingPath);
     }
 
     private static bool IsDocumentRow(SpecRow row) => row.Kind != RowKind.Note && ComponentSnapshot.IsDocument(row.SectionId);
@@ -1233,7 +1281,7 @@ public sealed class SpecificationViewModel : ObservableObject
     }
 
     /// <summary>Данные из Inventor для проверки; ошибка чтения — проверка без них (ошибка в журнал).</summary>
-    private T? TryHost<T>(Func<T> read) where T : class
+    private T? TryHost<T>(Func<T?> read) where T : class
     {
         try
         {

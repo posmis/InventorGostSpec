@@ -66,6 +66,11 @@ internal sealed class FakeHost : ISpecificationHost
 
     public List<IReadOnlyList<string>> DrawingRequests { get; } = new();
 
+    /// <summary>Файлы компонентов по ключу.</summary>
+    public Dictionary<string, string> Files { get; } = new();
+
+    public string? GetComponentFile(string componentKey) => Files.TryGetValue(componentKey, out var file) ? file : null;
+
     public IReadOnlyDictionary<string, DrawingFormat> FindDrawingFormats(IReadOnlyList<string> componentKeys)
     {
         DrawingRequests.Add(componentKeys);
@@ -188,6 +193,10 @@ internal sealed class FakeDialogs : IDialogService
     }
 
     public void OpenFile(string path) => OpenedFiles.Add(path);
+
+    public List<string> ShownInFolder { get; } = new();
+
+    public void ShowInFolder(string path) => ShownInFolder.Add(path);
 
     public bool Confirm(string text) => ConfirmAnswer;
 

@@ -372,6 +372,11 @@
                             </MenuItem.ItemContainerStyle>
                         </MenuItem>
                         <Separator />
+                        <MenuItem Header="Показать файл компонента в папке" Command="{Binding ShowComponentFileCommand}"
+                                  ToolTip="Открыть папку детали или сборки (у строки чертежа — папку чертежа) с выделенным файлом" />
+                        <MenuItem Header="Показать чертёж в папке" Command="{Binding ShowDrawingFileCommand}"
+                                  ToolTip="Найти чертёж компонента в папках проекта и открыть его папку с выделенным файлом" />
+                        <Separator />
                         <MenuItem x:Name="ClearOverrideItem" Header="Вернуть значение из компонента" Command="{Binding ClearOverrideCommand}">
                             <MenuItem.Icon><Image Style="{StaticResource MenuIcon}" Source="{StaticResource Icon.RestoreValue}" /></MenuItem.Icon>
                         </MenuItem>

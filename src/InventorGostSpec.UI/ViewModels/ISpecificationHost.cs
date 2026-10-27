@@ -48,6 +48,9 @@ public interface ISpecificationHost
     /// </summary>
     IReadOnlyDictionary<string, DrawingFormat> FindDrawingFormats(IReadOnlyList<string> componentKeys);
 
+    /// <summary>Полный путь к файлу компонента (модели или чертежа из «Документации»); <c>null</c> — нет в сборке.</summary>
+    string? GetComponentFile(string componentKey);
+
     /// <summary>Номера позиций в BOM Inventor (Item Number) по ключу компонента — для проверки расхождений.</summary>
     IReadOnlyDictionary<string, string> ReadBomItemNumbers();
 
@@ -107,6 +110,9 @@ public interface IDialogService
     /// Показывает замечания проверки. Возвращает строку, к которой нужно перейти (<c>null</c> — просто закрыть).
     /// </summary>
     string? ShowCheckResults(CheckViewModel viewModel);
+
+    /// <summary>Открывает папку файла в Проводнике с выделенным файлом.</summary>
+    void ShowInFolder(string path);
 
     /// <summary>Открывает файл в связанной программе (Excel).</summary>
     void OpenFile(string path);

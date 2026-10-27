@@ -22,15 +22,21 @@ internal sealed class GostText
     private readonly XGraphics _measure;
     private readonly double _capRatio;
 
+    /// <param name="family">Имя семейства для XFont — путь к файлу шрифта (см. <see cref="GostFontResolver"/>).</param>
     public GostText(string family, bool italic)
     {
         _family = family;
         _style = italic ? XFontStyleEx.Italic : XFontStyleEx.Regular;
         _measure = XGraphics.CreateMeasureContext(new XSize(2000, 2000), XGraphicsUnit.Point, XPageDirection.Downwards);
 
+        // Высота прописных — по контуру буквы; метрики шрифта — запасной вариант.
         var metrics = new XFont(family, 100, _style, new XPdfFontOptions(PdfFontEncoding.Unicode)).Metrics;
-        _capRatio = metrics.CapHeight > 0 && metrics.UnitsPerEm > 0 ? (double)metrics.CapHeight / metrics.UnitsPerEm : 0.7;
+        _capRatio = CapHeightReader.Read(family)
+            ?? (metrics.CapHeight > 0 && metrics.UnitsPerEm > 0 ? (double)metrics.CapHeight / metrics.UnitsPerEm : 0.7);
     }
+
+    /// <summary>Высота прописных букв в долях em.</summary>
+    public double CapRatio => _capRatio;
 
     public XFont Font(double capHeight)
     {

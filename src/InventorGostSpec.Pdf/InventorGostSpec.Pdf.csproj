@@ -15,6 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="InventorGostSpec.Pdf.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\InventorGostSpec.Excel\InventorGostSpec.Excel.csproj" />
   </ItemGroup>
 

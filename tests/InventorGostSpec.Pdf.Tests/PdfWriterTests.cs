@@ -50,6 +50,18 @@ public class PdfWriterTests : IDisposable
     }
 
     [Fact]
+    public void Text_height_follows_letter_outline_not_font_metrics()
+    {
+        // У «Gost merged» CapHeight в метриках = 0,83 em, а буква «Н» — 0,68 em: по метрикам шрифт 3,5 выходил 2,9 мм.
+        var font = FontLocator.Bundled()!;
+        var ratio = CapHeightReader.Read(font.Path)!.Value;
+
+        Assert.InRange(ratio, 0.66, 0.70);
+        var text = new GostText(GostFontResolver.Register(font.Path), false);
+        Assert.Equal(3.5 / ratio, text.Font(3.5).Size, 3);
+    }
+
+    [Fact]
     public void Reads_font_family_from_file()
     {
         var font = FontLocator.Find(null)!;

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Утилита «Спецификация в PDF по ГОСТ»: окно для ручного запуска и командная строка для вызова из аддина.
+    Вход — файл Excel в формате InventorGostSpec, выход — PDF.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>InventorGostSpec.PdfTool</RootNamespace>
+    <StartupObject>InventorGostSpec.PdfTool.Program</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\InventorGostSpec.Pdf\InventorGostSpec.Pdf.csproj" />
+  </ItemGroup>
+
+</Project>

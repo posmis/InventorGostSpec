@@ -350,6 +350,29 @@
             </DrawingGroup>
         </DrawingImage.Drawing>
     </DrawingImage>
+    <DrawingImage x:Key="Icon.Pdf">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="Transparent" Geometry="M 0 0 L 16 0 L 16 16 L 0 16 Z" />
+                <GeometryDrawing Brush="#FFFFFF" Geometry="M 3 1.5 L 10 1.5 L 13 4.5 L 13 14.5 L 3 14.5 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#616161" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Geometry="M 10 1.5 L 10 4.5 L 13 4.5">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#616161" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#D64545" Geometry="M 1.5 7.5 L 11 7.5 L 11 11.5 L 1.5 11.5 Z" />
+                <GeometryDrawing Geometry="M 5 13 L 11 13">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#9E9E9E" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
     <DrawingImage x:Key="Icon.Search">
         <DrawingImage.Drawing>
             <DrawingGroup>

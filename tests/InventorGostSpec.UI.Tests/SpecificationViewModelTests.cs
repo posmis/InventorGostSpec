@@ -527,6 +527,25 @@ public class SpecificationViewModelTests
     }
 
     [Fact]
+    public void Export_to_pdf_passes_temporary_excel_to_tool_and_removes_it()
+    {
+        var vm = Open();
+
+        vm.ExportPdfCommand.Execute(null);
+
+        var call = Assert.Single(_host.PdfCalls);
+        Assert.True(call.ExcelExisted);
+        Assert.False(File.Exists(call.Excel));
+        Assert.Equal(Path.Combine(_host.ExportFolder, "spec.pdf"), call.Pdf);
+        Assert.Equal(new[] { call.Pdf }, _dialogs.OpenedFiles);
+
+        _host.PdfError = "Шрифт не найден";
+        vm.ExportPdfCommand.Execute(null);
+        Assert.Contains(_dialogs.Warnings, w => w.Contains("Шрифт не найден"));
+        Assert.Single(_dialogs.OpenedFiles);
+    }
+
+    [Fact]
     public void Search_shows_matching_rows_with_their_headers()
     {
         var vm = Open();

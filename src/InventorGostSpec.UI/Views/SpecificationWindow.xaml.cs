@@ -98,6 +98,20 @@ public partial class SpecificationWindow : Window, IDialogService
         return dialog.ShowDialog(this) == true ? dialog.FileName : null;
     }
 
+    public string? AskPdfPath(string defaultPath)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Спецификация в PDF по ГОСТ",
+            Filter = "Документ PDF (*.pdf)|*.pdf",
+            DefaultExt = ".pdf",
+            FileName = System.IO.Path.GetFileName(defaultPath),
+            InitialDirectory = System.IO.Path.GetDirectoryName(defaultPath),
+            OverwritePrompt = true,
+        };
+        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+    }
+
     public void OpenFile(string path)
     {
         try

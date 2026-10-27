@@ -45,6 +45,12 @@ public interface ISpecificationHost
     /// <summary>Данные основной надписи (из iProperties сборки) и путь к файлу экспорта по умолчанию.</summary>
     ExportInfo GetExportInfo();
 
+    /// <summary>
+    /// Строит PDF по ГОСТ из файла Excel внешней утилитой (InventorGostSpec.PdfTool).
+    /// <c>null</c> — готово, иначе текст ошибки для пользователя.
+    /// </summary>
+    string? BuildPdf(string excelPath, string pdfPath);
+
     /// <summary>Записывает непредвиденную ошибку окна в журнал.</summary>
     void ReportError(Exception exception);
 }
@@ -74,6 +80,9 @@ public interface IDialogService
 
     /// <summary>Выбор файла для сохранения Excel. <c>null</c> — отмена.</summary>
     string? AskExportPath(string defaultPath);
+
+    /// <summary>Выбор файла PDF. <c>null</c> — отмена.</summary>
+    string? AskPdfPath(string defaultPath);
 
     /// <summary>Открывает файл в связанной программе (Excel).</summary>
     void OpenFile(string path);

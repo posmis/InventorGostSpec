@@ -96,7 +96,7 @@ public class ExcelExporterTests : IDisposable
     [Fact]
     public void Reads_changes_back_skipping_empty_rows()
     {
-        Assert.Empty(ExcelExporter.ReadChanges(_path));
+        Assert.Empty(ExcelReader.ReadChanges(_path));
 
         var titleBlock = new TitleBlock
         {
@@ -108,7 +108,7 @@ public class ExcelExporterTests : IDisposable
         };
         ExcelExporter.Export(new Specification(), SpecificationContext.Create(new SpecSettings(), new Specification()), titleBlock, _path);
 
-        var changes = ExcelExporter.ReadChanges(_path);
+        var changes = ExcelReader.ReadChanges(_path);
         Assert.Equal(new[] { "1", "2" }, changes.Select(c => c.Number));
         Assert.Equal("1-3", changes[1].Sheet);
         Assert.Equal("3", changes[1].Areas);

@@ -32,46 +32,6 @@ public static class ExcelExporter
         workbook.SaveAs(path);
     }
 
-    /// <summary>
-    /// Записи листа «Изменения» из ранее выгруженного файла — чтобы повторная выгрузка в тот же файл
-    /// не стирала внесённые вручную изменения. Нет файла или листа — пустой список.
-    /// </summary>
-    public static List<ChangeRecord> ReadChanges(string path)
-    {
-        var changes = new List<ChangeRecord>();
-        if (!File.Exists(path))
-        {
-            return changes;
-        }
-
-        using var workbook = new XLWorkbook(path);
-        if (!workbook.TryGetWorksheet(ExcelFormat.ChangesSheet, out var sheet))
-        {
-            return changes;
-        }
-
-        var last = sheet.LastRowUsed()?.RowNumber() ?? 1;
-        for (var row = 2; row <= last; row++)
-        {
-            string Get(int column) => sheet.Cell(row, column).GetFormattedString().Trim();
-            var change = new ChangeRecord
-            {
-                Number = Get(ExcelFormat.ChangeNumberColumn),
-                Areas = Get(ExcelFormat.ChangeAreasColumn),
-                Sheet = Get(ExcelFormat.ChangeSheetColumn),
-                Document = Get(ExcelFormat.ChangeDocumentColumn),
-                Signature = Get(ExcelFormat.ChangeSignatureColumn),
-                Date = Get(ExcelFormat.ChangeDateColumn),
-            };
-            if (new[] { change.Number, change.Areas, change.Sheet, change.Document, change.Signature, change.Date }.Any(v => v.Length > 0))
-            {
-                changes.Add(change);
-            }
-        }
-
-        return changes;
-    }
-
     private static void FillSpecification(IXLWorksheet sheet, Specification specification, SpecificationContext context)
     {
         for (var i = 0; i < ExcelFormat.Columns.Length; i++)

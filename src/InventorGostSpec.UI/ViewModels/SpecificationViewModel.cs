@@ -62,6 +62,7 @@ public sealed class SpecificationViewModel : ObservableObject
         SaveCommand = new RelayCommand(Save, () => IsDirty);
         WritePositionsCommand = new RelayCommand(WritePositions);
         ExportExcelCommand = new RelayCommand(ExportExcel, () => !IsEmpty);
+        ExportPdfCommand = new RelayCommand(ExportPdf, () => !IsEmpty);
         InsertComponentNoteCommand = new RelayCommand(InsertComponentNote, () => TargetRows.Any(CanEditComponent));
         SetSortGroupCommand = new RelayCommand(SetSortGroup, p => p is string && TargetRows.Any(r => r.Kind != RowKind.Note));
         EditComponentCommand = new RelayCommand(EditComponent, () => TargetRows.Any(CanEditComponent));
@@ -175,6 +176,9 @@ public sealed class SpecificationViewModel : ObservableObject
 
     /// <summary>Экспорт в Excel для ручной правки и последующего вывода в PDF по ГОСТ.</summary>
     public ICommand ExportExcelCommand { get; }
+
+    /// <summary>PDF по ГОСТ: выгрузка во временный Excel и вызов утилиты PDF.</summary>
+    public ICommand ExportPdfCommand { get; }
 
     /// <summary>Вставить в графу «Примечание» выбранных строк примечание из свойств их деталей.</summary>
     public ICommand InsertComponentNoteCommand { get; }
@@ -597,12 +601,71 @@ public sealed class SpecificationViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// PDF по ГОСТ из текущего состояния окна. Таблица изменений берётся из файла Excel по умолчанию
+    /// (рядом со сборкой), если он есть: там её ведут вручную.
+    /// </summary>
+    private void ExportPdf()
+    {
+        CommitEdits?.Invoke();
+        var info = _host.GetExportInfo();
+        var path = _dialogs.AskPdfPath(System.IO.Path.ChangeExtension(info.DefaultPath, ".pdf"));
+        if (path is null)
+        {
+            return;
+        }
+
+        if (info.TitleBlock.Changes.Count == 0)
+        {
+            try
+            {
+                info.TitleBlock.Changes = ReadPreviousChanges(info.DefaultPath);
+            }
+            catch (System.IO.IOException)
+            {
+                // Файл Excel недоступен — PDF без изменений.
+            }
+        }
+
+        var excel = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"InventorGostSpec-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            Excel.ExcelExporter.Export(Specification, _context, info.TitleBlock, excel);
+            if (_host.BuildPdf(excel, path) is { } error)
+            {
+                _dialogs.Warning($"PDF не создан.\n\n{error}");
+                return;
+            }
+        }
+        catch (System.IO.IOException ex)
+        {
+            _dialogs.Warning($"Не удалось записать временный файл.\n\n{ex.Message}");
+            return;
+        }
+        finally
+        {
+            try
+            {
+                System.IO.File.Delete(excel);
+            }
+            catch (Exception)
+            {
+                // Временный файл удалит система.
+            }
+        }
+
+        if (_dialogs.Confirm($"PDF создан:\n{path}\n\nОткрыть файл?"))
+        {
+            _dialogs.OpenFile(path);
+        }
+    }
+
     /// <summary>Записи «Изменения» из заменяемого файла; файл открыт в Excel — исключение, не книга Excel — пусто.</summary>
     private static List<ChangeRecord> ReadPreviousChanges(string path)
     {
         try
         {
-            return Excel.ExcelExporter.ReadChanges(path);
+            return Excel.ExcelReader.ReadChanges(path);
         }
         catch (Exception ex) when (ex is not System.IO.IOException)
         {

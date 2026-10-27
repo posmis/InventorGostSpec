@@ -147,6 +147,8 @@ internal sealed class SpecificationCommand : AddInCommand
                 ? SectionResolver.GetDefault(item.Target.Kind, item.Target.IsContentCenter)
                 : "";
 
+        public string? BuildPdf(string excelPath, string pdfPath) => PdfToolRunner.Run(excelPath, pdfPath);
+
         public void ReportError(Exception exception) => Log.Error("SpecificationWindow", exception);
 
         private BomItem? FindItem(string componentKey) =>

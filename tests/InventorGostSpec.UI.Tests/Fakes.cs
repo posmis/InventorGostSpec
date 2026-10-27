@@ -48,6 +48,17 @@ internal sealed class FakeHost : ISpecificationHost
     public ExportInfo GetExportInfo() =>
         new(new TitleBlock { Designation = "АБВГ.301234.001", Name = "Привод" }, Path.Combine(ExportFolder, "spec.xlsx"));
 
+    /// <summary>Вызовы утилиты PDF: (Excel, PDF). Пока идёт вызов, временный Excel существует.</summary>
+    public List<(string Excel, string Pdf, bool ExcelExisted)> PdfCalls { get; } = new();
+
+    public string? PdfError { get; set; }
+
+    public string? BuildPdf(string excelPath, string pdfPath)
+    {
+        PdfCalls.Add((excelPath, pdfPath, File.Exists(excelPath)));
+        return PdfError;
+    }
+
     public string GetAutoSectionId(string componentKey)
     {
         var component = Components.Single(c => c.Key == componentKey);
@@ -114,6 +125,8 @@ internal sealed class FakeDialogs : IDialogService
     public List<string> OpenedFiles { get; } = new();
 
     public string? AskExportPath(string defaultPath) => ExportPath(defaultPath);
+
+    public string? AskPdfPath(string defaultPath) => ExportPath(defaultPath);
 
     public void OpenFile(string path) => OpenedFiles.Add(path);
 

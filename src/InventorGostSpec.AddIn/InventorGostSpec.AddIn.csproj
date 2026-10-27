@@ -31,6 +31,8 @@
   <ItemGroup>
     <ProjectReference Include="..\InventorGostSpec.Core\InventorGostSpec.Core.csproj" />
     <ProjectReference Include="..\InventorGostSpec.UI\InventorGostSpec.UI.csproj" />
+    <!-- Утилита PDF — отдельная программа: собирается вместе с аддином и кладётся в папку PdfTool. -->
+    <ProjectReference Include="..\InventorGostSpec.PdfTool\InventorGostSpec.PdfTool.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,6 +43,13 @@
   <ItemGroup>
     <None Update="InventorGostSpec.addin" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="CopyPdfTool" AfterTargets="Build" BeforeTargets="DeployToInventor">
+    <ItemGroup>
+      <PdfToolFiles Include="..\InventorGostSpec.PdfTool\bin\$(Configuration)\net8.0-windows\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PdfToolFiles)" DestinationFiles="@(PdfToolFiles->'$(OutDir)PdfTool\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
 
   <!-- В Debug на Windows аддин сразу копируется в папку плагинов Inventor. Inventor должен быть закрыт. -->
   <Target Name="DeployToInventor" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(OS)' == 'Windows_NT' And '$(DeployToInventor)' != 'false'">

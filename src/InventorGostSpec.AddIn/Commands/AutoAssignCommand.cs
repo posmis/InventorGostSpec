@@ -4,6 +4,9 @@ using InventorGostSpec.Core.Model;
 using InventorGostSpec.Core.Parsing;
 using InventorGostSpec.Core.Sections;
 using InventorGostSpec.Core.Storage;
+using InventorGostSpec.UI;
+using InventorGostSpec.UI.ViewModels;
+using InventorGostSpec.UI.Views;
 
 namespace InventorGostSpec.AddIn.Commands;
 
@@ -37,6 +40,29 @@ internal sealed class AutoAssignCommand : AddInCommand
             .GroupBy(i => i.Key, StringComparer.OrdinalIgnoreCase)
             .Select(g => g.First())
             .ToList();
+
+        // Защита: команда меняет файлы многих компонентов — нужно явное подтверждение галочкой.
+        var toAssign = items.Count(i => i.Target.Get(PropertyNames.Section).Length == 0);
+        if (toAssign == 0)
+        {
+            context.Messages.Info($"У всех компонентов первого уровня ({items.Count}) раздел уже задан — назначать нечего.");
+            return;
+        }
+
+        var confirmation = new ConfirmationViewModel(
+            "Авторазделы",
+            $"Разделы будут назначены компонентам без раздела: {toAssign} из {items.Count}.\n\n" +
+            "• Content Center — «Стандартные изделия» (и поля сортировки из наименования), сборки — «Сборочные единицы», " +
+            "детали — «Детали», виртуальные — «Прочие изделия».\n" +
+            "• Деталям без формата — формат из чертежа, а если чертежа нет — «БЧ».\n" +
+            "• Компоненты с уже заданным разделом не меняются.\n\n" +
+            "Свойства записываются в файлы компонентов и действуют во всех сборках. После выполнения сохраните сборку.",
+            "Понимаю, что свойства будут записаны в файлы компонентов",
+            "Выполнить");
+        if (WindowOwner.ShowDialog(new ConfirmationWindow(confirmation), context.MainWindowHandle) != true)
+        {
+            return;
+        }
 
         var assigned = 0;
         var skipped = 0;
@@ -101,12 +127,13 @@ internal sealed class AutoAssignCommand : AddInCommand
             SetIfEmpty(target, PropertyNames.Parameters, parsed.Parameters);
         }
 
-        // Формат берётся из чертежа только у деталей. У сборочной единицы в спецификации указывается
-        // формат её спецификации (А4) — его подставляет сама спецификация, а не формат сборочного чертежа.
-        if (target.Kind == ComponentKind.Part && target.FullFileName is not null && target.Get(PropertyNames.Format).Length == 0 &&
-            drawings.Value.Find(target.FullFileName, target.PartNumber, isAssembly: false) is { } drawing)
+        // Формат берётся из чертежа только у деталей (не Content Center), без чертежа — «БЧ». У сборочной единицы
+        // в спецификации указывается формат её спецификации (А4) — его подставляет сама спецификация.
+        if (target.Kind == ComponentKind.Part && !target.IsContentCenter && target.FullFileName is not null &&
+            target.Get(PropertyNames.Format).Length == 0)
         {
-            SetIfEmpty(target, PropertyNames.Format, DrawingAccess.ReadFormat(context.Application, drawing));
+            var drawing = drawings.Value.Find(target.FullFileName, target.PartNumber, isAssembly: false);
+            SetIfEmpty(target, PropertyNames.Format, drawing is null ? SheetFormats.NoDrawing : DrawingAccess.ReadFormat(context.Application, drawing));
         }
     }
 

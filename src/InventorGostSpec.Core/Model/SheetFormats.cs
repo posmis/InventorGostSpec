@@ -52,6 +52,9 @@ public static class SheetFormats
         return "";
     }
 
+    /// <summary>Деталь без чертежа (ГОСТ 2.106): в графе «Формат» пишут «БЧ».</summary>
+    public const string NoDrawing = "БЧ";
+
     /// <summary>Сноска графы «Формат» (ГОСТ 2.106): формат не помещается в графу и записан в «Примечании».</summary>
     public const string Footnote = "*)";
 

@@ -324,11 +324,29 @@ public class DrawingFormatTests
         Assert.False(_host.Properties.ContainsKey("b.ipt")); // формат уже такой
         Assert.False(_host.Properties.ContainsKey("u.iam"));
 
+        // Вал без чертежа — «БЧ».
+        Assert.Equal("БЧ", vm.Rows.Single(r => r.Name == "Вал").Format);
+        Assert.Equal("БЧ", _host.Properties["c.ipt"][Core.Storage.PropertyNames.Format]);
+
         var report = _dialogs.Infos.Single();
-        Assert.Contains("Записано форматов: 1. Без изменений: 1.", report);
-        Assert.Contains("Чертёж не найден (1)", report);
+        Assert.Contains("Записано форматов: 2. Без изменений: 1.", report);
+        Assert.Contains("Чертёж не найден — формат «БЧ» (1)", report);
         Assert.Contains("Вал", report);
         Assert.True(vm.IsDirty);
+    }
+
+    [Fact]
+    public void Format_typed_earlier_is_kept_when_drawing_is_not_found()
+    {
+        _host.Components.Single(c => c.Key == "c.ipt").Format = "А4";
+        var vm = Open();
+        vm.SetSelectedRows(new[] { vm.Rows.Single(r => r.Name == "Вал"), vm.Rows.Single(r => r.Name == "Ось") });
+
+        vm.DrawingFormatsCommand.Execute(null);
+
+        Assert.Equal("А4", vm.Rows.Single(r => r.Name == "Вал").Format);
+        Assert.False(_host.Properties.ContainsKey("c.ipt"));
+        Assert.Contains("оставлен формат, заданный раньше (2)", _dialogs.Infos.Single());
     }
 
     [Fact]
@@ -520,5 +538,23 @@ public class ShowInFolderTests
         Assert.False(vm.ShowDrawingFileCommand.CanExecute(null));
         vm.SelectedRow = vm.Rows.First(r => r.IsHeader);
         Assert.False(vm.ShowComponentFileCommand.CanExecute(null));
+    }
+}
+
+public class ConfirmationViewModelTests
+{
+    [Fact]
+    public void Action_needs_the_check_box()
+    {
+        var vm = new ConfirmationViewModel("Авторазделы", "Будут изменены файлы.", "Понимаю", "Выполнить");
+        var changed = new List<string?>();
+        vm.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        Assert.False(vm.IsConfirmed);
+        vm.IsConfirmed = true;
+
+        Assert.True(vm.IsConfirmed);
+        Assert.Equal(new[] { nameof(ConfirmationViewModel.IsConfirmed) }, changed);
+        Assert.Equal("Выполнить", vm.ActionText);
     }
 }

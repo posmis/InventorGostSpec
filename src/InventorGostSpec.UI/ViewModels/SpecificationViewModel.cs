@@ -708,7 +708,8 @@ public sealed class SpecificationViewModel : ObservableObject
         var scope = _selectedRows.Count > 1 ? "выбранных деталей" : "всех деталей спецификации";
         if (!_dialogs.Confirm(
                 $"Найти чертежи {scope} ({rows.Count}) и записать форматы их листов в свойства деталей (SPEC_Format)?\n\n" +
-                "Несколько форматов записываются через запятую в порядке уменьшения («А1, А2х3, А2»). " +
+                "Несколько форматов записываются через запятую в порядке уменьшения («А1, А2х3, А2»), " +
+                "детали без чертежа — «БЧ» (если формат не был задан). " +
                 "Изменятся файлы деталей — после этого сохраните сборку. Детали без чертежа не меняются."))
         {
             return;
@@ -729,23 +730,35 @@ public sealed class SpecificationViewModel : ObservableObject
         var written = new List<string>();
         var same = 0;
         var noDrawing = new List<string>();
+        var keptWithoutDrawing = new List<string>();
         var unknown = new List<string>();
         var failed = new List<string>();
         foreach (var row in rows)
         {
+            string format;
             if (!found.TryGetValue(row.ComponentKey!, out var result) || result.DrawingPath is null)
             {
-                noDrawing.Add(Describe(row));
-                continue;
-            }
+                // Чертежа нет — «БЧ» (ГОСТ 2.106), но формат, вписанный вручную, не затираем.
+                if (row.Source.Format.Length > 0 && row.Source.Format != SheetFormats.NoDrawing)
+                {
+                    keptWithoutDrawing.Add($"{Describe(row)}: {row.Source.Format}");
+                    continue;
+                }
 
-            if (result.Format.Length == 0)
+                noDrawing.Add(Describe(row));
+                format = SheetFormats.NoDrawing;
+            }
+            else if (result.Format.Length == 0)
             {
                 unknown.Add($"{Describe(row)} ({System.IO.Path.GetFileName(result.DrawingPath)})");
                 continue;
             }
+            else
+            {
+                format = result.Format;
+            }
 
-            if (result.Format == row.Source.Format)
+            if (format == row.Source.Format)
             {
                 same++;
                 continue;
@@ -753,9 +766,9 @@ public sealed class SpecificationViewModel : ObservableObject
 
             try
             {
-                var data = _host.WriteComponentProperties(row.ComponentKey!, new Dictionary<string, string> { [PropertyNames.Format] = result.Format });
+                var data = _host.WriteComponentProperties(row.ComponentKey!, new Dictionary<string, string> { [PropertyNames.Format] = format });
                 SpecificationEditor.RefreshComponent(Specification, _context, row, data);
-                written.Add($"{Describe(row)}: {result.Format}");
+                written.Add($"{Describe(row)}: {format}");
             }
             catch (Exception ex)
             {
@@ -777,7 +790,12 @@ public sealed class SpecificationViewModel : ObservableObject
 
         if (noDrawing.Count > 0)
         {
-            report += $"\n\nЧертёж не найден ({noDrawing.Count}) — для детали без чертежа в графе «Формат» пишут «БЧ»:\n" + List(noDrawing);
+            report += $"\n\nЧертёж не найден — формат «БЧ» ({noDrawing.Count}):\n" + List(noDrawing);
+        }
+
+        if (keptWithoutDrawing.Count > 0)
+        {
+            report += $"\n\nЧертёж не найден, оставлен формат, заданный раньше ({keptWithoutDrawing.Count}):\n" + List(keptWithoutDrawing);
         }
 
         if (unknown.Count > 0)

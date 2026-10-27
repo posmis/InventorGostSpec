@@ -22,12 +22,20 @@ public sealed class PdfSettings
     /// <summary>Допустимое сужение текста, % ширины (0 — не переносить автоматически). См. <see cref="PdfOptions.MinWidthPercent"/>.</summary>
     public int MinWidthPercent { get; set; } = PdfOptions.DefaultMinWidthPercent;
 
+    /// <summary>Допустимое сужение в графе «Примечание», %. См. <see cref="PdfOptions.NoteMinWidthPercent"/>.</summary>
+    public int NoteMinWidthPercent { get; set; } = PdfOptions.DefaultNoteMinWidthPercent;
+
+    /// <summary>Сужение длинного слова в «Примечании» до переноса по слогам, %. См. <see cref="PdfOptions.WordMinWidthPercent"/>.</summary>
+    public int WordMinWidthPercent { get; set; } = PdfOptions.DefaultWordMinWidthPercent;
+
     /// <summary>Параметры вывода по этим настройкам.</summary>
     public PdfOptions ToOptions() => new()
     {
         Font = Font.Length > 0 ? Font : null,
         Sizes = (Sizes ?? new FontSizes()).Normalized(),
         MinWidthPercent = Math.Clamp(MinWidthPercent, 0, 100),
+        NoteMinWidthPercent = Math.Clamp(NoteMinWidthPercent, 1, 100),
+        WordMinWidthPercent = Math.Clamp(WordMinWidthPercent, 1, 100),
     };
 
     /// <summary>Размеры шрифтов и сужение — по умолчанию (шрифт не меняется).</summary>
@@ -35,6 +43,8 @@ public sealed class PdfSettings
     {
         Sizes = new FontSizes();
         MinWidthPercent = PdfOptions.DefaultMinWidthPercent;
+        NoteMinWidthPercent = PdfOptions.DefaultNoteMinWidthPercent;
+        WordMinWidthPercent = PdfOptions.DefaultWordMinWidthPercent;
     }
 
     public static PdfSettings Load()

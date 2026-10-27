@@ -207,12 +207,33 @@ public partial class MainWindow : Window
             return false;
         }
 
+        if (!TryParsePercent(NoteMinWidthBox, out var notePercent) || !TryParsePercent(WordMinWidthBox, out var wordPercent))
+        {
+            return false;
+        }
+
         var font = FontBox.Text.Trim();
         _settings.Font = font == AutoFont ? "" : font;
         _settings.OpenAfter = OpenBox.IsChecked == true;
         _settings.Sizes = sizes;
         _settings.MinWidthPercent = (int)Math.Round(percent);
+        _settings.NoteMinWidthPercent = notePercent;
+        _settings.WordMinWidthPercent = wordPercent;
         _settings.Save();
+        return true;
+    }
+
+    private bool TryParsePercent(TextBox box, out int percent)
+    {
+        percent = 0;
+        if (!TryParseNumber(box.Text, out var value) || value < 1 || value > 100)
+        {
+            ShowStatus("Сужение в «Примечании» — число от 1 до 100 %.", error: true);
+            box.Focus();
+            return false;
+        }
+
+        percent = (int)Math.Round(value);
         return true;
     }
 
@@ -251,6 +272,8 @@ public partial class MainWindow : Window
         }
 
         MinWidthBox.Text = Math.Clamp(_settings.MinWidthPercent, 0, 100).ToString(Russian);
+        NoteMinWidthBox.Text = Math.Clamp(_settings.NoteMinWidthPercent, 1, 100).ToString(Russian);
+        WordMinWidthBox.Text = Math.Clamp(_settings.WordMinWidthPercent, 1, 100).ToString(Russian);
     }
 
     private void OnResetSizes(object sender, RoutedEventArgs e)

@@ -208,3 +208,61 @@ public class FormatFootnoteTests
         }
     }
 }
+
+public class NoteWrapTests
+{
+    private static double Measure(string text, double capHeight) => text.Length * 2.0;
+
+    [Fact]
+    public void Note_is_compressed_further_than_other_columns()
+    {
+        // 28 мм в графе 20 мм: при 80 % — перенос, при 70 % — одна строка.
+        Assert.Equal(2, SpecPaginator.Wrap("А1, А2, А3, А4", 20, Measure, 5, 80).Count);
+        Assert.Single(SpecPaginator.Wrap("А1, А2, А3, А4", 20, Measure, 5, 70));
+    }
+
+    [Fact]
+    public void Note_lines_are_filled_up_to_allowed_compression()
+    {
+        static double Wide(string text, double capHeight) => text.Length * 2.7;
+
+        // Строк всё равно две, но в первую входит больше: «*)А1, А2,» сжимается до 86 %.
+        Assert.Equal(new[] { "*)А1,", "А2, А4" }, SpecPaginator.Wrap("*)А1, А2, А4", 20, Wide, 5, 75));
+        Assert.Equal(new[] { "*)А1, А2,", "А4" }, SpecPaginator.Wrap("*)А1, А2, А4", 20, Wide, 5, 75, 60));
+    }
+
+    [Fact]
+    public void Paginator_uses_note_settings()
+    {
+        var row = new SheetRow(ExcelFormat.RowTypes.Item, "", "", "1", "А.001", "Корпус", "1", "", "А1, А2, А3.");
+
+        // 22 мм текста в графе (20 мм без отступов): 75 % — одна строка, 100 % — перенос.
+        var page = Assert.Single(SpecPaginator.Paginate(new[] { row }, Measure, new PdfOptions()));
+        Assert.Equal("А1, А2, А3.", Assert.Single(page).Note);
+
+        var strict = Assert.Single(SpecPaginator.Paginate(new[] { row }, Measure, new PdfOptions { NoteMinWidthPercent = 100 }));
+        Assert.Equal(2, strict.Count);
+    }
+
+    [Fact]
+    public void Word_fitting_at_60_percent_is_only_compressed()
+    {
+        Assert.Equal(new[] { "Термообработка" }, SpecPaginator.Wrap("Термообработка", 20, Measure, 5, 70, 60));
+    }
+
+    [Fact]
+    public void Long_word_is_hyphenated_by_syllables()
+    {
+        var lines = SpecPaginator.Wrap("Закалка высокочастотная", 12, Measure, 5, 70, 60);
+
+        Assert.Equal(new[] { "Закалка", "высоко-", "частотная" }, lines);
+        Assert.All(lines, l => Assert.True(Measure(l, 5) <= 12 * 100 / 60.0));
+    }
+
+    [Theory]
+    [InlineData("термообработка", new[] { 3, 5, 7, 9, 12 })]
+    [InlineData("сталь", new int[0])]
+    [InlineData("подъезд", new[] { 4 })]
+    public void Syllable_points(string word, int[] expected) =>
+        Assert.Equal(expected, Hyphenation.Points(word));
+}

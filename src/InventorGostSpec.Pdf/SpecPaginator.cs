@@ -71,9 +71,13 @@ public static class SpecPaginator
     {
         Func<string, double, List<string>> wrap = (text, width) =>
             Wrap(text, width, measure, options.Sizes.TableRows, options.MinWidthPercent);
+        // «Примечание» — узкая графа: сужается сильнее, длинные слова переносятся по слогам.
+        Func<string, double, List<string>> wrapNote = (text, width) => options.MinWidthPercent <= 0
+            ? Wrap(text, width, measure, options.Sizes.TableRows, 0)
+            : Wrap(text, width, measure, options.Sizes.TableRows, options.NoteMinWidthPercent, options.WordMinWidthPercent);
         var blocks = rows.Select((row, index) =>
         {
-            var block = ToBlock(row, wrap);
+            var block = ToBlock(row, wrap, wrapNote);
             block.Lines.ForEach(line => line.SourceRow = index);
             return block;
         }).ToList();
@@ -175,7 +179,7 @@ public static class SpecPaginator
         return lines.Skip(skip).ToList();
     }
 
-    private static Block ToBlock(SheetRow row, Func<string, double, List<string>> wrap)
+    private static Block ToBlock(SheetRow row, Func<string, double, List<string>> wrap, Func<string, double, List<string>> wrapNote)
     {
         var type = row.Type.Length > 0 ? row.Type : row.IsEmpty ? "" : ExcelFormat.RowTypes.Item;
         var nameWidth = GostLayout.TextWidth(GostLayout.NameColumn);
@@ -211,7 +215,7 @@ public static class SpecPaginator
                 var (format, noteText) = SheetFormats.ForColumns(row.Format, row.Note);
                 var designation = wrap(row.Designation, GostLayout.TextWidth(GostLayout.DesignationColumn));
                 var name = wrap(row.Name, nameWidth);
-                var note = wrap(noteText, GostLayout.TextWidth(GostLayout.NoteColumn));
+                var note = wrapNote(noteText, GostLayout.TextWidth(GostLayout.NoteColumn));
                 var count = Math.Max(1, Math.Max(designation.Count, Math.Max(name.Count, note.Count)));
                 var quantity = row.Unit.Length > 0 && row.Quantity.Length > 0 ? $"{row.Quantity} {row.Unit}" : row.Quantity;
                 var lines = Enumerable.Range(0, count).Select(i => new PrintLine
@@ -233,32 +237,45 @@ public static class SpecPaginator
     /// Перенос по словам (и после дефиса). Явный перенос строки в ячейке сохраняется.
     /// Если текст чуть-чуть не помещается и сжатие по ширине (до <paramref name="minWidthPercent"/> %) экономит строку —
     /// не переносим, при выводе он сжимается.
-    /// Слово длиннее графы остаётся целым и тоже сжимается.
+    /// Слово длиннее графы остаётся целым и тоже сжимается — или, если задан <paramref name="wordMinWidthPercent"/>
+    /// и даже так не помещается, переносится по слогам.
     /// </summary>
     /// <param name="capHeight">Высота букв; по умолчанию — шрифт строк таблицы (5).</param>
     /// <param name="minWidthPercent">Допустимое сужение, % ширины; 0 — переносить только по явному переносу строки.</param>
+    /// <param name="wordMinWidthPercent">
+    /// До скольких % сужается длинное слово, прежде чем переноситься по слогам; 0 — не переносить.
+    /// Задан — строки заполняются до допустимого сужения, даже если строк от этого не меньше
+    /// («*)А1, А2,» / «А4», а не «*)А1,» / «А2, А4»): так в узкой графе «Примечание».
+    /// </param>
     public static List<string> Wrap(string text, double width, Func<string, double, double> measure,
-        double capHeight = 5, int minWidthPercent = PdfOptions.DefaultMinWidthPercent)
+        double capHeight = 5, int minWidthPercent = PdfOptions.DefaultMinWidthPercent, int wordMinWidthPercent = 0)
     {
         if (minWidthPercent <= 0)
         {
             return text.Replace("\r", "").Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
         }
 
-        var normal = WrapAt(text, width, measure, capHeight);
-        var compressed = WrapAt(text, width * 100 / Math.Min(100, minWidthPercent), measure, capHeight);
-        return compressed.Count < normal.Count ? compressed : normal;
+        var longWord = wordMinWidthPercent > 0 ? width * 100 / Math.Min(100, wordMinWidthPercent) : double.PositiveInfinity;
+        var normal = WrapAt(text, width, measure, capHeight, longWord);
+        var compressed = WrapAt(text, width * 100 / Math.Min(100, minWidthPercent), measure, capHeight, longWord);
+        return compressed.Count < normal.Count || wordMinWidthPercent > 0 && compressed.Count == normal.Count ? compressed : normal;
     }
 
-    private static List<string> WrapAt(string text, double width, Func<string, double, double> measure, double capHeight)
+    private static List<string> WrapAt(string text, double width, Func<string, double, double> measure, double capHeight, double longWord)
     {
         var result = new List<string>();
         foreach (var paragraph in text.Replace("\r", "").Split('\n'))
         {
             var words = SplitWords(paragraph.Trim());
             var line = "";
-            foreach (var word in words)
+            foreach (var whole in words)
             {
+                var word = whole;
+                if (measure(word.Trim(), capHeight) > longWord)
+                {
+                    word = Hyphenate(word, ref line, result, width, longWord, measure, capHeight);
+                }
+
                 var candidate = line.Length == 0 ? word.TrimStart() : line + word;
                 if (line.Length > 0 && measure(candidate.TrimEnd(), capHeight) > width)
                 {
@@ -278,6 +295,45 @@ public static class SpecPaginator
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Слово, не влезающее в графу даже при наибольшем сужении: части «до переноса» дописываются в строки
+    /// (сначала — в конец текущей строки, если помещается); возвращается остаток — он уже влезает при наибольшем сужении.
+    /// </summary>
+    private static string Hyphenate(string word, ref string line, List<string> result, double width, double longWord,
+        Func<string, double, double> measure, double capHeight)
+    {
+        while (measure(word.Trim(), capHeight) > longWord)
+        {
+            var points = Hyphenation.Points(word);
+            var head = line;
+            var fit = points.LastOrDefault(p => measure((head + word[..p]).Trim() + "-", capHeight) <= width);
+            if (fit == 0)
+            {
+                if (line.Length > 0)
+                {
+                    // В конце текущей строки места нет — переносим слово целиком и делим уже его.
+                    result.Add(line.TrimEnd());
+                    line = "";
+                    word = word.TrimStart();
+                    continue;
+                }
+
+                // Даже первый слог не влезает — дальше слово просто сжимается.
+                fit = points.Count > 0 ? points[0] : 0;
+                if (fit == 0)
+                {
+                    break;
+                }
+            }
+
+            result.Add((line + word[..fit]).Trim() + "-");
+            line = "";
+            word = word[fit..];
+        }
+
+        return word;
     }
 
     /// <summary>Индексы стандартов: после них не переносим («ГОСТ 7798-70», «ГОСТ Р ИСО 15973-2005» — одной строкой).</summary>

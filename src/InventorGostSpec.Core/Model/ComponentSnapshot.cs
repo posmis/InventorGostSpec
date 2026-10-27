@@ -37,7 +37,10 @@ public sealed class ComponentSnapshot
         {
             SectionId = SectionResolver.Resolve(component),
             Format = Clean(component.Format),
-            Designation = Clean(component.Designation),
+            // У сборок «СБ» в обозначении нужен для чертежей, в спецификации его быть не должно.
+            Designation = component.Kind == ComponentKind.Assembly
+                ? Designations.WithoutAssemblyDrawingCode(component.Designation)
+                : Clean(component.Designation),
             Name = Clean(component.Name),
             Quantity = FormatQuantity(component.Quantity),
             Unit = Clean(component.Unit),

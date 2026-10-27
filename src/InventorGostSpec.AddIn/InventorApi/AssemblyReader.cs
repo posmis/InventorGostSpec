@@ -7,8 +7,6 @@ namespace InventorGostSpec.AddIn.InventorApi;
 /// <summary>Чтение состава первого уровня сборки для спецификации.</summary>
 internal static class AssemblyReader
 {
-    public const string AssemblyDrawingCode = "СБ";
-
     public static List<ComponentData> Read(Inventor.Application application, AssemblyDocument assembly)
     {
         var result = new List<ComponentData>();
@@ -47,7 +45,7 @@ internal static class AssemblyReader
 
     /// <summary>
     /// Сборочный чертёж — чертёж с тем же именем рядом со сборкой.
-    /// Обозначение — обозначение сборки с кодом «СБ».
+    /// Обозначение — обозначение сборки с кодом «СБ» (если в обозначении сборки «СБ» уже есть, второй не добавляется).
     /// </summary>
     private static ComponentData? ReadAssemblyDrawing(Inventor.Application application, AssemblyDocument assembly)
     {
@@ -62,7 +60,7 @@ internal static class AssemblyReader
         {
             Key = "drawing:" + System.IO.Path.GetRelativePath(BomAccess.AssemblyFolder(assembly), path),
             Kind = ComponentKind.Document,
-            Designation = partNumber.Length > 0 ? partNumber + AssemblyDrawingCode : "",
+            Designation = Designations.AssemblyDrawing(partNumber),
             Name = "Сборочный чертеж",
             Format = DrawingAccess.ReadFormat(application, path),
         };

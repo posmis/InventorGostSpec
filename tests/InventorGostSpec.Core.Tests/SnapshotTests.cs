@@ -55,3 +55,30 @@ public class SheetFormatsTests
     public void Recognizes_formats(double width, double height, string expected) =>
         Assert.Equal(expected, SheetFormats.FromSize(width, height));
 }
+
+public class DesignationsTests
+{
+    [Theory]
+    [InlineData("АБВГ.301234.001СБ", "АБВГ.301234.001")]
+    [InlineData("АБВГ.301234.001 СБ", "АБВГ.301234.001")]
+    [InlineData("АБВГ.301234.001CБ", "АБВГ.301234.001")] // латинская C
+    [InlineData("АБВГ.301234.001", "АБВГ.301234.001")]
+    [InlineData("", "")]
+    public void Strips_assembly_drawing_code(string designation, string expected) =>
+        Assert.Equal(expected, Designations.WithoutAssemblyDrawingCode(designation));
+
+    [Theory]
+    [InlineData("АБВГ.301234.001", "АБВГ.301234.001СБ")]
+    [InlineData("АБВГ.301234.001СБ", "АБВГ.301234.001СБ")]
+    [InlineData("", "")]
+    public void Assembly_drawing_has_single_code(string assembly, string expected) =>
+        Assert.Equal(expected, Designations.AssemblyDrawing(assembly));
+
+    [Fact]
+    public void Assembly_row_has_no_drawing_code_but_part_keeps_designation()
+    {
+        Assert.Equal("АБВГ.301234.005", ComponentSnapshot.FromComponent(TestData.Assembly("АБВГ.301234.005СБ", "Редуктор")).Designation);
+        // У деталей обозначение не трогаем.
+        Assert.Equal("АБВГ.715431.001СБ", ComponentSnapshot.FromComponent(TestData.Part("АБВГ.715431.001СБ", "Деталь")).Designation);
+    }
+}

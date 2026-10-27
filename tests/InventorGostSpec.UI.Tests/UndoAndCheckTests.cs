@@ -284,3 +284,68 @@ public class InsertSectionTests
         Assert.DoesNotContain("Перенумеровать", vm.StatusText);
     }
 }
+
+public class DrawingFormatTests
+{
+    private readonly FakeHost _host = new();
+    private readonly FakeDialogs _dialogs = new();
+
+    public DrawingFormatTests()
+    {
+        _host.Components.AddRange(new[]
+        {
+            new ComponentData { Key = "a.ipt", Kind = ComponentKind.Part, Designation = "А.001", Name = "Корпус", Quantity = 1 },
+            new ComponentData { Key = "b.ipt", Kind = ComponentKind.Part, Designation = "А.002", Name = "Ось", Format = "А4", Quantity = 1 },
+            new ComponentData { Key = "c.ipt", Kind = ComponentKind.Part, Designation = "А.003", Name = "Вал", Quantity = 1 },
+            new ComponentData { Key = "u.iam", Kind = ComponentKind.Assembly, Designation = "Б.001", Name = "Узел", Quantity = 1 },
+        });
+    }
+
+    private SpecificationViewModel Open()
+    {
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, _host.Components, SpecificationContext.Create(_host.Settings, spec), DateTime.UtcNow);
+        return new SpecificationViewModel(_host, _dialogs, spec, post: action => action());
+    }
+
+    [Fact]
+    public void Formats_of_part_drawings_are_written_to_parts_only()
+    {
+        _host.Drawings["a.ipt"] = "А1, А2х3, А2";
+        _host.Drawings["b.ipt"] = "А4";
+        _host.Drawings["u.iam"] = "А1";
+        var vm = Open();
+
+        vm.DrawingFormatsCommand.Execute(null);
+
+        Assert.Equal(new[] { "a.ipt", "b.ipt", "c.ipt" }, _host.DrawingRequests.Single().OrderBy(k => k));
+        Assert.Equal("А1, А2х3, А2", vm.Rows.Single(r => r.Name == "Корпус").Format);
+        Assert.Equal("А1, А2х3, А2", _host.Properties["a.ipt"][Core.Storage.PropertyNames.Format]);
+        Assert.False(_host.Properties.ContainsKey("b.ipt")); // формат уже такой
+        Assert.False(_host.Properties.ContainsKey("u.iam"));
+
+        var report = _dialogs.Infos.Single();
+        Assert.Contains("Записано форматов: 1. Без изменений: 1.", report);
+        Assert.Contains("Чертёж не найден (1)", report);
+        Assert.Contains("Вал", report);
+        Assert.True(vm.IsDirty);
+    }
+
+    [Fact]
+    public void Only_selected_parts_when_several_rows_are_selected_and_cancel_changes_nothing()
+    {
+        _host.Drawings["a.ipt"] = "А3";
+        _host.Drawings["c.ipt"] = "А3";
+        var vm = Open();
+        vm.SetSelectedRows(new[] { vm.Rows.Single(r => r.Name == "Вал"), vm.Rows.Single(r => r.Name == "Узел") });
+
+        _dialogs.ConfirmAnswer = false;
+        vm.DrawingFormatsCommand.Execute(null);
+        Assert.Empty(_host.DrawingRequests);
+
+        _dialogs.ConfirmAnswer = true;
+        vm.DrawingFormatsCommand.Execute(null);
+        Assert.Equal(new[] { "c.ipt" }, _host.DrawingRequests.Single());
+        Assert.Equal("", vm.Rows.Single(r => r.Name == "Корпус").Format);
+    }
+}

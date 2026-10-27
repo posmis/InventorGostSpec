@@ -161,3 +161,50 @@ public class PdfEdgeCaseTests : IDisposable
         Assert.Equal(ClosedXML.Excel.XLBorderStyleValues.Thick, marked.Cell(3, ExcelFormat.NameColumn).Style.Border.BottomBorder);
     }
 }
+
+public class FormatFootnoteTests
+{
+    private static double Measure(string text, double capHeight) => text.Length * 1.0;
+
+    [Fact]
+    public void Several_formats_typed_in_excel_go_to_note()
+    {
+        var row = new SheetRow(ExcelFormat.RowTypes.Item, "А1, А2", "", "3", "АБВГ.715431.001", "Корпус", "1", "", "Литьё");
+
+        var lines = Assert.Single(SpecPaginator.Paginate(new[] { row }, Measure));
+
+        Assert.Equal("*)", lines[0].Format);
+        Assert.Equal(new[] { "*)А1, А2", "Литьё" }, lines.Select(l => l.Note));
+        Assert.Equal("", lines[1].Format);
+    }
+
+    [Fact]
+    public void Exported_row_keeps_single_format_and_moves_derived()
+    {
+        var spec = new Specification();
+        var context = SpecificationContext.Create(null, spec);
+        Core.Update.SpecificationUpdater.Update(spec, new[]
+        {
+            new ComponentData { Key = "a.ipt", Kind = ComponentKind.Part, Designation = "А.001", Name = "Корпус", Format = "А4х3", Quantity = 1 },
+            new ComponentData { Key = "b.ipt", Kind = ComponentKind.Part, Designation = "А.002", Name = "Ось", Format = "А3", Quantity = 1 },
+        }, context, DateTime.UtcNow);
+        var path = Path.Combine(Path.GetTempPath(), $"fmt-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            ExcelExporter.Export(spec, context, new TitleBlock(), path);
+            var rows = ExcelReader.Read(path).Rows.Where(r => r.Type == ExcelFormat.RowTypes.Item).ToList();
+
+            Assert.Equal(("*)", "*)А4х3"), (rows[0].Format, rows[0].Note));
+            Assert.Equal(("А3", ""), (rows[1].Format, rows[1].Note));
+
+            // Повторный вывод того же файла не добавляет вторую сноску.
+            var page = Assert.Single(SpecPaginator.Paginate(rows, Measure));
+            Assert.Equal(new[] { "*)", "А3" }, page.Select(l => l.Format));
+            Assert.Equal("*)А4х3", page[0].Note);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+}

@@ -120,6 +120,8 @@
                                                  ToolTip="Прочитать состав сборки (F5). Ручной порядок, ручные строки, примечания и правки сохраняются." />
                             <controls:IconButton Icon="{StaticResource Icon.NextChange}" Text="Следующее изменение" Command="{Binding NextChangeCommand}"
                                                  ToolTip="Перейти к следующей подсвеченной строке (F3)" />
+                            <controls:IconButton Icon="{StaticResource Icon.Formats}" Text="Форматы" Command="{Binding DrawingFormatsCommand}"
+                                                 ToolTip="Найти чертежи деталей (выбранных строк или всех деталей) и записать форматы всех их листов в свойства деталей: «А1, А2х3, А2» в порядке уменьшения" />
                             <controls:IconButton Icon="{StaticResource Icon.Accept}" Text="Принять" Command="{Binding AcceptChangesCommand}"
                                                  ToolTip="Принять изменения: снять подсветку и удалить строки компонентов, которых нет в сборке" />
                         </StackPanel>

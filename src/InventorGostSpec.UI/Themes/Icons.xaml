@@ -398,6 +398,28 @@
             </DrawingGroup>
         </DrawingImage.Drawing>
     </DrawingImage>
+    <DrawingImage x:Key="Icon.Formats">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="Transparent" Geometry="M 0 0 L 16 0 L 16 16 L 0 16 Z" />
+                <GeometryDrawing Brush="#FFFFFF" Geometry="M 5.5 1.5 L 14.5 1.5 L 14.5 10.5 L 5.5 10.5 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#616161" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#A9D0F5" Geometry="M 1.5 5.5 L 10.5 5.5 L 10.5 14.5 L 1.5 14.5 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#1C5F9E" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Geometry="M 3.5 12.5 L 8.5 12.5">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#1C5F9E" Thickness="1" StartLineCap="Round" EndLineCap="Round" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
     <DrawingImage x:Key="Icon.Settings">
         <DrawingImage.Drawing>
             <DrawingGroup>

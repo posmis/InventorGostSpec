@@ -42,6 +42,12 @@ public interface ISpecificationHost
     /// </summary>
     string? ReadComponentNote(string componentKey);
 
+    /// <summary>
+    /// Чертежи компонентов и форматы всех их листов («А1, А2х3, А2») по ключу компонента.
+    /// Компонента нет в сборке — ключа нет в ответе; чертёж не найден — <see cref="DrawingFormat.DrawingPath"/> пуст.
+    /// </summary>
+    IReadOnlyDictionary<string, DrawingFormat> FindDrawingFormats(IReadOnlyList<string> componentKeys);
+
     /// <summary>Номера позиций в BOM Inventor (Item Number) по ключу компонента — для проверки расхождений.</summary>
     IReadOnlyDictionary<string, string> ReadBomItemNumbers();
 
@@ -63,6 +69,10 @@ public interface ISpecificationHost
     /// <summary>Записывает непредвиденную ошибку окна в журнал.</summary>
     void ReportError(Exception exception);
 }
+
+/// <param name="DrawingPath">Найденный чертёж; <c>null</c> — чертежа нет.</param>
+/// <param name="Format">Форматы листов чертежа; пусто — не распознаны.</param>
+public sealed record DrawingFormat(string? DrawingPath, string Format);
 
 /// <param name="DefaultPath">Путь к файлу Excel по умолчанию (папка сборки).</param>
 public sealed record ExportInfo(TitleBlock TitleBlock, string DefaultPath);

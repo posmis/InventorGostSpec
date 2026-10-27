@@ -52,5 +52,80 @@ public static class SheetFormats
         return "";
     }
 
+    /// <summary>Сноска графы «Формат» (ГОСТ 2.106): формат не помещается в графу и записан в «Примечании».</summary>
+    public const string Footnote = "*)";
+
+    /// <summary>
+    /// Форматы листов документа одной строкой: без повторов, в порядке уменьшения — по основному формату от большего
+    /// к меньшему, у одного основного дополнительный формат раньше («А1, А2х3, А2, А3»). Нераспознанные значения — в конце.
+    /// </summary>
+    public static string Combine(IEnumerable<string> formats)
+    {
+        var distinct = formats
+            .SelectMany(f => (f ?? "").Split(','))
+            .Select(Normalize)
+            .Where(f => f.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return string.Join(", ", distinct
+            .Select((f, index) => (Format: f, Parsed: Parse(f), Index: index))
+            .OrderBy(x => x.Parsed?.Base ?? int.MaxValue)
+            .ThenByDescending(x => x.Parsed?.Multiple ?? 0)
+            .ThenBy(x => x.Index)
+            .Select(x => x.Format));
+    }
+
+    /// <summary>
+    /// Формат не помещается в графу «Формат» по ГОСТ: дополнительный («А4х3») или несколько форматов («А1, А2»).
+    /// Одиночный основной формат («А1», «А4») помещается.
+    /// </summary>
+    public static bool NeedsFootnote(string? format)
+    {
+        format = (format ?? "").Trim();
+        return format.Length > 0 && format != Footnote &&
+               (format.Contains(',') || Parse(format) is { Multiple: > 1 });
+    }
+
+    /// <summary>
+    /// Значения граф «Формат» и «Примечание» для вывода: если формат не помещается — в графе «Формат» «*)»,
+    /// а в «Примечании» «*)А4х3», прежнее примечание — со следующей строки.
+    /// </summary>
+    public static (string Format, string Note) ForColumns(string? format, string? note)
+    {
+        format = (format ?? "").Trim();
+        note = (note ?? "").Trim();
+        if (!NeedsFootnote(format))
+        {
+            return (format, note);
+        }
+
+        var footnote = Footnote + format;
+        return (Footnote, note.Length > 0 ? footnote + "\n" + note : footnote);
+    }
+
+    /// <summary>«A2x3», «а2 × 3» → «А2х3» (кириллица, как в ГОСТ).</summary>
+    private static string Normalize(string format)
+    {
+        var text = format.Trim().Replace(" ", "");
+        return Parse(text) is { } parsed
+            ? parsed.Multiple > 1 ? $"А{parsed.Base}х{parsed.Multiple}" : $"А{parsed.Base}"
+            : format.Trim();
+    }
+
+    /// <summary>Номер основного формата (0 — А0) и кратность (1 — основной формат).</summary>
+    private static (int Base, int Multiple)? Parse(string format)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(
+            format.Trim().Replace(" ", ""), @"^[АAаa](\d)(?:[хxХX×*](\d+))?$");
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var multiple = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : 1;
+        return (int.Parse(match.Groups[1].Value), multiple);
+    }
+
     private static bool Near(double value, double expected) => Math.Abs(value - expected) <= ToleranceMm;
 }

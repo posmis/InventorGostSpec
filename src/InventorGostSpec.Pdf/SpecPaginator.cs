@@ -1,3 +1,4 @@
+using InventorGostSpec.Core.Model;
 using InventorGostSpec.Excel;
 
 namespace InventorGostSpec.Pdf;
@@ -206,14 +207,16 @@ public static class SpecPaginator
 
             default:
             {
+                // Формат, вписанный в Excel вручную, — по тому же правилу ГОСТ, что и при выгрузке: «*)» и сноска в «Примечании».
+                var (format, noteText) = SheetFormats.ForColumns(row.Format, row.Note);
                 var designation = wrap(row.Designation, GostLayout.TextWidth(GostLayout.DesignationColumn));
                 var name = wrap(row.Name, nameWidth);
-                var note = wrap(row.Note, GostLayout.TextWidth(GostLayout.NoteColumn));
+                var note = wrap(noteText, GostLayout.TextWidth(GostLayout.NoteColumn));
                 var count = Math.Max(1, Math.Max(designation.Count, Math.Max(name.Count, note.Count)));
                 var quantity = row.Unit.Length > 0 && row.Quantity.Length > 0 ? $"{row.Quantity} {row.Unit}" : row.Quantity;
                 var lines = Enumerable.Range(0, count).Select(i => new PrintLine
                 {
-                    Format = i == 0 ? row.Format : "",
+                    Format = i == 0 ? format : "",
                     Zone = i == 0 ? row.Zone : "",
                     Position = i == 0 ? row.Position : "",
                     Designation = i < designation.Count ? designation[i] : "",

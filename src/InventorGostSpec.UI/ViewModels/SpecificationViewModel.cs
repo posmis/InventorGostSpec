@@ -86,6 +86,7 @@ public sealed class SpecificationViewModel : ObservableObject
         CheckCommand = new RelayCommand(Check, () => !IsEmpty);
         InsertSectionCommand = new RelayCommand(InsertSection, p => p is string id && InsertableSections().Any(o => o.Id == id));
         HideSectionCommand = new RelayCommand(HideSection, () => SelectedEmptyInsertedSection() is not null);
+        DrawingFormatsCommand = new RelayCommand(FindDrawingFormats, () => Specification.Rows.Any(IsPartWithModel));
 
         Rebuild();
         _isDirty = isNew;
@@ -235,6 +236,12 @@ public sealed class SpecificationViewModel : ObservableObject
 
     /// <summary>Убрать пустой вставленный раздел (выбран его заголовок).</summary>
     public ICommand HideSectionCommand { get; }
+
+    /// <summary>
+    /// Форматы чертежей деталей (раздел «Детали»): выбранных строк или всех деталей. Форматы всех листов чертежа
+    /// записываются в iProperty SPEC_Format детали.
+    /// </summary>
+    public ICommand DrawingFormatsCommand { get; }
 
     /// <summary>Резерв, который получает вставленный раздел, если у него резерва нет.</summary>
     public const int InsertedSectionReserve = 3;
@@ -521,6 +528,115 @@ public sealed class SpecificationViewModel : ObservableObject
         _context = CreateContext();
         Changed(rebuild: true);
         SelectedRow = Rows.FirstOrDefault(r => r.IsHeader && r.SectionId == section.Id);
+    }
+
+    /// <summary>Строка детали, у которой есть модель в сборке.</summary>
+    private static bool IsPartWithModel(SpecRow row) =>
+        CanEditComponent(row) && string.Equals(row.SectionId, Core.Sections.SectionIds.Parts, StringComparison.OrdinalIgnoreCase);
+
+    private void FindDrawingFormats()
+    {
+        CommitEdits?.Invoke();
+        var rows = (_selectedRows.Count > 1 ? TargetRows : Specification.Rows).Where(IsPartWithModel).ToList();
+        if (rows.Count == 0)
+        {
+            _dialogs.Info("Среди выбранных строк нет деталей (раздел «Детали»).");
+            return;
+        }
+
+        var scope = _selectedRows.Count > 1 ? "выбранных деталей" : "всех деталей спецификации";
+        if (!_dialogs.Confirm(
+                $"Найти чертежи {scope} ({rows.Count}) и записать форматы их листов в свойства деталей (SPEC_Format)?\n\n" +
+                "Несколько форматов записываются через запятую в порядке уменьшения («А1, А2х3, А2»). " +
+                "Изменятся файлы деталей — после этого сохраните сборку. Детали без чертежа не меняются."))
+        {
+            return;
+        }
+
+        IReadOnlyDictionary<string, DrawingFormat> found;
+        try
+        {
+            found = _host.FindDrawingFormats(rows.Select(r => r.ComponentKey!).ToList());
+        }
+        catch (Exception ex)
+        {
+            _host.ReportError(ex);
+            _dialogs.Warning($"Не удалось найти чертежи: {ex.Message}");
+            return;
+        }
+
+        var written = new List<string>();
+        var same = 0;
+        var noDrawing = new List<string>();
+        var unknown = new List<string>();
+        var failed = new List<string>();
+        foreach (var row in rows)
+        {
+            if (!found.TryGetValue(row.ComponentKey!, out var result) || result.DrawingPath is null)
+            {
+                noDrawing.Add(Describe(row));
+                continue;
+            }
+
+            if (result.Format.Length == 0)
+            {
+                unknown.Add($"{Describe(row)} ({System.IO.Path.GetFileName(result.DrawingPath)})");
+                continue;
+            }
+
+            if (result.Format == row.Source.Format)
+            {
+                same++;
+                continue;
+            }
+
+            try
+            {
+                var data = _host.WriteComponentProperties(row.ComponentKey!, new Dictionary<string, string> { [PropertyNames.Format] = result.Format });
+                SpecificationEditor.RefreshComponent(Specification, _context, row, data);
+                written.Add($"{Describe(row)}: {result.Format}");
+            }
+            catch (Exception ex)
+            {
+                _host.ReportError(ex);
+                failed.Add($"{Describe(row)}: {ex.Message}");
+            }
+        }
+
+        Changed(rebuild: true);
+
+        static string List(IReadOnlyList<string> items) =>
+            string.Join("\n", items.Take(10).Select(i => "• " + i)) + (items.Count > 10 ? $"\n… и ещё {items.Count - 10}" : "");
+
+        var report = $"Записано форматов: {written.Count}. Без изменений: {same}.";
+        if (written.Count > 0)
+        {
+            report += "\n" + List(written);
+        }
+
+        if (noDrawing.Count > 0)
+        {
+            report += $"\n\nЧертёж не найден ({noDrawing.Count}) — для детали без чертежа в графе «Формат» пишут «БЧ»:\n" + List(noDrawing);
+        }
+
+        if (unknown.Count > 0)
+        {
+            report += $"\n\nФормат листов не распознан ({unknown.Count}):\n" + List(unknown);
+        }
+
+        if (failed.Count > 0)
+        {
+            report += $"\n\nНе удалось записать ({failed.Count}):\n" + List(failed);
+        }
+
+        var overridden = rows.Count(r => r.IsOverridden(SpecColumn.Format));
+        if (overridden > 0)
+        {
+            report += $"\n\nУ {overridden} строк формат изменён вручную в спецификации — показывается ручное значение " +
+                      "(«Вернуть значение из компонента» в контекстном меню).";
+        }
+
+        _dialogs.Info(report);
     }
 
     private void InsertSection(object? parameter)

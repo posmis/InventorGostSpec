@@ -100,7 +100,7 @@ internal sealed class AutoAssignCommand : AddInCommand
         // Формат берётся из чертежа только у деталей. У сборочной единицы в спецификации указывается
         // формат её спецификации (А4) — его подставляет сама спецификация, а не формат сборочного чертежа.
         if (target.Kind == ComponentKind.Part && target.FullFileName is not null && target.Get(PropertyNames.Format).Length == 0 &&
-            DrawingAccess.FindDrawing(target.FullFileName) is { } drawing)
+            DrawingAccess.FindModelDrawing(context.Application, target.FullFileName, target.PartNumber) is { } drawing)
         {
             SetIfEmpty(target, PropertyNames.Format, DrawingAccess.ReadFormat(context.Application, drawing));
         }

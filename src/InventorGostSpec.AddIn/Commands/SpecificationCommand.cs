@@ -160,6 +160,26 @@ internal sealed class SpecificationCommand : AddInCommand
 
         public string? BuildPdf(string excelPath, string pdfPath) => PdfToolRunner.Run(excelPath, pdfPath);
 
+        public IReadOnlyDictionary<string, DrawingFormat> FindDrawingFormats(IReadOnlyList<string> componentKeys)
+        {
+            var keys = componentKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var result = new Dictionary<string, DrawingFormat>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in BomAccess.GetFirstLevel(_assembly).Where(i => keys.Contains(i.Key)))
+            {
+                if (result.ContainsKey(item.Key) || item.Target.FullFileName is not { } file)
+                {
+                    continue;
+                }
+
+                var drawing = DrawingAccess.FindModelDrawing(_context.Application, file, item.Target.PartNumber);
+                result[item.Key] = drawing is null
+                    ? new DrawingFormat(null, "")
+                    : new DrawingFormat(drawing, DrawingAccess.ReadFormat(_context.Application, drawing));
+            }
+
+            return result;
+        }
+
         public IReadOnlyDictionary<string, string> ReadBomItemNumbers() =>
             BomAccess.GetFirstLevel(_assembly)
                 .GroupBy(item => item.Key, StringComparer.OrdinalIgnoreCase)

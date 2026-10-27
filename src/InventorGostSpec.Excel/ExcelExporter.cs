@@ -116,8 +116,10 @@ public static class ExcelExporter
                 break;
 
             case DisplayRowKind.Row when display.Row is { } item:
+                // Несколько форматов или дополнительный формат — «*)» в графе «Формат», форматы — в «Примечании».
+                var (format, itemNote) = SheetFormats.ForColumns(item.Get(SpecColumn.Format), item.Get(SpecColumn.Note));
                 sheet.Cell(row, ExcelFormat.TypeColumn).Value = ExcelFormat.RowTypes.Item;
-                sheet.Cell(row, ExcelFormat.FormatColumn).Value = item.Get(SpecColumn.Format);
+                sheet.Cell(row, ExcelFormat.FormatColumn).Value = format;
                 sheet.Cell(row, ExcelFormat.ZoneColumn).Value = item.Get(SpecColumn.Zone);
                 if (item.Position is { } position)
                 {
@@ -128,7 +130,7 @@ public static class ExcelExporter
                 sheet.Cell(row, ExcelFormat.NameColumn).Value = item.Get(SpecColumn.Name);
                 SetQuantity(sheet.Cell(row, ExcelFormat.QuantityColumn), item.Get(SpecColumn.Quantity));
                 sheet.Cell(row, ExcelFormat.UnitColumn).Value = item.Get(SpecColumn.Unit);
-                sheet.Cell(row, ExcelFormat.NoteColumn).Value = item.Get(SpecColumn.Note);
+                sheet.Cell(row, ExcelFormat.NoteColumn).Value = itemNote;
                 break;
         }
 

@@ -23,22 +23,22 @@ internal static class DrawingAccess
     }
 
     /// <summary>
-    /// Сборочный чертёж сборки, по порядку:
-    /// 1) чертёж с тем же именем, что и сборка (Привод.iam → Привод.idw);
-    /// 2) чертёж с именем по обозначению сборки: «АБВГ.301234.001.idw», «АБВГ.301234.001СБ.idw», «АБВГ.301234.001 СБ.idw»;
-    /// 3) открытый в Inventor чертёж, который ссылается на эту сборку;
-    /// 4) чертёж в папке сборки, имя которого начинается с обозначения или имени сборки
-    ///    («АБВГ.301234.001СБ Привод.idw»; исполнения вида «…-01» не подходят).
+    /// Чертёж модели (сборки или детали), по порядку:
+    /// 1) чертёж с тем же именем, что и модель (Привод.iam → Привод.idw);
+    /// 2) чертёж с именем по обозначению модели: «АБВГ.301234.001.idw», «АБВГ.301234.001СБ.idw», «АБВГ.301234.001 СБ.idw»;
+    /// 3) открытый в Inventor чертёж только этой модели (чертёж с видами нескольких моделей не подходит);
+    /// 4) чертёж в папке модели, имя которого начинается с её обозначения («АБВГ.301234.001СБ Привод.idw»;
+    ///    исполнения вида «…-01» не подходят) или с имени модели и кода «СБ» («Привод СБ.idw»).
     /// </summary>
-    public static string? FindAssemblyDrawing(Inventor.Application application, string assemblyFileName, string partNumber)
+    public static string? FindModelDrawing(Inventor.Application application, string modelFileName, string partNumber)
     {
-        if (FindDrawing(assemblyFileName) is { } sameName)
+        if (FindDrawing(modelFileName) is { } sameName)
         {
             return sameName;
         }
 
-        var folder = System.IO.Path.GetDirectoryName(assemblyFileName) ?? "";
-        var assemblyName = System.IO.Path.GetFileNameWithoutExtension(assemblyFileName);
+        var folder = System.IO.Path.GetDirectoryName(modelFileName) ?? "";
+        var modelName = System.IO.Path.GetFileNameWithoutExtension(modelFileName);
         var designation = Designations.WithoutAssemblyDrawingCode(partNumber).Trim();
         if (designation.Length > 0)
         {
@@ -55,7 +55,7 @@ internal static class DrawingAccess
             }
         }
 
-        if (FindOpenDrawingOf(application, assemblyFileName) is { } open)
+        if (FindOpenDrawingOf(application, modelFileName) is { } open)
         {
             return open;
         }
@@ -67,7 +67,10 @@ internal static class DrawingAccess
                 .Where(f =>
                 {
                     var name = System.IO.Path.GetFileNameWithoutExtension(f);
-                    return Designations.IsFileOfDocument(name, designation) || Designations.IsFileOfDocument(name, assemblyName);
+                    return Designations.IsFileOfDocument(name, designation) ||
+                           (name.StartsWith(modelName, StringComparison.OrdinalIgnoreCase) &&
+                            System.Text.RegularExpressions.Regex.IsMatch(name[modelName.Length..], @"^[ _]?[СC]Б",
+                                System.Text.RegularExpressions.RegexOptions.IgnoreCase));
                 })
                 .OrderByDescending(f => System.IO.Path.GetFileNameWithoutExtension(f).Contains("СБ", StringComparison.OrdinalIgnoreCase))
                 .ThenBy(f => f, StringComparer.OrdinalIgnoreCase)
@@ -81,8 +84,8 @@ internal static class DrawingAccess
         }
     }
 
-    /// <summary>Открытый чертёж, в котором есть виды этой сборки.</summary>
-    private static string? FindOpenDrawingOf(Inventor.Application application, string assemblyFileName)
+    /// <summary>Открытый чертёж, все виды которого — этой модели (не сборочный чертёж с листами деталей).</summary>
+    private static string? FindOpenDrawingOf(Inventor.Application application, string modelFileName)
     {
         try
         {
@@ -93,12 +96,15 @@ internal static class DrawingAccess
                     continue;
                 }
 
+                var models = new List<string>();
                 foreach (Document referenced in document.ReferencedDocuments)
                 {
-                    if (string.Equals(referenced.FullFileName, assemblyFileName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return document.FullFileName;
-                    }
+                    models.Add(referenced.FullFileName);
+                }
+
+                if (models.Count == 1 && string.Equals(models[0], modelFileName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return document.FullFileName;
                 }
             }
         }
@@ -110,7 +116,10 @@ internal static class DrawingAccess
         return null;
     }
 
-    /// <summary>Формат первого листа чертежа («А3», «А4х3») или пустая строка.</summary>
+    /// <summary>
+    /// Форматы всех листов чертежа одной строкой в порядке уменьшения («А1, А2х3, А2») или пустая строка.
+    /// Закрытый чертёж открывается невидимо и закрывается.
+    /// </summary>
     public static string ReadFormat(Inventor.Application application, string drawingFileName)
     {
         var document = FindOpen(application, drawingFileName);
@@ -128,9 +137,14 @@ internal static class DrawingAccess
                 return "";
             }
 
-            var sheet = drawing.Sheets[1];
             // Размеры листа в API — в сантиметрах.
-            return SheetFormats.FromSize(sheet.Width * 10, sheet.Height * 10);
+            var formats = new List<string>();
+            foreach (Inventor.Sheet sheet in drawing.Sheets)
+            {
+                formats.Add(SheetFormats.FromSize(sheet.Width * 10, sheet.Height * 10));
+            }
+
+            return SheetFormats.Combine(formats);
         }
         catch (Exception ex)
         {

@@ -61,6 +61,19 @@ internal sealed class FakeHost : ISpecificationHost
 
     public string? PdfError { get; set; }
 
+    /// <summary>Чертежи и их форматы по ключу компонента; нет ключа — чертёж не найден.</summary>
+    public Dictionary<string, string> Drawings { get; } = new();
+
+    public List<IReadOnlyList<string>> DrawingRequests { get; } = new();
+
+    public IReadOnlyDictionary<string, DrawingFormat> FindDrawingFormats(IReadOnlyList<string> componentKeys)
+    {
+        DrawingRequests.Add(componentKeys);
+        return componentKeys
+            .Where(k => Components.Any(c => c.Key == k))
+            .ToDictionary(k => k, k => Drawings.TryGetValue(k, out var format) ? new DrawingFormat(k + ".idw", format) : new DrawingFormat(null, ""));
+    }
+
     /// <summary>Номера позиций в BOM; <c>null</c> — чтение BOM завершается ошибкой.</summary>
     public Dictionary<string, string>? BomItemNumbers { get; set; } = new();
 

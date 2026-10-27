@@ -118,6 +118,13 @@ public static class SpecificationUpdater
     {
         var oldSection = row.SectionId;
         var changed = false;
+
+        // Ручной перенос модели в «Документацию» (из старых версий) не действует: там только документы.
+        if (SpecificationEditor.IsModelRow(row) && row.Overrides.TryGetValue(SpecColumn.Section, out var overridden) &&
+            SectionResolver.IsDocumentation(overridden))
+        {
+            row.Overrides.Remove(SpecColumn.Section);
+        }
         foreach (var column in TrackedColumns)
         {
             var oldValue = row.Source.Get(column);

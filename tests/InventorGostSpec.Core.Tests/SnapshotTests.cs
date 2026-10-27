@@ -36,9 +36,10 @@ public class SnapshotTests
     {
         Assert.Equal("А4", ComponentSnapshot.FromComponent(TestData.Assembly("А.100СБ", "Привод")).Format);
 
+        // SPEC_Format сборки — формат её сборочного чертежа; в спецификации у сборочной единицы всегда А4.
         var withFormat = TestData.Assembly("А.101", "Рама");
-        withFormat.Format = "А3";
-        Assert.Equal("А3", ComponentSnapshot.FromComponent(withFormat).Format);
+        withFormat.Format = "А1, А2";
+        Assert.Equal("А4", ComponentSnapshot.FromComponent(withFormat).Format);
 
         // У деталей формат не подставляется.
         Assert.Equal("", ComponentSnapshot.FromComponent(TestData.Part("А.001", "Ось")).Format);

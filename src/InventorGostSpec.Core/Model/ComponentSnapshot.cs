@@ -61,8 +61,9 @@ public sealed class ComponentSnapshot
             MaterialKind = Clean(component.MaterialKind),
         };
 
-        // У сборочной единицы (комплекса) в графе «Формат» — формат её спецификации, то есть А4.
-        if (snapshot.Format.Length == 0 && SectionsWithSpecification.Contains(snapshot.SectionId))
+        // У сборочной единицы (комплекса) в графе «Формат» — формат её спецификации, то есть всегда А4.
+        // SPEC_Format сборки — формат её сборочного чертежа: он идёт в «Документацию» её собственной спецификации.
+        if (SectionsWithSpecification.Contains(snapshot.SectionId))
         {
             snapshot.Format = SpecificationFormat;
         }
@@ -154,11 +155,20 @@ public sealed class ComponentSnapshot
 /// <summary>Определение раздела компонента.</summary>
 public static class SectionResolver
 {
-    /// <summary>Раздел из iProperty, а если он не задан — по правилам по умолчанию.</summary>
-    public static string Resolve(ComponentData component) =>
-        string.IsNullOrWhiteSpace(component.SectionId)
+    /// <summary>
+    /// Раздел из iProperty, а если он не задан — по правилам по умолчанию. Модель (деталь, сборка) не может быть
+    /// документом: «Документация» в её iProperty не учитывается — в этот раздел попадают только чертежи и ручные строки.
+    /// </summary>
+    public static string Resolve(ComponentData component)
+    {
+        var section = component.SectionId?.Trim() ?? "";
+        return section.Length == 0 || (IsDocumentation(section) && component.Kind != ComponentKind.Document)
             ? GetDefault(component.Kind, component.IsContentCenter)
-            : component.SectionId.Trim();
+            : section;
+    }
+
+    public static bool IsDocumentation(string? sectionId) =>
+        string.Equals(sectionId?.Trim(), SectionIds.Documentation, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Раздел по умолчанию: документы — «Документация», Content Center — «Стандартные изделия»,

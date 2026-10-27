@@ -1313,7 +1313,10 @@ public sealed class SpecificationViewModel : ObservableObject
             });
 
         // Только общий справочник разделов: раздел записывается в файл детали и должен быть понятен в других сборках.
-        var sections = SpecificationContext.Create(_settings, new Specification()).Catalog.Sections;
+        // «Документация» — не раздел модели: в неё попадают только чертежи и ручные строки.
+        var sections = SpecificationContext.Create(_settings, new Specification()).Catalog.Sections
+            .Where(s => !SectionResolver.IsDocumentation(s.Id))
+            .ToList();
         var title = rows.Count == 1
             ? Describe(rows[0])
             : $"Выбрано компонентов: {rows.Count}. Меняются только изменённые поля.";

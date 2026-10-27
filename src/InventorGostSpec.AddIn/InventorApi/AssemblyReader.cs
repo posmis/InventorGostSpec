@@ -63,7 +63,10 @@ internal static class AssemblyReader
             Kind = ComponentKind.Document,
             Designation = Designations.AssemblyDrawing(partNumber),
             Name = "Сборочный чертеж",
-            Format = DrawingAccess.ReadFormat(application, path),
+            // Формат сборочного чертежа: SPEC_Format сборки, а если не задан — форматы листов чертежа.
+            Format = PropertyAccess.GetCustom(assembly.PropertySets, PropertyNames.Format) is { Length: > 0 } format
+                ? format
+                : DrawingAccess.ReadFormat(application, path),
         };
     }
 

@@ -41,6 +41,12 @@ public static class SpecificationEditor
                 return;
         }
 
+        // Строку модели (детали, сборки) нельзя перенести в «Документацию» — там только документы.
+        if (column == SpecColumn.Section && IsModelRow(row) && SectionResolver.IsDocumentation(value))
+        {
+            return;
+        }
+
         if (column == SpecColumn.Section && value.Length == 0)
         {
             if (row.Kind != RowKind.Component || !row.Overrides.Remove(column))
@@ -74,6 +80,10 @@ public static class SpecificationEditor
             OnSectionChanged(spec, context, row);
         }
     }
+
+    /// <summary>Строка компонента-модели (не чертежа): ключ чертежей начинается с «drawing:».</summary>
+    public static bool IsModelRow(SpecRow row) =>
+        row.Kind == RowKind.Component && row.ComponentKey is { } key && !key.StartsWith("drawing:", StringComparison.Ordinal);
 
     /// <summary>
     /// Тип документа строки «Документации»: код в конце обозначения заменяется («…001» → «…001СБ»),

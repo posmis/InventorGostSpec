@@ -49,7 +49,8 @@ internal sealed class AssignSectionCommand : AddInCommand
 
         var autoSections = targets.Select(t => SectionResolver.GetDefault(t.Kind, t.IsContentCenter)).Distinct().ToList();
         var viewModel = new AssignSectionViewModel(
-            catalog.Sections, initial, description, autoSections.FirstOrDefault(), autoSectionVaries: autoSections.Count > 1);
+            catalog.Sections.Where(sec => !SectionResolver.IsDocumentation(sec.Id)), initial, description,
+            autoSections.FirstOrDefault(), autoSectionVaries: autoSections.Count > 1);
         if (WindowOwner.ShowDialog(new AssignSectionWindow(viewModel), context.MainWindowHandle) != true)
         {
             return;

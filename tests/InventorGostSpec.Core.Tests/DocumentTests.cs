@@ -120,3 +120,55 @@ public class DocumentTests
         Assert.Contains("нет кода", issue.Message);
     }
 }
+
+public class ModelNotDocumentTests
+{
+    [Fact]
+    public void Model_with_documentation_section_property_goes_to_its_own_section()
+    {
+        var spec = new Specification();
+        var context = TestData.Context(spec);
+        var unit = TestData.Assembly("АБВГ.301234.010СБ", "Узел");
+        unit.SectionId = SectionIds.Documentation;
+        var part = TestData.Part("АБВГ.715431.001", "Корпус");
+        part.SectionId = " Documentation ";
+
+        SpecificationUpdater.Update(spec, new[] { unit, part }, context, TestData.Now);
+
+        Assert.Equal(SectionIds.AssemblyUnits, TestData.ByName(spec, "Узел").SectionId);
+        Assert.Equal("АБВГ.301234.010", TestData.ByName(spec, "Узел").Get(SpecColumn.Designation));
+        Assert.Equal(SectionIds.Parts, TestData.ByName(spec, "Корпус").SectionId);
+        Assert.DoesNotContain(spec.Rows, r => r.SectionId == SectionIds.Documentation);
+    }
+
+    [Fact]
+    public void Model_row_cannot_be_moved_to_documentation_but_manual_row_can()
+    {
+        var spec = new Specification();
+        var context = TestData.Context(spec);
+        SpecificationUpdater.Update(spec, new[] { TestData.Part("А.001", "Корпус") }, context, TestData.Now);
+        var manual = SpecificationEditor.AddManualItem(spec, context, new ComponentSnapshot { SectionId = SectionIds.Parts, Name = "Чертеж" });
+
+        SpecificationEditor.SetCell(spec, context, TestData.ByName(spec, "Корпус"), SpecColumn.Section, SectionIds.Documentation);
+        SpecificationEditor.SetCell(spec, context, manual, SpecColumn.Section, SectionIds.Documentation);
+
+        Assert.Equal(SectionIds.Parts, TestData.ByName(spec, "Корпус").SectionId);
+        Assert.Equal(SectionIds.Documentation, manual.SectionId);
+    }
+
+    [Fact]
+    public void Old_override_to_documentation_is_dropped_on_update()
+    {
+        var spec = new Specification();
+        var context = TestData.Context(spec);
+        var components = new[] { TestData.Assembly("А.010", "Узел") };
+        SpecificationUpdater.Update(spec, components, context, TestData.Now);
+        var row = spec.Rows.Single();
+        row.Overrides[SpecColumn.Section] = SectionIds.Documentation; // как в спецификации старой версии
+
+        SpecificationUpdater.Update(spec, components, context, TestData.Now);
+
+        Assert.Equal(SectionIds.AssemblyUnits, row.SectionId);
+        Assert.NotNull(row.Position);
+    }
+}

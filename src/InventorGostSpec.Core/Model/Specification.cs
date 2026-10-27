@@ -65,6 +65,14 @@ public sealed class SpecSettings
     /// Если его нет — берётся стандартное «Комментарии» (Comments).
     /// </summary>
     public string NotePropertyName { get; set; } = "Примечание";
+
+    /// <summary>
+    /// Что писать в графе «Формат» у детали без чертежа (только у деталей): «БЧ» (по умолчанию) или пусто.
+    /// </summary>
+    public string PartWithoutDrawingFormat { get; set; } = SheetFormats.NoDrawing;
+
+    /// <summary>Формат детали без чертежа по настройке: «БЧ» или пусто.</summary>
+    public string NoDrawingFormat() => PartWithoutDrawingFormat == "" ? "" : SheetFormats.NoDrawing;
 }
 
 /// <summary>Разделы и резервы, действующие для конкретной спецификации.</summary>

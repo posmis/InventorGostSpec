@@ -69,6 +69,7 @@ internal sealed class AutoAssignCommand : AddInCommand
         var failed = new List<string>();
 
         // Поиск чертежей — один на команду: файлы проекта перечисляются один раз.
+        var noDrawing = context.Settings.Load().NoDrawingFormat();
         var drawings = new Lazy<DrawingSearch>(() => new DrawingSearch(
             context.Application,
             items.Select(i => System.IO.Path.GetDirectoryName(i.Target.FullFileName ?? "") ?? "").Distinct()));
@@ -85,7 +86,7 @@ internal sealed class AutoAssignCommand : AddInCommand
 
                 try
                 {
-                    Assign(context, target, drawings);
+                    Assign(context, target, drawings, noDrawing);
                     assigned++;
                 }
                 catch (Exception ex)
@@ -112,7 +113,8 @@ internal sealed class AutoAssignCommand : AddInCommand
         context.Messages.Info(message);
     }
 
-    private static void Assign(AddInContext context, ComponentTarget target, Lazy<DrawingSearch> drawings)
+    /// <param name="noDrawing">Формат детали без чертежа по настройке: «БЧ» или пусто (тогда не записывается).</param>
+    private static void Assign(AddInContext context, ComponentTarget target, Lazy<DrawingSearch> drawings, string noDrawing)
     {
         var section = SectionResolver.GetDefault(target.Kind, target.IsContentCenter);
         target.Set(PropertyNames.Section, section);
@@ -127,13 +129,13 @@ internal sealed class AutoAssignCommand : AddInCommand
             SetIfEmpty(target, PropertyNames.Parameters, parsed.Parameters);
         }
 
-        // Формат берётся из чертежа только у деталей (не Content Center), без чертежа — «БЧ». У сборочной единицы
+        // Формат берётся из чертежа только у деталей (не Content Center), без чертежа — «БЧ» или пусто (настройка). У сборочной единицы
         // в спецификации указывается формат её спецификации (А4) — его подставляет сама спецификация.
         if (target.Kind == ComponentKind.Part && !target.IsContentCenter && target.FullFileName is not null &&
             target.Get(PropertyNames.Format).Length == 0)
         {
             var drawing = drawings.Value.Find(target.FullFileName, target.PartNumber, isAssembly: false);
-            SetIfEmpty(target, PropertyNames.Format, drawing is null ? SheetFormats.NoDrawing : DrawingAccess.ReadFormat(context.Application, drawing));
+            SetIfEmpty(target, PropertyNames.Format, drawing is null ? noDrawing : DrawingAccess.ReadFormat(context.Application, drawing));
         }
     }
 

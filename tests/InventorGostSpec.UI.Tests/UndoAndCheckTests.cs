@@ -336,6 +336,27 @@ public class DrawingFormatTests
     }
 
     [Fact]
+    public void Part_without_drawing_gets_blank_format_by_setting_and_old_bch_is_cleared()
+    {
+        _host.Components.Single(c => c.Key == "c.ipt").Format = "БЧ";
+        var vm = Open();
+        Assert.Equal("БЧ", vm.SelectedPartWithoutDrawing.Id); // по умолчанию
+
+        vm.SelectedPartWithoutDrawing = vm.PartWithoutDrawingOptions.Single(o => o.Id == "");
+        Assert.Equal("", _host.Settings.PartWithoutDrawingFormat); // настройка сохранена
+
+        vm.DrawingFormatsCommand.Execute(null);
+
+        Assert.Equal("", vm.Rows.Single(r => r.Name == "Вал").Format);
+        Assert.Equal("", _host.Properties["c.ipt"][Core.Storage.PropertyNames.Format]);
+        Assert.Contains("Чертёж не найден — формат не указывается (2)", _dialogs.Infos.Single()); // Вал и Корпус
+
+        // Пустой формат детали — не замечание проверки.
+        vm.CheckCommand.Execute(null);
+        Assert.DoesNotContain(_dialogs.LastCheck?.Items ?? new List<CheckItem>(), i => i.Message.Contains("Вал") && i.Message.Contains("формат"));
+    }
+
+    [Fact]
     public void Format_typed_earlier_is_kept_when_drawing_is_not_found()
     {
         _host.Components.Single(c => c.Key == "c.ipt").Format = "А4";

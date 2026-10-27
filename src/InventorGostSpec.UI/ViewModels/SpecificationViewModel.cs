@@ -276,6 +276,33 @@ public sealed class SpecificationViewModel : ObservableObject
     /// <summary>Показать файл компонента выбранной строки в Проводнике.</summary>
     public ICommand ShowComponentFileCommand { get; }
 
+    /// <summary>Варианты графы «Формат» у детали без чертежа.</summary>
+    public IReadOnlyList<Option> PartWithoutDrawingOptions { get; } = new[]
+    {
+        new Option(SheetFormats.NoDrawing, "БЧ"),
+        new Option("", "пусто"),
+    };
+
+    /// <summary>
+    /// Формат детали без чертежа (только деталей): «БЧ» или пусто. Общая настройка — действует в «Форматах»,
+    /// «Авторазделах» и проверке.
+    /// </summary>
+    public Option SelectedPartWithoutDrawing
+    {
+        get => PartWithoutDrawingOptions.First(o => o.Id == _settings.NoDrawingFormat());
+        set
+        {
+            if (value is null || value.Id == _settings.NoDrawingFormat())
+            {
+                return;
+            }
+
+            _settings.PartWithoutDrawingFormat = value.Id;
+            _host.SaveSettings(_settings);
+            OnPropertyChanged();
+        }
+    }
+
     /// <summary>Папка документа строки «Документации»: найденного чертежа или стороннего файла.</summary>
     public ICommand ShowDocumentFileCommand { get; }
 
@@ -823,7 +850,9 @@ public sealed class SpecificationViewModel : ObservableObject
         if (!_dialogs.Confirm(
                 $"Найти чертежи {scope} ({rows.Count}) и записать форматы их листов в свойства деталей (SPEC_Format)?\n\n" +
                 "Несколько форматов записываются через запятую в порядке уменьшения («А1, А2х3, А2»), " +
-                "детали без чертежа — «БЧ» (если формат не был задан). " +
+                (_settings.NoDrawingFormat().Length > 0
+                    ? "детали без чертежа — «БЧ» (если формат не был задан). "
+                    : "у деталей без чертежа формат не указывается (прежний «БЧ» убирается). ") +
                 "Изменятся файлы деталей — после этого сохраните сборку. Детали без чертежа не меняются."))
         {
             return;
@@ -852,7 +881,7 @@ public sealed class SpecificationViewModel : ObservableObject
             string format;
             if (!found.TryGetValue(row.ComponentKey!, out var result) || result.DrawingPath is null)
             {
-                // Чертежа нет — «БЧ» (ГОСТ 2.106), но формат, вписанный вручную, не затираем.
+                // Чертежа нет — «БЧ» (ГОСТ 2.106) или пусто, по настройке; формат, вписанный вручную, не затираем.
                 if (row.Source.Format.Length > 0 && row.Source.Format != SheetFormats.NoDrawing)
                 {
                     keptWithoutDrawing.Add($"{Describe(row)}: {row.Source.Format}");
@@ -860,7 +889,7 @@ public sealed class SpecificationViewModel : ObservableObject
                 }
 
                 noDrawing.Add(Describe(row));
-                format = SheetFormats.NoDrawing;
+                format = _settings.NoDrawingFormat();
             }
             else if (result.Format.Length == 0)
             {
@@ -904,7 +933,8 @@ public sealed class SpecificationViewModel : ObservableObject
 
         if (noDrawing.Count > 0)
         {
-            report += $"\n\nЧертёж не найден — формат «БЧ» ({noDrawing.Count}):\n" + List(noDrawing);
+            var noDrawingText = _settings.NoDrawingFormat() is { Length: > 0 } text ? $"формат «{text}»" : "формат не указывается";
+            report += $"\n\nЧертёж не найден — {noDrawingText} ({noDrawing.Count}):\n" + List(noDrawing);
         }
 
         if (keptWithoutDrawing.Count > 0)
@@ -1404,6 +1434,7 @@ public sealed class SpecificationViewModel : ObservableObject
             Components = TryHost(_host.ReadComponents),
             BomItemNumbers = TryHost(_host.ReadBomItemNumbers),
             TitleBlock = TryHost(() => _host.GetExportInfo().TitleBlock),
+            BlankFormatWithoutDrawing = _settings.NoDrawingFormat().Length == 0,
         };
         var issues = SpecificationChecker.Check(Specification, _context, input);
         if (issues.Count == 0)

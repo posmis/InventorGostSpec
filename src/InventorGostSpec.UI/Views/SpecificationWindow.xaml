@@ -127,6 +127,12 @@
                                                  ToolTip="Перейти к следующей подсвеченной строке (F3)" />
                             <controls:IconButton Icon="{StaticResource Icon.Formats}" Text="Форматы" Command="{Binding DrawingFormatsCommand}"
                                                  ToolTip="Найти чертежи деталей (выбранных строк или всех деталей) и записать форматы всех их листов в свойства деталей: «А1, А2х3, А2» в порядке уменьшения" />
+                            <StackPanel VerticalAlignment="Center" Margin="2,0,6,0"
+                                        ToolTip="Что писать в графе «Формат» у деталей без чертежа (только у деталей) при поиске форматов и «Авторазделах». Формат, вписанный вручную, не затирается.">
+                                <TextBlock Text="Деталь без чертежа" FontSize="11" Margin="0,0,0,2" />
+                                <ComboBox ItemsSource="{Binding PartWithoutDrawingOptions}" SelectedItem="{Binding SelectedPartWithoutDrawing}"
+                                          DisplayMemberPath="Name" MinWidth="80" />
+                            </StackPanel>
                             <controls:IconButton Icon="{StaticResource Icon.Accept}" Text="Сбросить уведомления" Command="{Binding AcceptChangesCommand}"
                                                  ToolTip="Снять все отметки: «новый», «изменён», «файл изменён» (у сторонних документов запоминается их текущее содержимое, ссылки не меняются) и удалить строки компонентов, которых нет в сборке" />
                         </StackPanel>

@@ -31,6 +31,9 @@ public sealed class CheckInput
 
     /// <summary>Данные основной надписи.</summary>
     public TitleBlock? TitleBlock { get; init; }
+
+    /// <summary>У деталей без чертежа графа «Формат» пустая (настройка вместо «БЧ») — пустой формат детали не замечание.</summary>
+    public bool BlankFormatWithoutDrawing { get; init; }
 }
 
 /// <summary>Проверка спецификации перед выпуском: позиции, обязательные графы, повторы, расхождения с BOM.</summary>
@@ -60,7 +63,7 @@ public static class SpecificationChecker
 
         CheckChanges(rows, issues);
         CheckPositions(rows, active, context, issues);
-        CheckCells(active, issues);
+        CheckCells(active, input, issues);
         CheckDuplicateDesignations(active, issues);
         CheckBom(active, input.BomItemNumbers, issues);
         CheckComponentSections(active, input.Components, context, issues);
@@ -140,7 +143,7 @@ public static class SpecificationChecker
         }
     }
 
-    private static void CheckCells(List<SpecRow> active, List<SpecIssue> issues)
+    private static void CheckCells(List<SpecRow> active, CheckInput input, List<SpecIssue> issues)
     {
         foreach (var row in active)
         {
@@ -162,7 +165,8 @@ public static class SpecificationChecker
                 issues.Add(new SpecIssue(IssueSeverity.Info,
                     $"{Describe(row)}: сборочный чертёж не найден, графа «Формат» пустая.", row.Id));
             }
-            else if (FormatRequired.Contains(row.SectionId) && row.Get(SpecColumn.Format).Length == 0)
+            else if (FormatRequired.Contains(row.SectionId) && row.Get(SpecColumn.Format).Length == 0 &&
+                     !(input.BlankFormatWithoutDrawing && string.Equals(row.SectionId, SectionIds.Parts, StringComparison.OrdinalIgnoreCase)))
             {
                 issues.Add(new SpecIssue(IssueSeverity.Warning,
                     $"{Describe(row)}: не указан формат (для детали без чертежа — «БЧ»).", row.Id));

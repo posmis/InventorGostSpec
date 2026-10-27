@@ -1,12 +1,11 @@
 using Inventor;
 using InventorGostSpec.AddIn.Infrastructure;
 using InventorGostSpec.AddIn.InventorApi;
-using InventorGostSpec.Core.Model;
 
 namespace InventorGostSpec.AddIn.Commands;
 
 /// <summary>
-/// Запись номеров позиций из нашей спецификации в BOM Inventor (Item Number),
+/// Запись номеров позиций из сохранённой спецификации в BOM Inventor,
 /// чтобы выноски на чертеже совпадали со спецификацией.
 /// </summary>
 internal sealed class WritePositionsCommand : AddInCommand
@@ -31,49 +30,17 @@ internal sealed class WritePositionsCommand : AddInCommand
         var specification = SpecificationStore.Load(document);
         if (specification is null)
         {
-            context.Messages.Warning("Спецификация ещё не сформирована. Выполните «Обновить спецификацию».");
+            context.Messages.Warning("Спецификация ещё не сформирована. Откройте «Спецификация» и обновите её из сборки.");
             return;
         }
 
-        var positions = specification.Rows
-            .Where(r => r.Kind == RowKind.Component && !r.IsRemoved && r.Position.HasValue && r.ComponentKey is not null)
-            .GroupBy(r => r.ComponentKey!, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First().Position!.Value, StringComparer.OrdinalIgnoreCase);
-
-        var written = 0;
-        var missing = new List<string>();
+        string report;
         using (var transaction = new InventorTransaction(context.Application, document, "Позиции в BOM"))
         {
-            foreach (var item in BomAccess.GetFirstLevel(assembly))
-            {
-                if (!positions.TryGetValue(item.Key, out var position))
-                {
-                    missing.Add(item.Target.DisplayName);
-                    continue;
-                }
-
-                var number = position.ToString();
-                if (item.Row.ItemNumber != number)
-                {
-                    item.Row.ItemNumber = number;
-                }
-
-                written++;
-            }
-
+            report = PositionWriter.Write(assembly, specification);
             transaction.Commit();
         }
 
-        var message = $"Записано позиций: {written}";
-        if (missing.Count > 0)
-        {
-            message += "\n\nНет в спецификации или без номера позиции (обновите спецификацию):\n" + string.Join("\n", missing.Take(30));
-            if (missing.Count > 30)
-            {
-                message += $"\n... и ещё {missing.Count - 30}";
-            }
-        }
-
-        context.Messages.Info(message);
+        context.Messages.Info(report);
     }
 }

@@ -1,0 +1,31 @@
+<Window x:Class="InventorGostSpec.UI.Views.ReserveSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Резерв номеров позиций"
+        Width="520"
+        Height="440"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <DockPanel Margin="12">
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8"
+                   Text="Резерв — сколько номеров позиций оставить свободными после раздела, чтобы потом добавить компоненты без перенумерации. Округление — с какого кратного номера начинать раздел (10: детали с 10, 20, …; 0 — не округлять)." />
+
+        <StackPanel DockPanel.Dock="Bottom">
+            <CheckBox Margin="0,8,0,2" IsChecked="{Binding SaveAsDefault}" Content="Использовать по умолчанию для новых спецификаций" />
+            <CheckBox Margin="0,2" IsChecked="{Binding Renumber}" Content="Перенумеровать позиции с новым резервом" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                <Button Content="ОК" Width="90" IsDefault="True" Click="OnOk" />
+                <Button Content="Отмена" Width="90" Margin="8,0,0,0" IsCancel="True" />
+            </StackPanel>
+        </StackPanel>
+
+        <DataGrid x:Name="Items" ItemsSource="{Binding Items}" AutoGenerateColumns="False" CanUserAddRows="False"
+                  CanUserDeleteRows="False" CanUserSortColumns="False" HeadersVisibility="Column" RowHeaderWidth="0">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Раздел" Binding="{Binding SectionName}" IsReadOnly="True" Width="*" />
+                <DataGridTextColumn Header="Резерв" Binding="{Binding Count, UpdateSourceTrigger=LostFocus}" Width="80" />
+                <DataGridTextColumn Header="Округление" Binding="{Binding RoundStartTo, UpdateSourceTrigger=LostFocus}" Width="90" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

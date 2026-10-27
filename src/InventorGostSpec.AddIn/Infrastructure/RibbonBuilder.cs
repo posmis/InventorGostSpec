@@ -16,7 +16,7 @@ internal static class RibbonBuilder
         AddButtons(ribbons["Assembly"], commands,
             AssignSectionCommand.Id,
             AutoAssignCommand.Id,
-            UpdateSpecificationCommand.Id,
+            SpecificationCommand.Id,
             WritePositionsCommand.Id);
 
         AddButtons(ribbons["Part"], commands, AssignSectionCommand.Id);

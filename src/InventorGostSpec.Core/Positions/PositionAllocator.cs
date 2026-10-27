@@ -186,7 +186,8 @@ public static class PositionAllocator
         return result;
     }
 
-    internal static bool IsNumbered(SpecRow row, SpecificationContext context) =>
+    /// <summary>Получает ли строка номер позиции: не текстовая строка и раздел с позициями.</summary>
+    public static bool IsNumbered(SpecRow row, SpecificationContext context) =>
         row.CanHavePosition && context.Catalog.GetOrCreate(row.SectionId).HasPositions;
 
     private static IEnumerable<SpecRow> SectionRows(Specification spec, SectionDefinition section) =>

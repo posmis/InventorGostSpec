@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InventorGostSpec.Core.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InventorGostSpec.AddIn", "src\InventorGostSpec.AddIn\InventorGostSpec.AddIn.csproj", "{0DB1DE4C-6A20-4CA9-B658-7BB4839AF6BB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InventorGostSpec.UI.Tests", "tests\InventorGostSpec.UI.Tests\InventorGostSpec.UI.Tests.csproj", "{C5565BAA-DD23-48C7-BCD6-EB1383F0DC36}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,10 +36,15 @@ Global
 		{0DB1DE4C-6A20-4CA9-B658-7BB4839AF6BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0DB1DE4C-6A20-4CA9-B658-7BB4839AF6BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0DB1DE4C-6A20-4CA9-B658-7BB4839AF6BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5565BAA-DD23-48C7-BCD6-EB1383F0DC36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5565BAA-DD23-48C7-BCD6-EB1383F0DC36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5565BAA-DD23-48C7-BCD6-EB1383F0DC36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5565BAA-DD23-48C7-BCD6-EB1383F0DC36}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{B3162298-3DBD-4E4F-999E-7887C430BF69} = {2F08CF74-D8FA-4C15-96C2-48D0CF5D74E6}
 		{E4699CA7-C730-409F-8E41-0C686E701D57} = {474E6B8A-E7E3-4022-AD37-720C3150E878}
 		{0DB1DE4C-6A20-4CA9-B658-7BB4839AF6BB} = {2F08CF74-D8FA-4C15-96C2-48D0CF5D74E6}
+		{C5565BAA-DD23-48C7-BCD6-EB1383F0DC36} = {474E6B8A-E7E3-4022-AD37-720C3150E878}
 	EndGlobalSection
 EndGlobal

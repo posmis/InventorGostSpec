@@ -83,7 +83,7 @@ internal sealed class StandardNamesCommand : AddInCommand
                 var target = targets[item.Candidate.Key];
                 try
                 {
-                    Rename(target, item.Proposed);
+                    Rename(target, item.Proposed, viewModel.ClearSortFields);
                     changed++;
                 }
                 catch (Exception ex)
@@ -111,8 +111,19 @@ internal sealed class StandardNamesCommand : AddInCommand
         context.Messages.Info(message);
     }
 
-    private static void Rename(ComponentTarget target, string name) =>
+    /// <param name="clearSortFields">
+    /// Удалить поля сортировки, заполненные по старому наименованию: спецификация возьмёт их из нового.
+    /// </param>
+    private static void Rename(ComponentTarget target, string name, bool clearSortFields)
+    {
         PropertyAccess.Set(target.PropertySets, PropertyAccess.DesignTrackingSet, PropertyAccess.Description, name);
+        if (clearSortFields)
+        {
+            target.Set(PropertyNames.SortName, "");
+            target.Set(PropertyNames.StandardNumber, "");
+            target.Set(PropertyNames.Parameters, "");
+        }
+    }
 
     private static HashSet<string> SelectedFiles(AssemblyDocument assembly)
     {

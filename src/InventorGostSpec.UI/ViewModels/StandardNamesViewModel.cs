@@ -97,6 +97,12 @@ public sealed class StandardNamesViewModel : ObservableObject
 
     public ICommand SelectNoneCommand { get; }
 
+    /// <summary>
+    /// Очистить поля сортировки (наименование изделия, стандарт, параметры) у переименованных изделий:
+    /// они могли быть заполнены по старому наименованию; пустые поля берутся из нового наименования.
+    /// </summary>
+    public bool ClearSortFields { get; set; } = true;
+
     public string Summary =>
         $"Всего: {Items.Count} · будет изменено: {Items.Count(i => i.WillChange)} · уже в норме (пропущено): {Items.Count(i => i.IsSkipped)}";
 

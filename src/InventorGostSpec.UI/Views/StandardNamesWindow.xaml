@@ -20,6 +20,9 @@
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                 <Button Content="Отметить все" Padding="10,3" Command="{Binding SelectAllCommand}" />
                 <Button Content="Снять все" Padding="10,3" Margin="6,0,0,0" Command="{Binding SelectNoneCommand}" />
+                <CheckBox Margin="12,0,0,0" VerticalAlignment="Center" IsChecked="{Binding ClearSortFields}"
+                          Content="Очистить поля сортировки"
+                          ToolTip="У переименованных изделий удаляются SPEC_SortName, SPEC_StandardNumber, SPEC_Parameters: они могли быть заполнены по старому наименованию. В спецификации эти данные будут браться из нового наименования. Группа и вид материала не меняются." />
                 <TextBlock Margin="12,0,0,0" VerticalAlignment="Center" Foreground="#555" Text="{Binding Summary}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

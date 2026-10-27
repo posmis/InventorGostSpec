@@ -442,6 +442,7 @@ public class StandardNamesViewModelTests
         Assert.Equal(new[] { changed }, vm.GetChanges());
         vm.SelectAllCommand.Execute(null);
         Assert.Equal(new[] { changed }, vm.GetChanges());
+        Assert.True(vm.ClearSortFields);
     }
 
     [Fact]

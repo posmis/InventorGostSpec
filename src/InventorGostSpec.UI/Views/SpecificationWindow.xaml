@@ -264,6 +264,10 @@
                             </MenuItem.ItemContainerStyle>
                         </MenuItem>
                         <MenuItem Header="Удалить группу" Command="{Binding DeleteGroupCommand}" />
+                        <MenuItem Header="Примечание из детали" Command="{Binding InsertComponentNoteCommand}"
+                                  ToolTip="Вставить в графу «Примечание» примечание из свойств детали (пользовательское свойство «Примечание» или «Комментарии»)">
+                            <MenuItem.Icon><Image Style="{StaticResource MenuIcon}" Source="{StaticResource Icon.AddText}" /></MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Группа сортировки" ItemsSource="{Binding SortGroupOptions}"
                                   ToolTip="Только в этой спецификации, по умолчанию 0: внутри раздела меньшее число — выше. Применяется кнопкой «По ГОСТ».">
                             <MenuItem.Icon><Image Style="{StaticResource MenuIcon}" Source="{StaticResource Icon.Sort}" /></MenuItem.Icon>

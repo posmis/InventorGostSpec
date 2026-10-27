@@ -61,6 +61,7 @@ public sealed class SpecificationViewModel : ObservableObject
         ReservesCommand = new RelayCommand(EditReserves);
         SaveCommand = new RelayCommand(Save, () => IsDirty);
         WritePositionsCommand = new RelayCommand(WritePositions);
+        InsertComponentNoteCommand = new RelayCommand(InsertComponentNote, () => TargetRows.Any(CanEditComponent));
         SetSortGroupCommand = new RelayCommand(SetSortGroup, p => p is string && TargetRows.Any(r => r.Kind != RowKind.Note));
         EditComponentCommand = new RelayCommand(EditComponent, () => TargetRows.Any(CanEditComponent));
         NextChangeCommand = new RelayCommand(GoToNextChange, () => Specification.Rows.Any(r => r.Status != RowStatus.None));
@@ -170,6 +171,9 @@ public sealed class SpecificationViewModel : ObservableObject
     public ICommand SaveCommand { get; }
     public ICommand WritePositionsCommand { get; }
     public ICommand NextChangeCommand { get; }
+
+    /// <summary>Вставить в графу «Примечание» выбранных строк примечание из свойств их деталей.</summary>
+    public ICommand InsertComponentNoteCommand { get; }
 
     /// <summary>Группа сортировки выбранных строк: параметр — число (по умолчанию у всех строк 0).</summary>
     public ICommand SetSortGroupCommand { get; }
@@ -551,6 +555,50 @@ public sealed class SpecificationViewModel : ObservableObject
         }
 
         Changed(rebuild: true);
+    }
+
+    /// <summary>
+    /// Примечание из свойств детали → графа «Примечание» (только в этой спецификации).
+    /// Если у строки уже другое примечание, сначала спрашиваем.
+    /// </summary>
+    private void InsertComponentNote()
+    {
+        var notes = new List<(SpecRow Row, string Note)>();
+        var missing = 0;
+        foreach (var row in TargetRows.Where(CanEditComponent).ToList())
+        {
+            var note = _host.ReadComponentNote(row.ComponentKey!)?.Trim() ?? "";
+            if (note.Length == 0)
+            {
+                missing++;
+                continue;
+            }
+
+            notes.Add((row, note));
+        }
+
+        if (notes.Count == 0)
+        {
+            _dialogs.Info("У выбранных деталей нет примечания в свойствах.");
+            return;
+        }
+
+        var replaced = notes.Count(n => n.Row.Note.Length > 0 && n.Row.Note != n.Note);
+        if (replaced > 0 && !_dialogs.Confirm($"Заменить уже заполненное примечание ({replaced})?"))
+        {
+            return;
+        }
+
+        foreach (var (row, note) in notes)
+        {
+            row.Note = note;
+        }
+
+        Changed(rebuild: true);
+        if (missing > 0)
+        {
+            _dialogs.Info($"Вставлено примечаний: {notes.Count}. Без примечания в свойствах: {missing}.");
+        }
     }
 
     /// <summary>

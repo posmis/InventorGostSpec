@@ -37,6 +37,12 @@ internal sealed class FakeHost : ISpecificationHost
 
     public void ReportError(Exception exception) => throw exception;
 
+    /// <summary>Примечания из свойств компонентов по ключу.</summary>
+    public Dictionary<string, string> Notes { get; } = new();
+
+    public string? ReadComponentNote(string componentKey) =>
+        Components.All(c => c.Key != componentKey) ? null : Notes.TryGetValue(componentKey, out var note) ? note : "";
+
     public string GetAutoSectionId(string componentKey)
     {
         var component = Components.Single(c => c.Key == componentKey);

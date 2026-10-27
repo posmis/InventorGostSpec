@@ -479,6 +479,27 @@ public class SpecificationViewModelTests
     }
 
     [Fact]
+    public void Note_is_inserted_from_component_properties()
+    {
+        var vm = Open();
+        _host.Notes["А.001.ipt"] = "Покупная";
+        _host.Notes["А.002.ipt"] = "Притупить кромки";
+        RowByName(vm, "Ось").Note = "Старое";
+        vm.SetSelectedRows(new[] { RowByName(vm, "Корпус"), RowByName(vm, "Ось"), RowByName(vm, "Болт М8х20 ГОСТ 7798-70") });
+
+        _dialogs.ConfirmAnswer = false;
+        vm.InsertComponentNoteCommand.Execute(null);
+        Assert.Equal("Старое", RowByName(vm, "Ось").Note);
+
+        _dialogs.ConfirmAnswer = true;
+        vm.InsertComponentNoteCommand.Execute(null);
+        Assert.Equal("Покупная", RowByName(vm, "Корпус").Note);
+        Assert.Equal("Притупить кромки", RowByName(vm, "Ось").Note);
+        Assert.Equal("", RowByName(vm, "Болт М8х20 ГОСТ 7798-70").Note);
+        Assert.Contains(_dialogs.Infos, i => i.Contains("Без примечания в свойствах: 1"));
+    }
+
+    [Fact]
     public void Search_shows_matching_rows_with_their_headers()
     {
         var vm = Open();

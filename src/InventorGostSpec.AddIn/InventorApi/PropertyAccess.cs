@@ -11,6 +11,7 @@ internal static class PropertyAccess
     public const string PartNumber = "Part Number";
     public const string Description = "Description";
     public const string Title = "Title";
+    public const string Comments = "Comments";
 
     public static string Get(PropertySets sets, string setName, string propertyName)
     {

@@ -53,6 +53,12 @@ public sealed class SpecSettings
     public List<SectionDefinition> CustomSections { get; set; } = new();
 
     public Dictionary<string, ReserveSettings> DefaultReserves { get; set; } = new();
+
+    /// <summary>
+    /// Пользовательское свойство детали с примечанием для команды «Примечание из детали».
+    /// Если его нет — берётся стандартное «Комментарии» (Comments).
+    /// </summary>
+    public string NotePropertyName { get; set; } = "Примечание";
 }
 
 /// <summary>Разделы и резервы, действующие для конкретной спецификации.</summary>

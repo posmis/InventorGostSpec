@@ -104,6 +104,20 @@ internal sealed class SpecificationCommand : AddInCommand
             return AssemblyReader.ToComponentData(item.Target, item.Key, AssemblyReader.Quantity(item.Row));
         }
 
+        public string? ReadComponentNote(string componentKey)
+        {
+            if (FindItem(componentKey) is not { } item)
+            {
+                return null;
+            }
+
+            var propertyName = _context.Settings.Load().NotePropertyName;
+            var note = string.IsNullOrWhiteSpace(propertyName) ? "" : item.Target.Get(propertyName);
+            return note.Length > 0
+                ? note
+                : PropertyAccess.Get(item.Target.PropertySets, PropertyAccess.SummarySet, PropertyAccess.Comments);
+        }
+
         public string GetAutoSectionId(string componentKey) =>
             FindItem(componentKey) is { } item
                 ? SectionResolver.GetDefault(item.Target.Kind, item.Target.IsContentCenter)

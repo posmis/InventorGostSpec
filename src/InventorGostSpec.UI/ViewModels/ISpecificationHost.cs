@@ -36,6 +36,12 @@ public interface ISpecificationHost
     /// <summary>Раздел, который компонент получает автоматически, по типу (если SPEC_Section не задан).</summary>
     string GetAutoSectionId(string componentKey);
 
+    /// <summary>
+    /// Примечание из свойств компонента (пользовательское свойство из настроек, иначе «Комментарии»).
+    /// Пустая строка — примечания нет; <c>null</c> — компонента нет в сборке.
+    /// </summary>
+    string? ReadComponentNote(string componentKey);
+
     /// <summary>Записывает непредвиденную ошибку окна в журнал.</summary>
     void ReportError(Exception exception);
 }

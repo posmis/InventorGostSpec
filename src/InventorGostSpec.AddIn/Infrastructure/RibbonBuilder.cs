@@ -1,4 +1,3 @@
-using Inventor;
 using InventorGostSpec.AddIn.Commands;
 
 namespace InventorGostSpec.AddIn.Infrastructure;

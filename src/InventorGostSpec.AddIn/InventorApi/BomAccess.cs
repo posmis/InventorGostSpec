@@ -1,4 +1,3 @@
-using Inventor;
 
 namespace InventorGostSpec.AddIn.InventorApi;
 

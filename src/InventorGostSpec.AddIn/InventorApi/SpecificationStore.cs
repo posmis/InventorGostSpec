@@ -1,4 +1,3 @@
-using Inventor;
 using InventorGostSpec.Core.Model;
 using InventorGostSpec.Core.Storage;
 using InvAttribute = Inventor.Attribute;

@@ -1,5 +1,4 @@
 using System.Runtime.InteropServices;
-using Inventor;
 using InventorGostSpec.AddIn.Commands;
 using InventorGostSpec.AddIn.Infrastructure;
 

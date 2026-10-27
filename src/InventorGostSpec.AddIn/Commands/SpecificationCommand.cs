@@ -1,4 +1,3 @@
-using Inventor;
 using InventorGostSpec.AddIn.Infrastructure;
 using InventorGostSpec.AddIn.InventorApi;
 using InventorGostSpec.Core.Model;

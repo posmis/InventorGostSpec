@@ -1,5 +1,4 @@
 using System.Globalization;
-using Inventor;
 using InventorGostSpec.Core.Model;
 using InventorGostSpec.Core.Storage;
 

@@ -1,0 +1,33 @@
+// Типы Inventor, используемые в аддине. Пространство имён Inventor целиком не подключается:
+// в нём тысячи типов, и их имена пересекаются с нашими (например, SheetFormats).
+global using ApplicationAddInServer = Inventor.ApplicationAddInServer;
+global using ApplicationAddInSite = Inventor.ApplicationAddInSite;
+global using AssemblyDocument = Inventor.AssemblyDocument;
+global using AttributeSet = Inventor.AttributeSet;
+global using BOM = Inventor.BOM;
+global using BOMRow = Inventor.BOMRow;
+global using BOMStructureEnum = Inventor.BOMStructureEnum;
+global using BOMView = Inventor.BOMView;
+global using BOMViewTypeEnum = Inventor.BOMViewTypeEnum;
+global using ButtonDefinition = Inventor.ButtonDefinition;
+global using ButtonDefinitionSink_OnExecuteEventHandler = Inventor.ButtonDefinitionSink_OnExecuteEventHandler;
+global using ButtonDisplayEnum = Inventor.ButtonDisplayEnum;
+global using CommandControl = Inventor.CommandControl;
+global using CommandTypesEnum = Inventor.CommandTypesEnum;
+global using ComponentDefinition = Inventor.ComponentDefinition;
+global using ComponentOccurrence = Inventor.ComponentOccurrence;
+global using ControlDefinitions = Inventor.ControlDefinitions;
+global using Document = Inventor.Document;
+global using DocumentTypeEnum = Inventor.DocumentTypeEnum;
+global using DrawingDocument = Inventor.DrawingDocument;
+global using PartDocument = Inventor.PartDocument;
+global using Property = Inventor.Property;
+global using PropertySet = Inventor.PropertySet;
+global using PropertySets = Inventor.PropertySets;
+global using Ribbon = Inventor.Ribbon;
+global using RibbonPanel = Inventor.RibbonPanel;
+global using RibbonTab = Inventor.RibbonTab;
+global using Transaction = Inventor.Transaction;
+global using ValueTypeEnum = Inventor.ValueTypeEnum;
+global using VirtualComponentDefinition = Inventor.VirtualComponentDefinition;
+global using _Document = Inventor._Document;

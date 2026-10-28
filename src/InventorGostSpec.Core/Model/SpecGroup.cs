@@ -31,6 +31,12 @@ public sealed class SpecGroup
     /// </summary>
     public string VersionFile { get; set; } = "";
 
+    /// <summary>
+    /// Группа «устанавливаемые по …» внутри исполнения: <see cref="Id"/> исполнения. Пусто — в постоянных данных.
+    /// В списке групп стоит сразу после своего исполнения.
+    /// </summary>
+    public string VersionId { get; set; } = "";
+
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsBaseVersion => IsVersion && VersionFile.Length == 0;
 }

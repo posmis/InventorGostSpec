@@ -102,7 +102,11 @@ public interface ISpecificationHost
 public sealed record DrawingFormat(string? DrawingPath, string Format);
 
 /// <param name="Designation">Обозначение сборки-исполнения (Part Number без «СБ»).</param>
-public sealed record VersionData(string Designation, IReadOnlyList<ComponentData> Components);
+/// <param name="GroupTitles">Группы «устанавливаемые по …» её спецификации: ключ компонента → заголовок группы.</param>
+public sealed record VersionData(
+    string Designation,
+    IReadOnlyList<ComponentData> Components,
+    IReadOnlyDictionary<string, string>? GroupTitles = null);
 
 /// <param name="DefaultPath">Путь к файлу Excel по умолчанию (папка сборки).</param>
 public sealed record ExportInfo(TitleBlock TitleBlock, string DefaultPath);

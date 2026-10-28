@@ -46,6 +46,11 @@ public static class SpecificationViewBuilder
         var blocks = SpecBlocks.All(spec, context);
         var versions = VersionSync.HasVersions(spec) ? VersionSync.Versions(spec).ToList() : new List<SpecGroup>();
         var versionsHeaderShown = false;
+        var hidden = new HashSet<string>();
+
+        // Есть ли у исполнения данные: в нём самом или в его группах «устанавливаемые по …».
+        bool HasData(SpecGroup version) =>
+            VersionSync.Scope(spec, version).Any(id => blocks.Any(b => b.GroupId == id && SpecBlocks.IsVisible(spec, b)));
 
         foreach (var groupId in new[] { "" }.Concat(context.Groups.Select(g => g.Id)))
         {
@@ -63,7 +68,7 @@ public static class SpecificationViewBuilder
                 if (!versionsHeaderShown)
                 {
                     versionsHeaderShown = true;
-                    if (versions.All(v => !groupBlocksOf(v).Any(b => SpecBlocks.IsVisible(spec, b))))
+                    if (versions.All(v => !HasData(v)))
                     {
                         // Переменных данных нет ни у одного исполнения (п. 5.5.1 е).
                         result.Add(new DisplayRow(DisplayRowKind.Notice, "", "", DifferencesNotice(versions), null, null));
@@ -78,16 +83,23 @@ public static class SpecificationViewBuilder
                     sameAs is null ? group.Title : $"{group.Title} (тоже как для {sameAs.Title})", null, null));
                 if (sameAs is not null)
                 {
+                    hidden.Add(group.Id);
                     continue;
                 }
 
-                if (!groupBlocks.Any(b => SpecBlocks.IsVisible(spec, b)))
+                if (!HasData(group))
                 {
                     result.Add(new DisplayRow(DisplayRowKind.Notice, group.Id, "", "Отсутствуют", null, null));
                     continue;
                 }
 
                 AddBlocks(spec, context, groupBlocks, result);
+                continue;
+            }
+
+            // Группа внутри исполнения, данные которого не повторяются («тоже как для …»), не показывается.
+            if (group is { VersionId.Length: > 0 } && hidden.Contains(group.VersionId))
+            {
                 continue;
             }
 
@@ -100,8 +112,6 @@ public static class SpecificationViewBuilder
         }
 
         return result;
-
-        IEnumerable<SpecBlock> groupBlocksOf(SpecGroup g) => blocks.Where(b => b.GroupId == g.Id);
     }
 
     /// <summary>«Различия исполнений А и А-01 по сборочному чертежу».</summary>

@@ -844,6 +844,39 @@ public class VersionWindowTests
     }
 
     [Fact]
+    public void Group_inside_base_version_and_read_only_group_of_other_version()
+    {
+        var vm = Open();
+        var path = _dialogs.VersionFile!;
+        _host.Versions[path] = _host.Versions[path] with
+        {
+            GroupTitles = new Dictionary<string, string> { ["А.004.ipt"] = "Изделия, устанавливаемые по А-01МЭ" },
+        };
+        vm.AddVersionCommand.Execute(null);
+
+        // Группа исполнения -01 — из его сборки, только для чтения.
+        var foreign = vm.Rows.Single(r => r.IsGroupHeader && r.Name == "Изделия, устанавливаемые по А-01МЭ");
+        Assert.False(foreign.CanEdit(SpecColumn.Name));
+        vm.SelectedRow = foreign;
+        Assert.False(vm.DeleteGroupCommand.CanExecute(null));
+        Assert.False(vm.AddItemCommand.CanExecute(null));
+        Assert.Contains(vm.Rows, r => r.IsVersionItem && r.Name == "Шайба" && r.GroupId == foreign.GroupId);
+
+        // Группа в основном исполнении — создаётся с его строки, правится, в неё можно перенести строку.
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Ось");
+        _dialogs.OnGroup = g => g.Title = "Изделия, устанавливаемые по А.000МЭ";
+        vm.AddGroupCommand.Execute(null);
+        var own = vm.Specification.Groups.Single(g => g.Title == "Изделия, устанавливаемые по А.000МЭ");
+        Assert.Equal(Core.Versions.VersionSync.Base(vm.Specification)!.Id, own.VersionId);
+        Assert.Contains(vm.GroupOptions, o => o.Id == own.Id);
+        Assert.DoesNotContain(vm.GroupOptions, o => o.Id == foreign.GroupId);
+
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Ось");
+        vm.MoveToGroupCommand.Execute(own.Id);
+        Assert.Equal(own.Id, vm.Rows.Single(r => r.Name == "Ось").GroupId);
+    }
+
+    [Fact]
     public void Version_assembly_shows_a_notice()
     {
         _host.VersionOf = "Эта сборка — исполнение А-01 сборки А";

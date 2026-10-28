@@ -37,7 +37,7 @@ public class VersionTests
         var context = TestData.Context(spec);
         SpecificationUpdater.Update(spec, Head, context, TestData.Now);
         var version = VersionSync.AddVersion(spec, "АГБВ.685910.321", "АГБВ.685910.321-01", @"..\Исп01\Двигатель-01.iam");
-        VersionSync.Sync(spec, context, Head, new Dictionary<string, IReadOnlyList<ComponentData>> { [version.Id] = Version01 });
+        VersionSync.Sync(spec, context, Head, new Dictionary<string, VersionComponents> { [version.Id] = new VersionComponents(Version01) });
         return (spec, context, version);
     }
 
@@ -108,10 +108,10 @@ public class VersionTests
     {
         var (spec, context, _) = Build();
         var same = VersionSync.AddVersion(spec, "АГБВ.685910.321", "АГБВ.685910.321-02", @"..\Исп02\Двигатель-02.iam");
-        VersionSync.Sync(spec, context, Head, new Dictionary<string, IReadOnlyList<ComponentData>>
+        VersionSync.Sync(spec, context, Head, new Dictionary<string, VersionComponents>
         {
-            [spec.Groups.Single(g => g.VersionFile.Contains("Исп01")).Id] = Version01,
-            [same.Id] = Version01,
+            [spec.Groups.Single(g => g.VersionFile.Contains("Исп01")).Id] = new VersionComponents(Version01),
+            [same.Id] = new VersionComponents(Version01),
         });
 
         var rows = SpecificationViewBuilder.Build(spec, context).ToList();
@@ -131,7 +131,7 @@ public class VersionTests
         SpecificationUpdater.Update(spec, Head, context, TestData.Now);
         var version = VersionSync.AddVersion(spec, "А", "А-01", "a01.iam");
         var withoutShield = Head.Where(c => c.Name != "Щит подшипниковый").ToArray();
-        VersionSync.Sync(spec, context, Head, new Dictionary<string, IReadOnlyList<ComponentData>> { [version.Id] = withoutShield });
+        VersionSync.Sync(spec, context, Head, new Dictionary<string, VersionComponents> { [version.Id] = new VersionComponents(withoutShield) });
 
         var rows = SpecificationViewBuilder.Build(spec, context).ToList();
         var versionHeader = rows.First(r => r.Kind == DisplayRowKind.GroupHeader && r.GroupId == version.Id);
@@ -142,5 +142,56 @@ public class VersionTests
         Assert.Empty(spec.Groups);
         Assert.All(spec.Rows, r => Assert.Equal("", r.GroupId));
         Assert.DoesNotContain(spec.Rows, r => r.Kind == RowKind.VersionItem);
+    }
+
+    [Fact]
+    public void Version_groups_from_the_version_assembly_go_under_the_version()
+    {
+        var spec = new Specification();
+        var context = TestData.Context(spec);
+        SpecificationUpdater.Update(spec, Head, context, TestData.Now);
+        var version = VersionSync.AddVersion(spec, "АГБВ.685910.321", "АГБВ.685910.321-01", "v1.iam");
+        const string title = "Изделия, устанавливаемые по чертежу АГБВ.685910.321-01МЭ";
+        var titles = new Dictionary<string, string> { ["АГБВ.688245.005.ipt"] = title };
+
+        VersionSync.Sync(spec, context, Head, new Dictionary<string, VersionComponents> { [version.Id] = new VersionComponents(Version01, titles) });
+
+        var child = spec.Groups.Single(g => g.VersionId == version.Id);
+        Assert.Equal(title, child.Title);
+        Assert.Equal(spec.Groups.IndexOf(version) + 1, spec.Groups.IndexOf(child));
+        var shield = Row(spec, "АГБВ.688245.005", child.Id);
+        Assert.Equal(RowKind.VersionItem, shield.Kind);
+        Assert.True(VersionSync.IsReadOnly(spec, child.Id));
+
+        var rows = SpecificationViewBuilder.Build(spec, context).ToList();
+        var versionHeader = rows.FindIndex(r => r.Kind == DisplayRowKind.GroupHeader && r.GroupId == version.Id);
+        var childHeader = rows.FindIndex(r => r.Kind == DisplayRowKind.GroupHeader && r.GroupId == child.Id);
+        Assert.True(childHeader > versionHeader);
+        Assert.Contains(rows.Skip(childHeader), r => r.Row == shield);
+
+        // В сборке-исполнении компонент вынули из группы — строка возвращается в исполнение, группа исчезает.
+        VersionSync.Sync(spec, context, Head, new Dictionary<string, VersionComponents> { [version.Id] = new VersionComponents(Version01) });
+        Assert.DoesNotContain(spec.Groups, g => g.VersionId == version.Id);
+        Assert.Equal(version.Id, spec.Rows.Single(r => r.Get(SpecColumn.Designation) == "АГБВ.688245.005").GroupId);
+    }
+
+    [Fact]
+    public void Base_version_group_keeps_manual_rows_and_becomes_constant_when_versions_are_removed()
+    {
+        var (spec, context, version) = Build();
+        var baseVersion = VersionSync.Base(spec)!;
+        var group = Editing.SpecificationEditor.AddGroup(spec, "Изделия, устанавливаемые по чертежу А.000МЭ", versionId: baseVersion.Id);
+        Assert.True(spec.Groups.IndexOf(group) < spec.Groups.IndexOf(version));
+        var rotor = Row(spec, "АГБВ.686295.012", baseVersion.Id);
+        Editing.SpecificationEditor.MoveToGroup(spec, context, rotor, group.Id);
+
+        VersionSync.Sync(spec, context, Head, new Dictionary<string, VersionComponents> { [version.Id] = new VersionComponents(Version01) });
+        Assert.Equal(group.Id, rotor.GroupId);
+        Assert.False(VersionSync.IsReadOnly(spec, group.Id));
+
+        VersionSync.RemoveVersion(spec, context, version.Id);
+        Assert.Equal("", group.VersionId);
+        Assert.Equal(new[] { group }, spec.Groups);
+        Assert.Equal(group.Id, rotor.GroupId);
     }
 }

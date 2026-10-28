@@ -27,8 +27,8 @@ public sealed class PrintLine
     public LineStyle Style { get; init; }
 
     /// <summary>
-    /// Заголовок шире графы «Наименование» (и «Переменные данные для исполнений:»): графы «Обозначение» и «Наименование»
-    /// в этой строке объединяются — без линии между ними, текст одной строкой по центру.
+    /// «Переменные данные для исполнений:»: графы «Обозначение» и «Наименование» в этой строке объединяются —
+    /// без линии между ними, текст одной строкой по центру. Остальные заголовки переносятся внутри «Наименования».
     /// </summary>
     public bool Wide { get; init; }
 
@@ -200,7 +200,7 @@ public static class SpecPaginator
                 var wideWidth = GostLayout.ColumnWidths[GostLayout.DesignationColumn] + GostLayout.ColumnWidths[GostLayout.NameColumn] - 2 * GostLayout.Padding;
                 // «Переменные данные для исполнений:» — всегда в объединённых графах «Обозначение» и «Наименование».
                 var variableData = row.Name.Trim() == Core.Versions.VersionSync.VariableDataTitle;
-                if ((wrapped.Count > 1 || variableData) && !row.Name.Contains('\n') && wrap(row.Name, wideWidth) is { Count: 1 } wide)
+                if (variableData && wrap(row.Name, wideWidth) is { Count: 1 } wide)
                 {
                     lines.Add(new PrintLine { Name = wide[0], Style = style, Wide = true });
                 }

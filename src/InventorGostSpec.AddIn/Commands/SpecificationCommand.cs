@@ -200,8 +200,22 @@ internal sealed class SpecificationCommand : AddInCommand
                     component.Key = Rebase(component.Key);
                 }
 
+                // Группы «устанавливаемые по …» из спецификации самой сборки-исполнения (если она там сформирована).
+                var groupTitles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                if (SpecificationStore.Load(document) is { } own)
+                {
+                    var titles = own.Groups.Where(g => !g.IsVersion && g.VersionId.Length == 0).ToDictionary(g => g.Id, g => g.Title);
+                    foreach (var row in own.Rows.Where(r => r.Kind == RowKind.Component && r.ComponentKey is not null))
+                    {
+                        if (titles.TryGetValue(row.GroupId, out var title))
+                        {
+                            groupTitles[Rebase(row.ComponentKey!)] = title;
+                        }
+                    }
+                }
+
                 var partNumber = PropertyAccess.TryGet(document.PropertySets, PropertyAccess.DesignTrackingSet, PropertyAccess.PartNumber);
-                return new VersionData(Designations.WithoutAssemblyDrawingCode(partNumber), components);
+                return new VersionData(Designations.WithoutAssemblyDrawingCode(partNumber), components, groupTitles);
             });
         }
 

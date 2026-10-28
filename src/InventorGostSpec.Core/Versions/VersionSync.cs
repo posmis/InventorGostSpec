@@ -5,17 +5,29 @@ using InventorGostSpec.Core.Update;
 
 namespace InventorGostSpec.Core.Versions;
 
+/// <summary>Состав сборки-исполнения для сравнения.</summary>
+/// <param name="Components">Компоненты; ключи — относительно папки головной сборки.</param>
+/// <param name="GroupTitles">
+/// Группы «устанавливаемые по …» спецификации самой сборки-исполнения: ключ компонента → заголовок группы.
+/// Компонента нет — он в основной части.
+/// </param>
+public sealed record VersionComponents(
+    IReadOnlyList<ComponentData> Components,
+    IReadOnlyDictionary<string, string>? GroupTitles = null);
+
 /// <summary>
 /// Групповая спецификация исполнений по ГОСТ 2.113, вариант А: постоянные данные, затем «Переменные данные
-/// для исполнений» — для каждого исполнения отдельно, под его обозначением. Исполнения выбирает пользователь;
-/// состав сравнивает программа: составная часть (тот же файл, у виртуальных — то же наименование) с одинаковым
-/// количеством во всех исполнениях — постоянная, остальные — переменные данные своего исполнения.
+/// для исполнений» — для каждого исполнения отдельно, под его обозначением, со своими разделами и группами
+/// «устанавливаемые по …». Исполнения выбирает пользователь; состав сравнивает программа: составная часть (тот же
+/// файл, у виртуальных — то же наименование) с одинаковым количеством во всех исполнениях — постоянная, остальные —
+/// переменные данные своего исполнения.
 /// </summary>
 public static class VersionSync
 {
     /// <summary>Общий заголовок; в PDF — по центру объединённых граф «Обозначение» и «Наименование».</summary>
     public const string VariableDataTitle = "Переменные данные для исполнений:";
 
+    /// <summary>Исполнения (без групп внутри них), в порядке записи.</summary>
     public static IEnumerable<SpecGroup> Versions(Specification spec) => spec.Groups.Where(g => g.IsVersion);
 
     /// <summary>Основное исполнение — сама сборка (её переменные данные); <c>null</c> — исполнений нет.</summary>
@@ -23,6 +35,23 @@ public static class VersionSync
 
     /// <summary>Есть ли исполнения, кроме основного.</summary>
     public static bool HasVersions(Specification spec) => Versions(spec).Any(g => !g.IsBaseVersion);
+
+    /// <summary>Исполнение, к которому относится группа: само исполнение или исполнение группы внутри него.</summary>
+    public static SpecGroup? VersionOf(Specification spec, string groupId)
+    {
+        var group = spec.Groups.FirstOrDefault(g => g.Id == groupId);
+        return group is null ? null
+            : group.IsVersion ? group
+            : group.VersionId.Length > 0 ? spec.Groups.FirstOrDefault(g => g.Id == group.VersionId && g.IsVersion)
+            : null;
+    }
+
+    /// <summary>Исполнение и его группы «устанавливаемые по …».</summary>
+    public static IEnumerable<string> Scope(Specification spec, SpecGroup version) =>
+        new[] { version.Id }.Concat(spec.Groups.Where(g => g.VersionId == version.Id).Select(g => g.Id));
+
+    /// <summary>Группа относится к другому исполнению (не основному): её строки — только для чтения.</summary>
+    public static bool IsReadOnly(Specification spec, string groupId) => VersionOf(spec, groupId) is { IsBaseVersion: false };
 
     /// <summary>
     /// Добавляет исполнение (сборку-исполнение). При первом добавлении создаётся и основное исполнение — с обозначением
@@ -52,24 +81,32 @@ public static class VersionSync
     }
 
     /// <summary>
-    /// Убирает исполнение: его строки удаляются. Если исполнений больше нет, переменные данные основного исполнения
-    /// возвращаются в постоянные данные.
+    /// Убирает исполнение вместе с его группами: его строки удаляются. Если исполнений больше нет, переменные данные
+    /// основного исполнения (и его групп) возвращаются в постоянные данные.
     /// </summary>
     public static void RemoveVersion(Specification spec, SpecificationContext context, string groupId)
     {
-        spec.Rows.RemoveAll(r => r.GroupId == groupId && r.Kind == RowKind.VersionItem);
-        var group = spec.Groups.FirstOrDefault(g => g.Id == groupId && g.IsVersion && !g.IsBaseVersion);
-        if (group is not null)
+        if (spec.Groups.FirstOrDefault(g => g.Id == groupId && g.IsVersion && !g.IsBaseVersion) is { } group)
         {
-            spec.Groups.Remove(group);
+            var scope = Scope(spec, group).ToHashSet();
+            spec.Rows.RemoveAll(r => scope.Contains(r.GroupId));
+            spec.Groups.RemoveAll(g => scope.Contains(g.Id));
         }
 
         if (!HasVersions(spec) && Base(spec) is { } baseVersion)
         {
+            // Группы основного исполнения становятся группами постоянных данных.
+            foreach (var child in spec.Groups.Where(g => g.VersionId == baseVersion.Id).ToList())
+            {
+                spec.Groups.Remove(child);
+                child.VersionId = "";
+                var index = spec.Groups.FindIndex(g => g.IsVersion);
+                spec.Groups.Insert(index < 0 ? spec.Groups.Count : index, child);
+            }
+
             foreach (var row in spec.Rows.Where(r => r.GroupId == baseVersion.Id).ToList())
             {
-                row.ManualVersionPlacement = false;
-                SpecificationEditor.MoveToGroup(spec, context, row, "");
+                SpecificationEditor.MoveToGroup(spec, context, row, "", assignPositions: false);
             }
 
             spec.Groups.Remove(baseVersion);
@@ -84,16 +121,16 @@ public static class VersionSync
 
     /// <summary>
     /// Сравнивает состав головной сборки и сборок-исполнений и раскладывает строки: общие — в постоянные данные,
-    /// различающиеся — в переменные данные своих исполнений. Строки, перенесённые вручную, не трогаются.
+    /// различающиеся — в переменные данные своих исполнений (в те же группы «устанавливаемые по …», что в
+    /// спецификации сборки-исполнения). Строки, перенесённые вручную, не трогаются.
     /// </summary>
     /// <param name="head">Состав головной сборки (как при обновлении).</param>
-    /// <param name="versions">Состав каждой сборки-исполнения по <see cref="SpecGroup.Id"/>, ключи — относительно
-    /// папки головной сборки (как у <paramref name="head"/>).</param>
+    /// <param name="versions">Состав каждой сборки-исполнения по <see cref="SpecGroup.Id"/> исполнения.</param>
     public static void Sync(
         Specification spec,
         SpecificationContext context,
         IEnumerable<ComponentData> head,
-        IReadOnlyDictionary<string, IReadOnlyList<ComponentData>> versions)
+        IReadOnlyDictionary<string, VersionComponents> versions)
     {
         if (!HasVersions(spec) || Base(spec) is not { } baseVersion)
         {
@@ -104,13 +141,14 @@ public static class VersionSync
         var others = Versions(spec).Where(g => !g.IsBaseVersion).ToList();
         var versionSnapshots = others.ToDictionary(
             g => g.Id,
-            g => SpecificationUpdater.Aggregate(versions.TryGetValue(g.Id, out var list) ? list : Array.Empty<ComponentData>()));
+            g => SpecificationUpdater.Aggregate(versions.TryGetValue(g.Id, out var data) ? data.Components : Array.Empty<ComponentData>()));
 
         bool IsCommon(string key) =>
             headSnapshots.TryGetValue(key, out var own) &&
             versionSnapshots.Values.All(v => v.TryGetValue(key, out var other) && other.Quantity == own.Quantity);
 
-        // Строки головной сборки: постоянные ↔ переменные данные основного исполнения.
+        // Строки головной сборки: постоянные ↔ переменные данные основного исполнения. Строки в группах
+        // («устанавливаемые по …» постоянных данных или основного исполнения) расставлены пользователем — не трогаем.
         foreach (var row in spec.Rows.Where(r => r.Kind == RowKind.Component && !r.IsRemoved && r.ComponentKey is not null).ToList())
         {
             if (row.ManualVersionPlacement || (row.GroupId.Length > 0 && row.GroupId != baseVersion.Id))
@@ -125,22 +163,30 @@ public static class VersionSync
             }
         }
 
-        // Строки исполнений: составные части, которые не общие.
-        foreach (var group in others)
+        // Строки исполнений: составные части, которые не общие, — в само исполнение или в его группу.
+        foreach (var version in others)
         {
-            var wanted = versionSnapshots[group.Id].Where(x => !IsCommon(x.Key)).ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
-            spec.Rows.RemoveAll(r => r.GroupId == group.Id && r.Kind == RowKind.VersionItem && !wanted.ContainsKey(r.ComponentKey ?? ""));
-            var existing = spec.Rows.Where(r => r.GroupId == group.Id && r.Kind == RowKind.VersionItem)
+            var titles = versions.TryGetValue(version.Id, out var data) ? data.GroupTitles : null;
+            var wanted = versionSnapshots[version.Id].Where(x => !IsCommon(x.Key))
+                .ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+            var scope = Scope(spec, version).ToHashSet();
+            spec.Rows.RemoveAll(r => scope.Contains(r.GroupId) && r.Kind == RowKind.VersionItem && !wanted.ContainsKey(r.ComponentKey ?? ""));
+            var existing = spec.Rows.Where(r => scope.Contains(r.GroupId) && r.Kind == RowKind.VersionItem)
                 .ToDictionary(r => r.ComponentKey!, StringComparer.OrdinalIgnoreCase);
+
             foreach (var (key, snapshot) in wanted)
             {
+                var groupId = titles is not null && titles.TryGetValue(key, out var title) && title.Trim().Length > 0
+                    ? GroupIn(spec, version, title.Trim()).Id
+                    : version.Id;
                 if (existing.TryGetValue(key, out var row))
                 {
-                    var moved = !string.Equals(row.SectionId, snapshot.SectionId, StringComparison.OrdinalIgnoreCase);
+                    var moved = row.GroupId != groupId || !string.Equals(row.SectionId, snapshot.SectionId, StringComparison.OrdinalIgnoreCase);
                     row.Source = snapshot;
                     if (moved)
                     {
                         spec.Rows.Remove(row);
+                        row.GroupId = groupId;
                         row.Position = null;
                         SpecificationEditor.InsertAtSectionEnd(spec, context, row);
                     }
@@ -153,14 +199,22 @@ public static class VersionSync
                     Kind = RowKind.VersionItem,
                     ComponentKey = key,
                     Source = snapshot,
-                    GroupId = group.Id,
+                    GroupId = groupId,
                 });
             }
+
+            // Группы, взятые из сборки-исполнения, без строк больше не нужны.
+            spec.Groups.RemoveAll(g => g.VersionId == version.Id && spec.Rows.All(r => r.GroupId != g.Id));
         }
 
         MarkInherited(spec);
         PositionAllocator.AssignMissing(spec, context);
     }
+
+    /// <summary>Группа «устанавливаемые по …» внутри исполнения с этим заголовком; нет — создаётся.</summary>
+    private static SpecGroup GroupIn(Specification spec, SpecGroup version, string title) =>
+        spec.Groups.FirstOrDefault(g => g.VersionId == version.Id && string.Equals(g.Title, title, StringComparison.OrdinalIgnoreCase))
+        ?? SpecificationEditor.AddGroup(spec, title, versionId: version.Id);
 
     /// <summary>
     /// Строки исполнений, чья составная часть уже есть в постоянных данных, у основного или у предыдущего исполнения,
@@ -171,9 +225,10 @@ public static class VersionSync
         var known = new HashSet<string>(
             spec.Rows.Where(r => r.Kind != RowKind.VersionItem && r.ComponentKey is not null).Select(r => r.ComponentKey!),
             StringComparer.OrdinalIgnoreCase);
-        foreach (var group in Versions(spec).Where(g => !g.IsBaseVersion))
+        foreach (var version in Versions(spec).Where(g => !g.IsBaseVersion).ToList())
         {
-            var rows = spec.Rows.Where(r => r.GroupId == group.Id && r.Kind == RowKind.VersionItem).ToList();
+            var scope = Scope(spec, version).ToHashSet();
+            var rows = spec.Rows.Where(r => scope.Contains(r.GroupId) && r.Kind == RowKind.VersionItem).ToList();
             foreach (var row in rows)
             {
                 var inherits = row.ReplacesKey is not null || known.Contains(row.ComponentKey ?? "");
@@ -212,52 +267,49 @@ public static class VersionSync
         }
 
         // Внутри каждого раздела исполнения: сначала составные части с унаследованными номерами по возрастанию, затем новые.
-        foreach (var group in Versions(spec).Where(g => !g.IsBaseVersion))
+        var readOnly = spec.Groups.Where(g => IsReadOnly(spec, g.Id)).Select(g => g.Id).ToHashSet();
+        foreach (var block in spec.Rows.Where(r => readOnly.Contains(r.GroupId))
+                     .Select(r => (r.GroupId, Section: r.SectionId.ToUpperInvariant())).Distinct().ToList())
         {
-            foreach (var section in spec.Rows.Where(r => r.GroupId == group.Id).Select(r => r.SectionId).Distinct(StringComparer.OrdinalIgnoreCase).ToList())
+            var indices = spec.Rows
+                .Select((r, i) => (Row: r, Index: i))
+                .Where(x => x.Row.GroupId == block.GroupId && x.Row.SectionId.ToUpperInvariant() == block.Section)
+                .ToList();
+            var ordered = indices
+                .OrderBy(x => x.Row.InheritsPosition ? 0 : 1)
+                .ThenBy(x => x.Row.InheritsPosition ? x.Row.Position ?? int.MaxValue : x.Index)
+                .Select(x => x.Row)
+                .ToList();
+            for (var k = 0; k < indices.Count; k++)
             {
-                var indices = spec.Rows
-                    .Select((r, i) => (Row: r, Index: i))
-                    .Where(x => x.Row.GroupId == group.Id && string.Equals(x.Row.SectionId, section, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-                var ordered = indices
-                    .OrderBy(x => x.Row.InheritsPosition ? 0 : 1)
-                    .ThenBy(x => x.Row.InheritsPosition ? x.Row.Position ?? int.MaxValue : x.Index)
-                    .Select(x => x.Row)
-                    .ToList();
-                for (var k = 0; k < indices.Count; k++)
-                {
-                    spec.Rows[indices[k].Index] = ordered[k];
-                }
+                spec.Rows[indices[k].Index] = ordered[k];
             }
         }
     }
 
     /// <summary>
-    /// Исполнение полностью совпадает с предыдущим (те же составные части в тех же количествах) — его данные не
-    /// повторяются, заголовок «… (тоже как для …)». <c>null</c> — не совпадает или пустое.
+    /// Исполнение полностью совпадает с предыдущим (те же составные части в тех же количествах и группах) — его данные
+    /// не повторяются, заголовок «… (тоже как для …)». <c>null</c> — не совпадает или пустое.
     /// </summary>
-    public static SpecGroup? SameAs(Specification spec, SpecGroup group)
+    public static SpecGroup? SameAs(Specification spec, SpecGroup version)
     {
-        static string Signature(IEnumerable<SpecRow> rows) => string.Join("\n", rows
-            .Where(r => r.Kind != RowKind.Note && !r.IsRemoved)
-            .Select(r => (r.ComponentKey ?? r.Get(SpecColumn.Designation) + "|" + r.Get(SpecColumn.Name)) + "=" + r.Get(SpecColumn.Quantity))
-            .OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+        string Signature(SpecGroup v)
+        {
+            var titles = spec.Groups.ToDictionary(g => g.Id, g => g.IsVersion ? "" : g.Title);
+            var scope = Scope(spec, v).ToHashSet();
+            return string.Join("\n", spec.Rows
+                .Where(r => scope.Contains(r.GroupId) && r.Kind != RowKind.Note && !r.IsRemoved)
+                .Select(r => titles[r.GroupId] + "|" + (r.ComponentKey ?? r.Get(SpecColumn.Designation) + "|" + r.Get(SpecColumn.Name)) +
+                             "=" + r.Get(SpecColumn.Quantity))
+                .OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+        }
 
-        var own = Signature(spec.Rows.Where(r => r.GroupId == group.Id));
+        var own = Signature(version);
         if (own.Length == 0)
         {
             return null;
         }
 
-        foreach (var earlier in Versions(spec).TakeWhile(g => g.Id != group.Id))
-        {
-            if (Signature(spec.Rows.Where(r => r.GroupId == earlier.Id)) == own)
-            {
-                return earlier;
-            }
-        }
-
-        return null;
+        return Versions(spec).TakeWhile(g => g.Id != version.Id).FirstOrDefault(earlier => Signature(earlier) == own);
     }
 }

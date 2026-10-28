@@ -382,6 +382,10 @@ public static class SpecificationEditor
     public static void NormalizeGroups(Specification spec)
     {
         spec.ShownSections.RemoveAll(s => s.GroupId.Length > 0 && spec.Groups.All(g => g.Id != s.GroupId));
+        foreach (var group in spec.Groups.Where(g => g.VersionId.Length > 0 && spec.Groups.All(v => v.Id != g.VersionId || !v.IsVersion)))
+        {
+            group.VersionId = "";
+        }
 
         foreach (var row in spec.Rows.Where(r => r.GroupId.Length > 0 && spec.Groups.All(g => g.Id != r.GroupId)))
         {
@@ -390,13 +394,28 @@ public static class SpecificationEditor
     }
 
     /// <summary>Добавляет группу «устанавливаемые по …» в конец спецификации.</summary>
-    public static SpecGroup AddGroup(Specification spec, string title, bool startsNewPage = false)
+    /// <param name="versionId">Исполнение, внутри которого группа; пусто — в постоянных данных.</param>
+    public static SpecGroup AddGroup(Specification spec, string title, bool startsNewPage = false, string versionId = "")
     {
-        var group = new SpecGroup { Title = title.Trim(), StartsNewPage = startsNewPage };
+        var group = new SpecGroup { Title = title.Trim(), StartsNewPage = startsNewPage, VersionId = versionId };
 
-        // Группы «устанавливаемые по …» — в постоянных данных, до «Переменных данных для исполнений».
-        var firstVersion = spec.Groups.FindIndex(g => g.IsVersion);
-        spec.Groups.Insert(firstVersion < 0 ? spec.Groups.Count : firstVersion, group);
+        // В постоянных данных — до «Переменных данных для исполнений»; в исполнении — после его групп.
+        int index;
+        if (versionId.Length == 0)
+        {
+            index = spec.Groups.FindIndex(g => g.IsVersion);
+        }
+        else
+        {
+            var version = spec.Groups.FindIndex(g => g.Id == versionId);
+            index = version < 0 ? -1 : version + 1;
+            while (index >= 0 && index < spec.Groups.Count && spec.Groups[index].VersionId == versionId)
+            {
+                index++;
+            }
+        }
+
+        spec.Groups.Insert(index < 0 ? spec.Groups.Count : index, group);
         return group;
     }
 
@@ -404,10 +423,12 @@ public static class SpecificationEditor
     public static void RemoveGroup(Specification spec, SpecificationContext context, string groupId)
     {
         var rows = spec.Rows.Where(r => r.GroupId == groupId).ToList();
+        // Группа внутри исполнения — строки возвращаются в само исполнение.
+        var target = spec.Groups.FirstOrDefault(g => g.Id == groupId)?.VersionId ?? "";
         spec.Groups.RemoveAll(g => g.Id == groupId);
         foreach (var row in rows)
         {
-            MoveToGroup(spec, context, row, "", assignPositions: false);
+            MoveToGroup(spec, context, row, target, assignPositions: false);
         }
 
         PositionAllocator.AssignMissing(spec, context);

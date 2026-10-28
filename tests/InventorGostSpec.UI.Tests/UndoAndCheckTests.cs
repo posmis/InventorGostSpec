@@ -770,3 +770,85 @@ public class TitleBlockEditTests
         Assert.Equal(3.5, vm.ToTitleData().NameTextHeight);
     }
 }
+
+public class VersionWindowTests
+{
+    private readonly FakeHost _host = new();
+    private readonly FakeDialogs _dialogs = new();
+
+    private static ComponentData Part(string designation, string name, decimal quantity = 1) =>
+        new() { Key = designation + ".ipt", Kind = ComponentKind.Part, Designation = designation, Name = name, Format = "А4", Quantity = quantity };
+
+    private SpecificationViewModel Open()
+    {
+        _host.Components.AddRange(new[] { Part("А.001", "Корпус"), Part("А.002", "Ось"), Part("А.003", "Втулка", 2) });
+        _host.Title = () => new TitleBlock { Designation = "АБВГ.00.00.000", Name = "Узел" };
+        var path = Path.Combine(_host.AssemblyFolder, "Исп01.iam");
+        _host.Versions[path] = new VersionData("АБВГ.00.00.000-01", new[] { Part("А.001", "Корпус"), Part("А.003", "Втулка", 4), Part("А.004", "Шайба") });
+        _dialogs.VersionFile = path;
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, _host.Components, SpecificationContext.Create(_host.Settings, spec), DateTime.UtcNow);
+        return new SpecificationViewModel(_host, _dialogs, spec, post: action => action());
+    }
+
+    [Fact]
+    public void Added_version_splits_constant_and_variable_data_and_marks_the_version_assembly()
+    {
+        var vm = Open();
+
+        vm.AddVersionCommand.Execute(null);
+
+        Assert.Equal("АБВГ.00.00.000", _host.VersionMarks.Single().Value);
+        var names = vm.Rows.Select(r => r.Name).ToList();
+        Assert.Contains("Переменные данные для исполнений", names);
+        Assert.Contains("АБВГ.00.00.000", names);
+        Assert.Contains("АБВГ.00.00.000-01", names);
+
+        // Корпус — общий; Ось и Втулка — переменные основного; у -01 — Втулка (4 шт.) и Шайба, серые и только для чтения.
+        Assert.Equal("", vm.Specification.Rows.Single(r => r.Get(SpecColumn.Name) == "Корпус").GroupId);
+        var items = vm.Rows.Where(r => r.IsVersionItem).ToList();
+        Assert.Equal(new[] { "Втулка", "Шайба" }, items.Select(r => r.Name).OrderBy(x => x));
+        Assert.All(items, r => Assert.False(r.CanEdit(SpecColumn.Name)));
+        var sleeve = items.Single(r => r.Name == "Втулка");
+        Assert.Equal(vm.Rows.Single(r => r.Name == "Втулка" && !r.IsVersionItem).Position, sleeve.Position);
+        Assert.Equal("4", sleeve.Quantity);
+
+        // В строку исполнения ничего не добавить и не удалить.
+        vm.SelectedRow = sleeve;
+        Assert.False(vm.AddItemCommand.CanExecute(null));
+        Assert.False(vm.DeleteRowCommand.CanExecute(null));
+        Assert.True(vm.IsVersionItemSelected);
+    }
+
+    [Fact]
+    public void Replacing_part_and_removing_the_version()
+    {
+        var vm = Open();
+        vm.AddVersionCommand.Execute(null);
+        var axis = vm.Rows.Single(r => r.Name == "Ось");
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Шайба");
+        var option = vm.ReplacesOptions.Single(o => o.Name.StartsWith(axis.Position + " — "));
+
+        vm.SetReplacesCommand.Execute(option.Id);
+
+        Assert.Equal(axis.Position, vm.Rows.Single(r => r.Name == "Шайба").Position);
+
+        vm.SelectedRow = vm.Rows.Single(r => r.IsGroupHeader && r.Name == "АБВГ.00.00.000-01");
+        Assert.True(vm.RemoveVersionCommand.CanExecute(null));
+        _dialogs.ConfirmAnswer = true;
+        vm.RemoveVersionCommand.Execute(null);
+
+        Assert.Empty(_host.VersionMarks);
+        Assert.Empty(vm.Specification.Groups);
+        Assert.DoesNotContain(vm.Rows, r => r.IsVersionItem);
+    }
+
+    [Fact]
+    public void Version_assembly_shows_a_notice()
+    {
+        _host.VersionOf = "Эта сборка — исполнение А-01 сборки А";
+        var vm = new SpecificationViewModel(_host, _dialogs, new Specification(), post: action => action());
+
+        Assert.Equal("Эта сборка — исполнение А-01 сборки А", vm.VersionNotice);
+    }
+}

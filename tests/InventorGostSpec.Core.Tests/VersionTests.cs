@@ -88,10 +88,14 @@ public class VersionTests
         var baseStator = Row(spec, "АГБВ.686189.349-08", VersionSync.Base(spec)!.Id);
         var stator = Row(spec, "АГБВ.686189.350-03", version.Id);
 
-        stator.ReplacesPosition = baseStator.Position;
+        stator.ReplacesKey = baseStator.ComponentKey;
         VersionSync.MarkInherited(spec);
         PositionAllocator.AssignMissing(spec, context);
 
+        Assert.Equal(baseStator.Position, stator.Position);
+
+        // После перенумерации номер по-прежнему тот же, что у заменяемой части.
+        PositionAllocator.RenumberAll(spec, context);
         Assert.Equal(baseStator.Position, stator.Position);
         // Строки исполнения — по возрастанию унаследованных номеров, новые — в конце раздела.
         var units = spec.Rows.Where(r => r.GroupId == version.Id && r.SectionId == SectionIds.AssemblyUnits).ToList();

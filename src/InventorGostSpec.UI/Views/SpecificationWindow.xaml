@@ -19,6 +19,7 @@
                 <ResourceDictionary Source="/InventorGostSpec.UI;component/Themes/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+            <controls:NullToCollapsedConverter x:Key="NullToCollapsed" />
             <!-- Колонка состояния: цветная метка вместо серого текста. -->
             <DataTemplate x:Key="StatusCell">
                 <Border x:Name="Badge" Style="{StaticResource Badge}" Visibility="Collapsed">
@@ -169,6 +170,8 @@
                                                  ToolTip="Сбросить разделы компонентов (выбранных строк или всех) к разделам по умолчанию: удалить SPEC_Section из файлов и ручной перенос — раздел по типу компонента. Стандартные изделия не трогаются." />
                             <controls:IconButton Icon="{StaticResource Icon.Group}" Text="Группа" Command="{Binding AddGroupCommand}"
                                                  ToolTip="Добавить группу «Изделия, устанавливаемые по …» (например, по электромонтажному чертежу)" />
+                            <controls:IconButton Icon="{StaticResource Icon.MoveToSection}" Text="Исполнение" Command="{Binding AddVersionCommand}"
+                                                 ToolTip="Групповая спецификация исполнений (ГОСТ 2.113, вариант А): выбрать сборку-исполнение. Состав сравнивается: общие составные части — постоянные данные, остальные — «Переменные данные для исполнений» под обозначением каждого исполнения. Строки других исполнений серые, только для чтения; тот же файл — тот же номер позиции." />
                         </StackPanel>
                     </HeaderedContentControl>
 
@@ -203,6 +206,12 @@
                     </HeaderedContentControl>
                 </WrapPanel>
             </DockPanel>
+        </Border>
+
+        <!-- Эта сборка — исполнение другой: только сообщение. -->
+        <Border DockPanel.Dock="Top" Background="#FEF3C7" BorderBrush="#F59E0B" BorderThickness="0,0,0,1" Padding="10,6"
+                Visibility="{Binding VersionNotice, Converter={StaticResource NullToCollapsed}}">
+            <TextBlock Text="{Binding VersionNotice}" TextWrapping="Wrap" Foreground="#78350F" />
         </Border>
 
         <!-- Нижняя панель: состояние, легенда, сохранение. -->
@@ -302,6 +311,10 @@
                                 <Setter Property="Foreground" Value="{StaticResource Brush.Reserve}" />
                                 <Setter Property="FontStyle" Value="Italic" />
                             </DataTrigger>
+                            <!-- Строки других исполнений — серые, только для чтения. -->
+                            <DataTrigger Binding="{Binding IsVersionItem}" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Muted}" />
+                            </DataTrigger>
                             <!-- Выделение — последним, чтобы было видно и на подсвеченных строках. -->
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter Property="Background" Value="{StaticResource Brush.Selected}" />
@@ -373,6 +386,18 @@
                                 </Style>
                             </MenuItem.ItemContainerStyle>
                         </MenuItem>
+                        <MenuItem Header="Заменяет поз." ItemsSource="{Binding ReplacesOptions}"
+                                  Visibility="{Binding IsVersionItemSelected, Converter={StaticResource BoolToVisibility}}"
+                                  ToolTip="Составная часть исполнения заменяет часть основного (или предыдущего) исполнения и получает её номер позиции (ГОСТ 2.113, п. 5.5.1 г)">
+                            <MenuItem.ItemContainerStyle>
+                                <Style TargetType="MenuItem">
+                                    <Setter Property="Header" Value="{Binding Name}" />
+                                    <EventSetter Event="Click" Handler="OnReplacesClick" />
+                                </Style>
+                            </MenuItem.ItemContainerStyle>
+                        </MenuItem>
+                        <MenuItem Header="Убрать исполнение" Command="{Binding RemoveVersionCommand}"
+                                  ToolTip="Убрать сборку-исполнение из групповой спецификации" />
                         <MenuItem Header="Тип документа" ItemsSource="{Binding DocumentTypeOptions}"
                                   Visibility="{Binding CanSetDocumentType, Converter={StaticResource BoolToVisibility}}"
                                   ToolTip="Для строк раздела «Документация»: код в конце обозначения (СБ, ТУ, Э3…) и наименование документа">

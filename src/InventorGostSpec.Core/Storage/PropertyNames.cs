@@ -32,4 +32,10 @@ public static class PropertyNames
     /// обозначение изделия, в которое компонент впервые вошёл. Хранится в компоненте, а не в спецификации.
     /// </summary>
     public const string FirstUse = "SPEC_FirstUse";
+
+    /// <summary>
+    /// Пометка в сборке-исполнении: обозначение головной сборки, в групповую спецификацию которой она входит.
+    /// Только для сообщения, ограничений не накладывает.
+    /// </summary>
+    public const string VersionOf = "SPEC_VersionOf";
 }

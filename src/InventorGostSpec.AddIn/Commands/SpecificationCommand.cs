@@ -160,6 +160,116 @@ internal sealed class SpecificationCommand : AddInCommand
             return new ExportInfo(title, System.IO.Path.Combine(folder, fileName));
         }
 
+        public VersionData? ReadVersion(string path)
+        {
+            var full = System.IO.Path.GetFullPath(path);
+            if (string.Equals(full, ((Document)_assembly).FullFileName, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Это сама головная сборка.");
+            }
+
+            return WithDocument(full, save: false, document =>
+            {
+                if (document is not AssemblyDocument version)
+                {
+                    return null;
+                }
+
+                var headFolder = BomAccess.AssemblyFolder(_assembly);
+                var versionFolder = BomAccess.AssemblyFolder(version);
+                string Rebase(string key)
+                {
+                    foreach (var prefix in new[] { "virtual:" })
+                    {
+                        if (key.StartsWith(prefix, StringComparison.Ordinal))
+                        {
+                            return key;
+                        }
+                    }
+
+                    const string drawing = "drawing:";
+                    var isDrawing = key.StartsWith(drawing, StringComparison.Ordinal);
+                    var relative = isDrawing ? key[drawing.Length..] : key;
+                    var rebased = System.IO.Path.GetRelativePath(headFolder, System.IO.Path.GetFullPath(System.IO.Path.Combine(versionFolder, relative)));
+                    return isDrawing ? drawing + rebased : rebased;
+                }
+
+                var components = AssemblyReader.Read(_context.Application, version);
+                foreach (var component in components)
+                {
+                    component.Key = Rebase(component.Key);
+                }
+
+                var partNumber = PropertyAccess.TryGet(document.PropertySets, PropertyAccess.DesignTrackingSet, PropertyAccess.PartNumber);
+                return new VersionData(Designations.WithoutAssemblyDrawingCode(partNumber), components);
+            });
+        }
+
+        public void MarkVersion(string path, string headDesignation)
+        {
+            var value = $"{headDesignation} ({System.IO.Path.GetFileName(((Document)_assembly).FullFileName)})";
+            WithDocument(System.IO.Path.GetFullPath(path), save: true, document =>
+            {
+                PropertyAccess.SetCustom(document.PropertySets, PropertyNames.VersionOf, value);
+                return (object?)null;
+            });
+        }
+
+        public void UnmarkVersion(string path) =>
+            WithDocument(System.IO.Path.GetFullPath(path), save: true, document =>
+            {
+                PropertyAccess.SetCustom(document.PropertySets, PropertyNames.VersionOf, "");
+                return (object?)null;
+            });
+
+        public string? VersionOf
+        {
+            get
+            {
+                var sets = ((Document)_assembly).PropertySets;
+                var head = PropertyAccess.TryGet(sets, PropertyAccess.UserDefinedSet, PropertyNames.VersionOf);
+                if (head.Length == 0)
+                {
+                    return null;
+                }
+
+                var own = Designations.WithoutAssemblyDrawingCode(PropertyAccess.TryGet(sets, PropertyAccess.DesignTrackingSet, PropertyAccess.PartNumber));
+                return $"Эта сборка — исполнение {own} сборки {head}: её переменные данные показываются в групповой спецификации " +
+                       "головной сборки. Здесь можно работать как обычно.";
+            }
+        }
+
+        /// <summary>
+        /// Документ, открытый в Inventor, или открытый невидимо на время действия. Открытый невидимо при
+        /// <paramref name="save"/> сохраняется и закрывается; открытый пользователем — только меняется (сохранит сам).
+        /// </summary>
+        private T? WithDocument<T>(string path, bool save, Func<Document, T?> action)
+        {
+            foreach (Document open in _context.Application.Documents)
+            {
+                if (string.Equals(open.FullFileName, path, StringComparison.OrdinalIgnoreCase))
+                {
+                    return action(open);
+                }
+            }
+
+            var document = _context.Application.Documents.Open(path, false);
+            try
+            {
+                var result = action(document);
+                if (save)
+                {
+                    document.Save();
+                }
+
+                return result;
+            }
+            finally
+            {
+                document.Close(true);
+            }
+        }
+
         public void WriteTitleProperties(TitleBlock title)
         {
             var document = (Document)_assembly;

@@ -6,6 +6,7 @@ using InventorGostSpec.Core.Model;
 using InventorGostSpec.Core.Positions;
 using InventorGostSpec.Core.Storage;
 using InventorGostSpec.Core.Update;
+using InventorGostSpec.Core.Versions;
 using InventorGostSpec.Core.View;
 
 namespace InventorGostSpec.UI.ViewModels;
@@ -59,8 +60,8 @@ public sealed class SpecificationViewModel : ObservableObject
         ResetCommand = new RelayCommand(Reset);
         RenumberCommand = new RelayCommand(Renumber);
         AcceptChangesCommand = new RelayCommand(AcceptChanges, () => Specification.Rows.Any(r => r.Status != RowStatus.None));
-        AddNoteCommand = new RelayCommand(AddNote, () => SelectedRow is not null);
-        AddItemCommand = new RelayCommand(AddItem, () => SelectedRow is not null);
+        AddNoteCommand = new RelayCommand(AddNote, () => CanInsertAtSelection);
+        AddItemCommand = new RelayCommand(AddItem, () => CanInsertAtSelection);
         DeleteRowCommand = new RelayCommand(DeleteRow, () => TargetRows.Any());
         MoveUpCommand = new RelayCommand(() => MoveBy(-1), () => IsSingleSelection && SelectedRow?.CanMove == true);
         MoveDownCommand = new RelayCommand(() => MoveBy(+1), () => IsSingleSelection && SelectedRow?.CanMove == true);
@@ -68,7 +69,10 @@ public sealed class SpecificationViewModel : ObservableObject
         MoveToSectionCommand = new RelayCommand(MoveToSection, p => p is string && TargetRows.Any(r => r.Kind != RowKind.Note));
         AddSectionCommand = new RelayCommand(AddSection);
         AddGroupCommand = new RelayCommand(AddGroup);
-        DeleteGroupCommand = new RelayCommand(DeleteGroup, () => SelectedRow?.IsGroupHeader == true);
+        DeleteGroupCommand = new RelayCommand(DeleteGroup, () => SelectedRow is { Kind: SpecRowKind.GroupHeader } h && _context.FindGroup(h.GroupId) is { IsVersion: false });
+        AddVersionCommand = new RelayCommand(AddVersion);
+        RemoveVersionCommand = new RelayCommand(RemoveVersion, () => SelectedVersion() is { IsBaseVersion: false });
+        SetReplacesCommand = new RelayCommand(SetReplaces, p => p is string && SelectedRow?.IsVersionItem == true);
         MoveToGroupCommand = new RelayCommand(MoveToGroup, p => p is string && TargetRows.Any());
         ReservesCommand = new RelayCommand(EditReserves);
         SaveCommand = new RelayCommand(Save, () => IsDirty);
@@ -96,6 +100,7 @@ public sealed class SpecificationViewModel : ObservableObject
         ShowDrawingFileCommand = new RelayCommand(ShowDrawingFile, () => SelectedComponent() is { } row && SpecificationEditor.IsModelRow(row) && !IsDocumentSelected);
 
         CheckDocumentFiles();
+        VersionNotice = TryHost(() => _host.VersionOf);
         Rebuild();
         _isDirty = isNew;
     }
@@ -163,6 +168,8 @@ public sealed class SpecificationViewModel : ObservableObject
                 OnPropertyChanged(nameof(IsNotDocumentSelected));
                 OnPropertyChanged(nameof(CanSetNewPage));
                 OnPropertyChanged(nameof(SelectedStartsNewPage));
+                OnPropertyChanged(nameof(ReplacesOptions));
+                OnPropertyChanged(nameof(IsVersionItemSelected));
             }
         }
     }
@@ -282,8 +289,51 @@ public sealed class SpecificationViewModel : ObservableObject
     /// <summary>Основная надпись: подписи, организация, литера, изменения.</summary>
     public ICommand EditTitleBlockCommand { get; }
 
+    /// <summary>Добавить исполнение (сборку-исполнение) — групповая спецификация по ГОСТ 2.113, вариант А.</summary>
+    public ICommand AddVersionCommand { get; }
+
+    /// <summary>Убрать исполнение (на заголовке исполнения).</summary>
+    public ICommand RemoveVersionCommand { get; }
+
+    /// <summary>«Заменяет поз. …» у строки другого исполнения: параметр — номер позиции, пусто — не заменяет.</summary>
+    public ICommand SetReplacesCommand { get; }
+
+    public bool IsVersionItemSelected => SelectedRow?.IsVersionItem == true;
+
+    /// <summary>
+    /// Чьи номера может взять строка исполнения: составные части основного исполнения и предыдущих исполнений.
+    /// </summary>
+    public IReadOnlyList<Option> ReplacesOptions
+    {
+        get
+        {
+            if (SelectedRow?.Row is not { Kind: RowKind.VersionItem } item)
+            {
+                return Array.Empty<Option>();
+            }
+
+            var options = new List<Option> { new("", "Не заменяет (свой номер)") };
+            var seen = new HashSet<int>();
+            foreach (var group in VersionSync.Versions(Specification).TakeWhile(g => g.Id != item.GroupId))
+            {
+                foreach (var row in Specification.Rows.Where(r => r.GroupId == group.Id && r.Position.HasValue && !r.InheritsPosition && r.ComponentKey is not null))
+                {
+                    if (seen.Add(row.Position!.Value))
+                    {
+                        options.Add(new Option(row.ComponentKey!, $"{row.Position} — {Describe(row)}"));
+                    }
+                }
+            }
+
+            return options;
+        }
+    }
+
+    /// <summary>Сообщение, если эта сборка — исполнение другой (пометку записывает головная спецификация).</summary>
+    public string? VersionNotice { get; private set; }
+
     /// <summary>Выбран заголовок раздела или группы — в меню есть флаг «Начинать с нового листа».</summary>
-    public bool CanSetNewPage => SelectedRow?.IsHeader == true;
+    public bool CanSetNewPage => SelectedRow?.Kind is SpecRowKind.Header or SpecRowKind.GroupHeader;
 
     /// <summary>Раздел или группа выбранного заголовка начинается с нового листа (в PDF). По умолчанию выключено.</summary>
     public bool SelectedStartsNewPage
@@ -482,6 +532,7 @@ public sealed class SpecificationViewModel : ObservableObject
         var components = _host.ReadComponents();
         var result = SpecificationUpdater.Update(Specification, components, _context, DateTime.UtcNow);
         CheckDocumentFiles();
+        SyncVersions(components);
         Changed(rebuild: true);
 
         if (result.IsInitialBuild)
@@ -802,6 +853,152 @@ public sealed class SpecificationViewModel : ObservableObject
         _dialogs.ShowInFolder(document);
     }
 
+    /// <summary>
+    /// Сравнивает состав головной сборки и сборок-исполнений и раскладывает строки по постоянным и переменным данным.
+    /// Сборку-исполнение не удалось прочитать — раскладка не меняется (предупреждение).
+    /// </summary>
+    private void SyncVersions(IReadOnlyList<ComponentData> head)
+    {
+        if (!VersionSync.HasVersions(Specification))
+        {
+            return;
+        }
+
+        var versions = new Dictionary<string, IReadOnlyList<ComponentData>>();
+        var failed = new List<string>();
+        foreach (var group in VersionSync.Versions(Specification).Where(g => !g.IsBaseVersion))
+        {
+            var data = TryHost(() => _host.ReadVersion(VersionPath(group)));
+            if (data is null)
+            {
+                failed.Add($"{group.Title} ({VersionPath(group)})");
+                continue;
+            }
+
+            group.Title = data.Designation.Length > 0 ? data.Designation : group.Title;
+            versions[group.Id] = data.Components;
+        }
+
+        if (failed.Count > 0)
+        {
+            _dialogs.Warning("Не удалось прочитать сборки-исполнения — переменные данные не обновлены:\n" + string.Join("\n", failed));
+            return;
+        }
+
+        if (TryHost(() => _host.GetExportInfo()) is { } info && VersionSync.Base(Specification) is { } baseVersion &&
+            info.TitleBlock.Designation.Length > 0)
+        {
+            baseVersion.Title = info.TitleBlock.Designation;
+        }
+
+        VersionSync.Sync(Specification, _context, head, versions);
+    }
+
+    private string VersionPath(SpecGroup group) =>
+        System.IO.Path.GetFullPath(System.IO.Path.Combine(_host.AssemblyFolder, group.VersionFile));
+
+    /// <summary>Исполнение выбранного заголовка или строки.</summary>
+    private SpecGroup? SelectedVersion() =>
+        SelectedRow is { } selected ? _context.FindGroup(selected.GroupId) is { IsVersion: true } group ? group : null : null;
+
+    private void AddVersion()
+    {
+        CommitEdits?.Invoke();
+        var path = _dialogs.AskVersionFile(_host.AssemblyFolder);
+        if (path is null)
+        {
+            return;
+        }
+
+        var folder = _host.AssemblyFolder;
+        var relative = StoredPath(folder, path);
+        if (TryHost(() => _host.GetExportInfo()) is not { } info)
+        {
+            return;
+        }
+
+        var data = TryHost(() => _host.ReadVersion(path));
+        if (data is null)
+        {
+            _dialogs.Warning($"Не удалось прочитать сборку-исполнение:\n{path}");
+            return;
+        }
+
+        if (string.Equals(System.IO.Path.GetFullPath(path), System.IO.Path.GetFullPath(System.IO.Path.Combine(folder, _host.DocumentName)), StringComparison.OrdinalIgnoreCase))
+        {
+            _dialogs.Warning("Это сама головная сборка. Выберите сборку-исполнение.");
+            return;
+        }
+
+        var designation = data.Designation.Length > 0 ? data.Designation : System.IO.Path.GetFileNameWithoutExtension(path);
+        var group = VersionSync.AddVersion(Specification, info.TitleBlock.Designation, designation, relative);
+        try
+        {
+            _host.MarkVersion(path, info.TitleBlock.Designation);
+        }
+        catch (Exception ex)
+        {
+            _host.ReportError(ex);
+            _dialogs.Warning($"Не удалось записать в сборку-исполнение пометку об исполнении (файл только для чтения?).\n\n{ex.Message}");
+        }
+
+        SyncVersions(_host.ReadComponents());
+
+        // Часть строк ушла в переменные данные — в постоянных остались пропуски номеров. По ГОСТ 2.113 переменные данные
+        // основного исполнения продолжают номера постоянных: предлагаем перенумеровать.
+        if (_dialogs.Confirm(
+                $"Исполнение «{group.Title}» добавлено.\n\nПеренумеровать позиции по порядку: постоянные данные, затем " +
+                "переменные данные основного исполнения и новые составные части исполнений (ГОСТ 2.113)?\n\n" +
+                "Номера изменятся — потом обновите позиции в BOM и выноски."))
+        {
+            PositionAllocator.RenumberAll(Specification, _context);
+        }
+
+        Changed(rebuild: true);
+        SelectedRow = Rows.FirstOrDefault(r => r.IsGroupHeader && r.GroupId == group.Id);
+    }
+
+    private void RemoveVersion()
+    {
+        if (SelectedVersion() is not { IsBaseVersion: false } group ||
+            !_dialogs.Confirm($"Убрать исполнение «{group.Title}» из спецификации?\n\nЕго строки удалятся; если исполнений не останется, " +
+                              "переменные данные основного исполнения вернутся в постоянные данные."))
+        {
+            return;
+        }
+
+        try
+        {
+            _host.UnmarkVersion(VersionPath(group));
+        }
+        catch (Exception ex)
+        {
+            _host.ReportError(ex);
+        }
+
+        VersionSync.RemoveVersion(Specification, _context, group.Id);
+        if (VersionSync.HasVersions(Specification))
+        {
+            SyncVersions(_host.ReadComponents());
+        }
+
+        Changed(rebuild: true);
+    }
+
+    private void SetReplaces(object? parameter)
+    {
+        if (parameter is not string value || SelectedRow?.Row is not { Kind: RowKind.VersionItem } row)
+        {
+            return;
+        }
+
+        row.ReplacesKey = value.Length > 0 ? value : null;
+        row.Position = null;
+        VersionSync.MarkInherited(Specification);
+        PositionAllocator.AssignMissing(Specification, _context);
+        Changed(rebuild: true, selectRowId: row.Id);
+    }
+
     /// <summary>Отмечает сторонние документы, файлы которых изменились (уведомление, ссылки не меняются).</summary>
     private void CheckDocumentFiles() =>
         TryHostAction(() => ExternalDocuments.CheckFiles(Specification, _host.AssemblyFolder));
@@ -1100,8 +1297,16 @@ public sealed class SpecificationViewModel : ObservableObject
         Changed(rebuild: true);
     }
 
+    /// <summary>Заголовок группы «устанавливаемые по …» правится; у исполнений заголовок — обозначение сборки.</summary>
+    internal bool CanRenameGroup(string groupId) => _context.FindGroup(groupId) is { IsVersion: false };
+
     internal void RenameGroup(string groupId, string title)
     {
+        if (!CanRenameGroup(groupId))
+        {
+            return;
+        }
+
         title = title.Trim();
         if (_context.FindGroup(groupId) is { } group && title.Length > 0 && title != group.Title)
         {
@@ -1144,8 +1349,16 @@ public sealed class SpecificationViewModel : ObservableObject
             return;
         }
 
+        var baseVersion = VersionSync.Base(Specification)?.Id;
         foreach (var row in TargetRows.Where(r => r.GroupId != groupId).ToList())
         {
+            // Перенос между постоянными данными и переменными данными основного исполнения — ручной:
+            // сравнение состава исполнений эту строку больше не переносит.
+            if (baseVersion is not null && (groupId == baseVersion || row.GroupId == baseVersion))
+            {
+                row.ManualVersionPlacement = true;
+            }
+
             SpecificationEditor.MoveToGroup(Specification, _context, row, groupId);
         }
 
@@ -1462,10 +1675,21 @@ public sealed class SpecificationViewModel : ObservableObject
     }
 
     /// <summary>Строки, к которым применяется команда: выбранные (Ctrl/Shift) или текущая.</summary>
+    /// <summary>Выбранные строки, которые можно править (строки других исполнений — только для чтения).</summary>
     private IEnumerable<SpecRow> TargetRows =>
         (_selectedRows.Count > 0 ? _selectedRows : SelectedRow is null ? Enumerable.Empty<SpecRowViewModel>() : new[] { SelectedRow })
         .Select(r => r.Row)
-        .OfType<SpecRow>();
+        .OfType<SpecRow>()
+        .Where(r => r.Kind != RowKind.VersionItem);
+
+    /// <summary>
+    /// Строку можно добавить после выбранной: у неё есть раздел и это не данные другого исполнения
+    /// (они берутся из сборки-исполнения).
+    /// </summary>
+    private bool CanInsertAtSelection =>
+        SelectedRow is { } selected && selected.Kind is not (SpecRowKind.VersionsHeader or SpecRowKind.Notice) &&
+        SectionFor(selected).Length > 0 &&
+        _context.FindGroup(selected.GroupId) is not { IsVersion: true, IsBaseVersion: false };
 
     private bool IsSingleSelection => _selectedRows.Count <= 1;
 
@@ -1718,7 +1942,13 @@ public sealed class SpecificationViewModel : ObservableObject
         GroupOptions.Add(new Option("", "Основная часть"));
         foreach (var group in _context.Groups)
         {
-            GroupOptions.Add(new Option(group.Id, group.Title));
+            // Строки головной сборки переносятся только в переменные данные основного исполнения.
+            if (group.IsVersion && !group.IsBaseVersion)
+            {
+                continue;
+            }
+
+            GroupOptions.Add(new Option(group.Id, group.IsBaseVersion ? $"Переменные данные — {group.Title}" : group.Title));
         }
 
         UpdateStatus();

@@ -175,7 +175,7 @@ public static class VersionSync
             var rows = spec.Rows.Where(r => r.GroupId == group.Id && r.Kind == RowKind.VersionItem).ToList();
             foreach (var row in rows)
             {
-                var inherits = row.ReplacesPosition is not null || known.Contains(row.ComponentKey ?? "");
+                var inherits = row.ReplacesKey is not null || known.Contains(row.ComponentKey ?? "");
                 if (inherits != row.InheritsPosition)
                 {
                     row.InheritsPosition = inherits;
@@ -207,7 +207,7 @@ public static class VersionSync
 
         foreach (var row in inherited)
         {
-            row.Position = row.ReplacesPosition ?? (byKey.TryGetValue(row.ComponentKey ?? "", out var position) ? position : null);
+            row.Position = byKey.TryGetValue(row.ReplacesKey ?? row.ComponentKey ?? "", out var position) ? position : null;
         }
 
         // Внутри каждого раздела исполнения: сначала составные части с унаследованными номерами по возрастанию, затем новые.

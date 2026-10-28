@@ -13,6 +13,15 @@ public enum SpecRowKind
     ManualItem,
     Note,
     Reserve,
+
+    /// <summary>Заголовок «Переменные данные для исполнений».</summary>
+    VersionsHeader,
+
+    /// <summary>Служебная надпись: «Отсутствуют», «Различия исполнений …».</summary>
+    Notice,
+
+    /// <summary>Составная часть другого исполнения — серая, только для чтения.</summary>
+    VersionItem,
 }
 
 /// <summary>Строка таблицы спецификации: заголовок раздела, строка или резервная позиция.</summary>
@@ -44,10 +53,13 @@ public sealed class SpecRowViewModel : ObservableObject
             DisplayRowKind.GroupHeader => SpecRowKind.GroupHeader,
             DisplayRowKind.SectionHeader => SpecRowKind.Header,
             DisplayRowKind.Reserve => SpecRowKind.Reserve,
+            DisplayRowKind.VersionsHeader => SpecRowKind.VersionsHeader,
+            DisplayRowKind.Notice => SpecRowKind.Notice,
             _ => display.Row!.Kind switch
             {
                 RowKind.Component => SpecRowKind.Component,
                 RowKind.ManualItem => SpecRowKind.ManualItem,
+                RowKind.VersionItem => SpecRowKind.VersionItem,
                 _ => SpecRowKind.Note,
             },
         };
@@ -88,9 +100,14 @@ public sealed class SpecRowViewModel : ObservableObject
     public string GroupId => _display.GroupId;
 
     /// <summary>Заголовок раздела или группы.</summary>
-    public bool IsHeader => Kind is SpecRowKind.Header or SpecRowKind.GroupHeader;
+    public bool IsHeader => Kind is SpecRowKind.Header or SpecRowKind.GroupHeader or SpecRowKind.VersionsHeader;
 
-    public bool IsGroupHeader => Kind == SpecRowKind.GroupHeader;
+    /// <summary>Строка другого исполнения: серая, только для чтения.</summary>
+    public bool IsVersionItem => Kind == SpecRowKind.VersionItem;
+
+    public bool IsNotice => Kind == SpecRowKind.Notice;
+
+    public bool IsGroupHeader => Kind is SpecRowKind.GroupHeader or SpecRowKind.VersionsHeader;
 
     public bool IsReserve => Kind == SpecRowKind.Reserve;
 
@@ -108,7 +125,7 @@ public sealed class SpecRowViewModel : ObservableObject
     public bool IsFileChanged => Row?.Status.HasFlag(RowStatus.FileChanged) == true;
 
     /// <summary>Можно ли перетаскивать строку.</summary>
-    public bool CanMove => Row is not null;
+    public bool CanMove => Row is not null && !IsVersionItem;
 
     public string Format { get => Get(SpecColumn.Format); set => Set(SpecColumn.Format, value); }
 
@@ -124,7 +141,7 @@ public sealed class SpecRowViewModel : ObservableObject
 
     public string Name
     {
-        get => IsHeader ? _display.SectionName : IsReserve ? "(резерв)" : Get(SpecColumn.Name);
+        get => IsHeader || IsNotice ? _display.SectionName : IsReserve ? "(резерв)" : Get(SpecColumn.Name);
         set
         {
             if (IsGroupHeader)
@@ -155,8 +172,8 @@ public sealed class SpecRowViewModel : ObservableObject
 
     public bool CanEdit(SpecColumn column) => Kind switch
     {
-        SpecRowKind.GroupHeader => column == SpecColumn.Name,
-        SpecRowKind.Header or SpecRowKind.Reserve => false,
+        SpecRowKind.GroupHeader => column == SpecColumn.Name && _owner.CanRenameGroup(GroupId),
+        SpecRowKind.Header or SpecRowKind.Reserve or SpecRowKind.VersionsHeader or SpecRowKind.Notice or SpecRowKind.VersionItem => false,
         SpecRowKind.Note => column == SpecColumn.Name,
 
         // Номер позиции — только у строк, которые его получают (не в «Документации»).
@@ -205,6 +222,13 @@ public sealed class SpecRowViewModel : ObservableObject
             if (IsFileChanged && column is SpecColumn.Designation or SpecColumn.Name)
             {
                 tips.Add($"Файл документа изменён после добавления в спецификацию:\n{Row!.DocumentFile}\n«Сбросить уведомления» — снять отметку.");
+            }
+
+            if (IsVersionItem && column is SpecColumn.Designation or SpecColumn.Name)
+            {
+                tips.Add(Row!.ReplacesKey is not null
+                    ? $"Составная часть исполнения (из сборки-исполнения, только для чтения). Заменяет поз. {Row.Position}."
+                    : "Составная часть исполнения (из сборки-исполнения, только для чтения).");
             }
 
             if (IsRemoved && column == SpecColumn.Name)

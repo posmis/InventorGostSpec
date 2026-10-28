@@ -78,6 +78,21 @@ public interface ISpecificationHost
     /// </summary>
     string? OpenPdfSettings(string? excelPath);
 
+    /// <summary>
+    /// Состав сборки-исполнения (как <see cref="ReadComponents"/>, ключи — относительно папки головной сборки)
+    /// и её обозначение. <c>null</c> — файл не открылся.
+    /// </summary>
+    VersionData? ReadVersion(string path);
+
+    /// <summary>Записывает в сборку-исполнение пометку «исполнение сборки …» (SPEC_VersionOf).</summary>
+    void MarkVersion(string path, string headDesignation);
+
+    /// <summary>Убирает пометку об исполнении из сборки.</summary>
+    void UnmarkVersion(string path);
+
+    /// <summary>Эта сборка — исполнение другой: текст сообщения; <c>null</c> — нет.</summary>
+    string? VersionOf { get; }
+
     /// <summary>Записывает непредвиденную ошибку окна в журнал.</summary>
     void ReportError(Exception exception);
 }
@@ -85,6 +100,9 @@ public interface ISpecificationHost
 /// <param name="DrawingPath">Найденный чертёж; <c>null</c> — чертежа нет.</param>
 /// <param name="Format">Форматы листов чертежа; пусто — не распознаны.</param>
 public sealed record DrawingFormat(string? DrawingPath, string Format);
+
+/// <param name="Designation">Обозначение сборки-исполнения (Part Number без «СБ»).</param>
+public sealed record VersionData(string Designation, IReadOnlyList<ComponentData> Components);
 
 /// <param name="DefaultPath">Путь к файлу Excel по умолчанию (папка сборки).</param>
 public sealed record ExportInfo(TitleBlock TitleBlock, string DefaultPath);
@@ -121,6 +139,9 @@ public interface IDialogService
     /// Показывает замечания проверки. Возвращает строку, к которой нужно перейти (<c>null</c> — просто закрыть).
     /// </summary>
     string? ShowCheckResults(CheckViewModel viewModel);
+
+    /// <summary>Выбор сборки-исполнения (.iam). <c>null</c> — отмена.</summary>
+    string? AskVersionFile(string folder);
 
     /// <summary>Выбор сторонних документов (PDF, Word…) для «Документации». <c>null</c> — отмена.</summary>
     IReadOnlyList<string>? AskDocumentFiles(string folder);

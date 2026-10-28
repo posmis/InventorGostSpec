@@ -63,6 +63,20 @@ internal sealed class FakeHost : ISpecificationHost
 
     public void WriteTitleProperties(TitleBlock title) => WrittenTitles.Add(title);
 
+    /// <summary>Сборки-исполнения по полному пути.</summary>
+    public Dictionary<string, VersionData> Versions { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public VersionData? ReadVersion(string path) => Versions.TryGetValue(path, out var data) ? data : null;
+
+    /// <summary>Пометки «исполнение сборки …» по пути сборки-исполнения.</summary>
+    public Dictionary<string, string> VersionMarks { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public void MarkVersion(string path, string headDesignation) => VersionMarks[path] = headDesignation;
+
+    public void UnmarkVersion(string path) => VersionMarks.Remove(path);
+
+    public string? VersionOf { get; set; }
+
     /// <summary>Вызовы утилиты PDF: (Excel, PDF). Пока идёт вызов, временный Excel существует.</summary>
     public List<(string Excel, string Pdf, bool ExcelExisted)> PdfCalls { get; } = new();
 
@@ -209,6 +223,10 @@ internal sealed class FakeDialogs : IDialogService
     public IReadOnlyList<string>? DocumentFiles { get; set; }
 
     public IReadOnlyList<string>? AskDocumentFiles(string folder) => DocumentFiles;
+
+    public string? VersionFile { get; set; }
+
+    public string? AskVersionFile(string folder) => VersionFile;
 
     public bool Confirm(string text) => ConfirmAnswer;
 

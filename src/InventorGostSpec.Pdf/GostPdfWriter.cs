@@ -180,17 +180,23 @@ public static class GostPdfWriter
                 var heading = line.Style != LineStyle.Normal;
                 var align = column is DesignationColumn or NoteColumn || (column == NameColumn && !heading) ? TextAlign.Left : TextAlign.Center;
                 var x = ColumnLeft(column);
+                var columnWidth = ColumnWidths[column];
+                if (line.Wide && column == NameColumn)
+                {
+                    x = ColumnLeft(DesignationColumn);
+                    columnWidth = ColumnWidths[DesignationColumn] + ColumnWidths[NameColumn];
+                }
 
                 // Весь текст строк — шрифт 5; в узкой графе «Формат» он сжимается по ширине.
                 // Заголовки разделов и групп «Изделия, устанавливаемые по …» подчёркиваются (каждая строка).
                 var section = line.Style != LineStyle.Normal && column == NameColumn;
                 var padding = column == FormatColumn ? NarrowPadding : (double?)null;
                 var gap = RowBaselineGap;
-                var width = _text.DrawInBox(_gfx, value, x, y, ColumnWidths[column], height, _sizes.TableRows, align, padding, gap);
+                var width = _text.DrawInBox(_gfx, value, x, y, columnWidth, height, _sizes.TableRows, align, padding, gap);
 
                 if (section)
                 {
-                    var left = x + (ColumnWidths[column] - width) / 2;
+                    var left = x + (columnWidth - width) / 2;
                     var underline = y + height - gap + 0.7;
                     _gfx.DrawLine(Thin, left, underline, left + width, underline);
                 }

@@ -27,6 +27,12 @@ public sealed class PrintLine
     public LineStyle Style { get; init; }
 
     /// <summary>
+    /// Заголовок шире графы «Наименование»: пишется одной строкой по центру граф «Обозначение» и «Наименование»
+    /// (как «Переменные данные для исполнений» в примере ГОСТ 2.113).
+    /// </summary>
+    public bool Wide { get; init; }
+
+    /// <summary>
     /// Свободная строка, добавленная вокруг заголовка по ГОСТ 2.106. В отличие от резервной строки,
     /// не ставится две подряд.
     /// </summary>
@@ -190,7 +196,17 @@ public static class SpecPaginator
             {
                 var style = type == ExcelFormat.RowTypes.Section ? LineStyle.Section : LineStyle.Group;
                 var lines = new List<PrintLine> { PrintLine.Spacer };
-                lines.AddRange(wrap(row.Name, nameWidth).Select(text => new PrintLine { Name = text, Style = style }));
+                var wrapped = wrap(row.Name, nameWidth);
+                var wideWidth = GostLayout.ColumnWidths[GostLayout.DesignationColumn] + GostLayout.ColumnWidths[GostLayout.NameColumn] - 2 * GostLayout.Padding;
+                if (wrapped.Count > 1 && !row.Name.Contains('\n') && wrap(row.Name, wideWidth) is { Count: 1 } wide)
+                {
+                    lines.Add(new PrintLine { Name = wide[0], Style = style, Wide = true });
+                }
+                else
+                {
+                    lines.AddRange(wrapped.Select(text => new PrintLine { Name = text, Style = style }));
+                }
+
                 lines.Add(PrintLine.Spacer);
                 return new Block(lines, true);
             }

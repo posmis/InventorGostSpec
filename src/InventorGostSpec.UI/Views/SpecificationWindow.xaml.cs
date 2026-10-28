@@ -99,6 +99,17 @@ public partial class SpecificationWindow : Window, IDialogService
         return dialog.ShowDialog(this) == true ? dialog.FileName : null;
     }
 
+    public string? AskVersionFile(string folder)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Сборка-исполнение",
+            Filter = "Сборка Inventor (*.iam)|*.iam",
+            InitialDirectory = folder,
+        };
+        return dialog.ShowDialog(this) == true ? dialog.FileName : null;
+    }
+
     public IReadOnlyList<string>? AskDocumentFiles(string folder)
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
@@ -470,6 +481,15 @@ public partial class SpecificationWindow : Window, IDialogService
     private void OnSortGroupClick(object sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { DataContext: Option option } && _viewModel?.SetSortGroupCommand is { } command &&
+            command.CanExecute(option.Id))
+        {
+            command.Execute(option.Id);
+        }
+    }
+
+    private void OnReplacesClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { DataContext: Option option } && _viewModel?.SetReplacesCommand is { } command &&
             command.CanExecute(option.Id))
         {
             command.Execute(option.Id);

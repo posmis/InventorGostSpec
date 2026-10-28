@@ -193,6 +193,32 @@ public sealed class SpecificationViewModel : ObservableObject
         private set => SetField(ref _statusText, value);
     }
 
+    /// <summary>
+    /// Раздел «Переменные данные для исполнений» и без исполнений: основное исполнение, в которое можно переносить
+    /// строки. При добавленных исполнениях выключить нельзя.
+    /// </summary>
+    public bool ShowVariableData
+    {
+        get => VersionSync.IsShown(Specification);
+        set
+        {
+            if (value == ShowVariableData)
+            {
+                return;
+            }
+
+            var designation = TryHost(() => _host.GetExportInfo())?.TitleBlock.Designation ?? "";
+            if (!VersionSync.SetShown(Specification, _context, value, designation.Length > 0 ? designation : _host.DocumentName))
+            {
+                _dialogs.Info("В спецификации есть исполнения — раздел «Переменные данные для исполнений» нужен. " +
+                              "Чтобы его убрать, уберите исполнения (ПКМ на заголовке исполнения).");
+            }
+
+            OnPropertyChanged();
+            Changed(rebuild: true);
+        }
+    }
+
     public bool ShowReserveRows
     {
         get => Specification.ShowReserveRows;
@@ -958,6 +984,7 @@ public sealed class SpecificationViewModel : ObservableObject
         }
 
         Changed(rebuild: true);
+        OnPropertyChanged(nameof(ShowVariableData));
         SelectedRow = Rows.FirstOrDefault(r => r.IsGroupHeader && r.GroupId == group.Id);
     }
 
@@ -986,6 +1013,7 @@ public sealed class SpecificationViewModel : ObservableObject
         }
 
         Changed(rebuild: true);
+        OnPropertyChanged(nameof(ShowVariableData));
     }
 
     private void SetReplaces(object? parameter)
@@ -1732,6 +1760,7 @@ public sealed class SpecificationViewModel : ObservableObject
         _context = CreateContext();
         IsDirty = _current != _saved;
         OnPropertyChanged(nameof(ShowReserveRows));
+        OnPropertyChanged(nameof(ShowVariableData));
         Rebuild();
         OnUndoChanged();
     }

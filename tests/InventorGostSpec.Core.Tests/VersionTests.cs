@@ -195,3 +195,37 @@ public class VersionTests
         Assert.Equal(group.Id, rotor.GroupId);
     }
 }
+
+public class VariableDataSwitchTests
+{
+    [Fact]
+    public void Switch_shows_empty_variable_data_and_returns_rows_when_turned_off()
+    {
+        var spec = new Specification();
+        var context = TestData.Context(spec);
+        SpecificationUpdater.Update(spec, new[] { TestData.Part("А.001", "Корпус"), TestData.Part("А.002", "Ось") }, context, TestData.Now);
+
+        Assert.True(VersionSync.SetShown(spec, context, true, "АБВГ.00.00.000"));
+
+        var rows = SpecificationViewBuilder.Build(spec, context).ToList();
+        Assert.Contains(rows, r => r.Kind == DisplayRowKind.VersionsHeader);
+        var header = rows.FindIndex(r => r.Kind == DisplayRowKind.GroupHeader && r.SectionName == "АБВГ.00.00.000");
+        Assert.Equal("Отсутствуют", rows[header + 1].SectionName);
+
+        // Строку можно перенести в основное исполнение вручную.
+        var axis = TestData.ByName(spec, "Ось");
+        Editing.SpecificationEditor.MoveToGroup(spec, context, axis, VersionSync.Base(spec)!.Id);
+        Assert.Contains(SpecificationViewBuilder.Build(spec, context), r => r.Row == axis);
+
+        // С исполнением выключить нельзя.
+        VersionSync.AddVersion(spec, "АБВГ.00.00.000", "АБВГ.00.00.000-01", "v1.iam");
+        Assert.False(VersionSync.SetShown(spec, context, false, "АБВГ.00.00.000"));
+        VersionSync.RemoveVersion(spec, context, spec.Groups.Single(g => g.VersionFile == "v1.iam").Id);
+        Assert.NotNull(VersionSync.Base(spec)); // галочка включена — раздел остаётся
+
+        Assert.True(VersionSync.SetShown(spec, context, false, "АБВГ.00.00.000"));
+        Assert.Empty(spec.Groups);
+        Assert.Equal("", axis.GroupId);
+        Assert.DoesNotContain(SpecificationViewBuilder.Build(spec, context), r => r.Kind == DisplayRowKind.VersionsHeader);
+    }
+}

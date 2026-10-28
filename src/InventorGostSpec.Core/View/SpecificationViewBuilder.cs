@@ -44,7 +44,7 @@ public static class SpecificationViewBuilder
         SpecificationEditor.NormalizeGroups(spec);
         var result = new List<DisplayRow>();
         var blocks = SpecBlocks.All(spec, context);
-        var versions = VersionSync.HasVersions(spec) ? VersionSync.Versions(spec).ToList() : new List<SpecGroup>();
+        var versions = VersionSync.IsShown(spec) ? VersionSync.Versions(spec).ToList() : new List<SpecGroup>();
         var versionsHeaderShown = false;
         var hidden = new HashSet<string>();
 
@@ -68,7 +68,7 @@ public static class SpecificationViewBuilder
                 if (!versionsHeaderShown)
                 {
                     versionsHeaderShown = true;
-                    if (versions.All(v => !HasData(v)))
+                    if (VersionSync.HasVersions(spec) && versions.All(v => !HasData(v)))
                     {
                         // Переменных данных нет ни у одного исполнения (п. 5.5.1 е).
                         result.Add(new DisplayRow(DisplayRowKind.Notice, "", "", DifferencesNotice(versions), null, null));

@@ -185,6 +185,8 @@
                                                  ToolTip="Резерв номеров позиций по разделам — для основной части и каждой группы" />
                             <CheckBox Margin="6,0,2,0" VerticalAlignment="Center" IsChecked="{Binding ShowReserveRows}" Content="Показывать резерв"
                                       ToolTip="Показывать пустые строки резервных позиций" />
+                            <CheckBox Margin="6,0,2,0" VerticalAlignment="Center" IsChecked="{Binding ShowVariableData}" Content="Переменные данные"
+                                      ToolTip="Раздел «Переменные данные для исполнений» (ГОСТ 2.113) и без исполнений: основное исполнение под обозначением сборки, в него можно переносить строки («Перенести в группу»). С первым исполнением («Исполнение») раздел появляется сам; пока есть исполнения, убрать его нельзя." />
                         </StackPanel>
                     </HeaderedContentControl>
 

@@ -36,6 +36,41 @@ public static class VersionSync
     /// <summary>Есть ли исполнения, кроме основного.</summary>
     public static bool HasVersions(Specification spec) => Versions(spec).Any(g => !g.IsBaseVersion);
 
+    /// <summary>Показывается ли раздел «Переменные данные для исполнений»: есть исполнения или включена галочка.</summary>
+    public static bool IsShown(Specification spec) => HasVersions(spec) || (spec.ShowVariableData && Base(spec) is not null);
+
+    /// <summary>
+    /// Галочка «Переменные данные для исполнений»: включена — создаётся основное исполнение (пустое); выключена — если
+    /// других исполнений нет, его строки и группы возвращаются в постоянные данные. При исполнениях выключить нельзя
+    /// (раздел нужен) — возвращает <c>false</c>.
+    /// </summary>
+    public static bool SetShown(Specification spec, SpecificationContext context, bool shown, string baseDesignation)
+    {
+        if (!shown && HasVersions(spec))
+        {
+            return false;
+        }
+
+        spec.ShowVariableData = shown;
+        if (shown)
+        {
+            if (Base(spec) is { } existing)
+            {
+                existing.Title = baseDesignation;
+            }
+            else
+            {
+                spec.Groups.Add(new SpecGroup { Title = baseDesignation, IsVersion = true });
+            }
+        }
+        else
+        {
+            RemoveVersion(spec, context, "");
+        }
+
+        return true;
+    }
+
     /// <summary>Исполнение, к которому относится группа: само исполнение или исполнение группы внутри него.</summary>
     public static SpecGroup? VersionOf(Specification spec, string groupId)
     {
@@ -93,7 +128,7 @@ public static class VersionSync
             spec.Groups.RemoveAll(g => scope.Contains(g.Id));
         }
 
-        if (!HasVersions(spec) && Base(spec) is { } baseVersion)
+        if (!HasVersions(spec) && !spec.ShowVariableData && Base(spec) is { } baseVersion)
         {
             // Группы основного исполнения становятся группами постоянных данных.
             foreach (var child in spec.Groups.Where(g => g.VersionId == baseVersion.Id).ToList())

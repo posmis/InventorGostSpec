@@ -79,6 +79,12 @@ public sealed class Specification
     /// <summary>Резервы позиций этой спецификации, важнее глобальных настроек.</summary>
     public Dictionary<string, ReserveSettings> ReserveOverrides { get; set; } = new();
 
+    /// <summary>
+    /// Раздел «Переменные данные для исполнений» показывается и без исполнений (галочка в окне): основное исполнение
+    /// с заголовком-обозначением, в него можно переносить строки. Без галочки раздел появляется с первым исполнением.
+    /// </summary>
+    public bool ShowVariableData { get; set; }
+
     /// <summary>Показывать ли пустые строки резервных позиций.</summary>
     public bool ShowReserveRows { get; set; } = true;
 

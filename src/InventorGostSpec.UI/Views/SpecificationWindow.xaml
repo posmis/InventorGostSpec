@@ -25,6 +25,12 @@
                     <TextBlock x:Name="BadgeText" Style="{StaticResource BadgeText}" />
                 </Border>
                 <DataTemplate.Triggers>
+                    <!-- Начало листа PDF — если у строки нет другой метки. -->
+                    <DataTrigger Binding="{Binding IsPageStart}" Value="True">
+                        <Setter TargetName="Badge" Property="Visibility" Value="Visible" />
+                        <Setter TargetName="Badge" Property="Background" Value="{StaticResource Brush.Accent}" />
+                        <Setter TargetName="BadgeText" Property="Text" Value="{Binding PageStartText}" />
+                    </DataTrigger>
                     <DataTrigger Binding="{Binding IsManual}" Value="True">
                         <Setter TargetName="Badge" Property="Visibility" Value="Visible" />
                         <Setter TargetName="Badge" Property="Background" Value="{StaticResource Brush.ManualBadge}" />
@@ -263,6 +269,11 @@
                     <Style TargetType="DataGridRow">
                         <Setter Property="Foreground" Value="{StaticResource Brush.Text}" />
                         <Style.Triggers>
+                            <!-- Граница листа PDF: синяя линия над первой строкой листа. -->
+                            <DataTrigger Binding="{Binding IsPageStart}" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                <Setter Property="BorderThickness" Value="0,3,0,0" />
+                            </DataTrigger>
                             <DataTrigger Binding="{Binding IsNew}" Value="True">
                                 <Setter Property="Background" Value="{StaticResource Brush.NewRow}" />
                             </DataTrigger>
@@ -372,6 +383,9 @@
                         </MenuItem>
                         <MenuItem Header="Раздел по умолчанию" Command="{Binding ResetSectionsCommand}" CommandParameter="selected"
                                   ToolTip="Сбросить раздел выбранных компонентов к разделу по типу (стандартные изделия не трогаются)" />
+                        <MenuItem Header="Начинать с нового листа" IsCheckable="True" IsChecked="{Binding SelectedStartsNewPage}"
+                                  Visibility="{Binding CanSetNewPage, Converter={StaticResource BoolToVisibility}}"
+                                  ToolTip="Раздел или группа «устанавливаемые по …» в PDF начинается с нового листа (в Excel — строка «Новый лист» перед заголовком). Граница листа видна в таблице синей линией." />
                         <MenuItem Header="Удалить группу" Command="{Binding DeleteGroupCommand}" />
                         <MenuItem Header="Убрать пустой раздел" Command="{Binding HideSectionCommand}"
                                   ToolTip="Убрать вставленный раздел, в котором нет строк (выберите его заголовок)" />

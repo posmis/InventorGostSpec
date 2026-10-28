@@ -636,3 +636,72 @@ public class ConfirmationViewModelTests
         Assert.Equal("Выполнить", vm.ActionText);
     }
 }
+
+public class PageMarkTests
+{
+    private readonly FakeHost _host = new();
+    private readonly FakeDialogs _dialogs = new();
+
+    private SpecificationViewModel Open(int parts)
+    {
+        for (var i = 1; i <= parts; i++)
+        {
+            _host.Components.Add(new ComponentData { Key = $"p{i}.ipt", Kind = ComponentKind.Part, Designation = $"А.{i:000}", Name = $"Деталь {i}", Format = "А4", Quantity = 1 });
+        }
+
+        _host.Components.Add(new ComponentData { Key = "u.iam", Kind = ComponentKind.Assembly, Designation = "Б.001", Name = "Узел", Quantity = 1 });
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, _host.Components, SpecificationContext.Create(_host.Settings, spec), DateTime.UtcNow);
+        return new SpecificationViewModel(_host, _dialogs, spec, post: action => action());
+    }
+
+    [Fact]
+    public void Sheet_boundaries_are_marked_like_in_pdf()
+    {
+        var vm = Open(40);
+
+        Assert.True(vm.PageCount >= 2);
+        var start = vm.Rows.First(r => r.IsPageStart);
+        Assert.Equal(2, start.PageStart);
+        Assert.Equal("Лист 2", start.PageStartText);
+        Assert.Equal(vm.PageCount - 1, vm.Rows.Count(r => r.IsPageStart));
+        Assert.Contains($"листов PDF: {vm.PageCount}", vm.StatusText);
+    }
+
+    [Fact]
+    public void Section_can_start_a_new_sheet_from_the_context_menu()
+    {
+        var vm = Open(3);
+        Assert.Equal(1, vm.PageCount);
+
+        var header = vm.Rows.Single(r => r.IsHeader && r.SectionId == SectionIds.Parts);
+        vm.SelectedRow = header;
+        Assert.True(vm.CanSetNewPage);
+        Assert.False(vm.SelectedStartsNewPage); // по умолчанию выключено
+
+        vm.SelectedStartsNewPage = true;
+
+        Assert.Equal(2, vm.PageCount);
+        Assert.Equal(2, vm.Rows.Single(r => r.IsHeader && r.SectionId == SectionIds.Parts).PageStart);
+        Assert.True(vm.IsDirty);
+
+        vm.SelectedRow = vm.Rows.First(r => r.Row is not null);
+        Assert.False(vm.CanSetNewPage); // только у заголовков
+    }
+
+    [Fact]
+    public void Group_can_start_a_new_sheet()
+    {
+        var vm = Open(3);
+        var spec = vm.Specification;
+        var group = Core.Editing.SpecificationEditor.AddGroup(spec, "Изделия, устанавливаемые по чертежу А.000МЭ");
+        Core.Editing.SpecificationEditor.MoveToGroup(spec, SpecificationContext.Create(_host.Settings, spec), spec.Rows.First(r => r.Kind == RowKind.Component), group.Id);
+        vm = new SpecificationViewModel(_host, _dialogs, spec, post: action => action());
+
+        vm.SelectedRow = vm.Rows.Single(r => r.IsGroupHeader);
+        vm.SelectedStartsNewPage = true;
+
+        Assert.True(vm.Specification.StartsNewPage(group.Id, ""));
+        Assert.Equal(2, vm.Rows.Single(r => r.IsGroupHeader).PageStart);
+    }
+}

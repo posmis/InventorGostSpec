@@ -16,6 +16,9 @@ public sealed class SpecGroup
 
     /// <summary>Резерв позиций по разделам группы. Для незаданных разделов — как в основной части.</summary>
     public Dictionary<string, ReserveSettings> Reserves { get; set; } = new();
+
+    /// <summary>Группа начинается с нового листа (в Excel перед её заголовком — строка «Новый лист»).</summary>
+    public bool StartsNewPage { get; set; }
 }
 
 /// <summary>Раздел, вставленный вручную (в основную часть или в группу): показывается и без строк.</summary>

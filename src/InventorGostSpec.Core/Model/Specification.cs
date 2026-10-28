@@ -41,6 +41,38 @@ public sealed class Specification
     /// </summary>
     public List<ShownSection> ShownSections { get; set; } = new();
 
+    /// <summary>
+    /// Разделы (в основной части или в группе), которые начинаются с нового листа. По умолчанию — ни один.
+    /// Группа целиком с нового листа — <see cref="SpecGroup.StartsNewPage"/>.
+    /// </summary>
+    public List<ShownSection> NewPageSections { get; set; } = new();
+
+    /// <summary>Начинается ли с нового листа заголовок раздела или группы (<paramref name="sectionId"/> пусто — группа).</summary>
+    public bool StartsNewPage(string groupId, string sectionId) =>
+        sectionId.Length == 0
+            ? Groups.FirstOrDefault(g => g.Id == groupId)?.StartsNewPage == true
+            : NewPageSections.Any(s => s.Matches(groupId, sectionId));
+
+    /// <summary>Включает или выключает «с нового листа» у раздела или группы (<paramref name="sectionId"/> пусто — группа).</summary>
+    public void SetStartsNewPage(string groupId, string sectionId, bool value)
+    {
+        if (sectionId.Length == 0)
+        {
+            if (Groups.FirstOrDefault(g => g.Id == groupId) is { } group)
+            {
+                group.StartsNewPage = value;
+            }
+
+            return;
+        }
+
+        NewPageSections.RemoveAll(s => s.Matches(groupId, sectionId));
+        if (value)
+        {
+            NewPageSections.Add(new ShownSection { GroupId = groupId, SectionId = sectionId });
+        }
+    }
+
     /// <summary>Резервы позиций этой спецификации, важнее глобальных настроек.</summary>
     public Dictionary<string, ReserveSettings> ReserveOverrides { get; set; } = new();
 

@@ -47,9 +47,9 @@ public static class ExcelExporter
         sheet.Row(1).Height = 22;
 
         var row = 2;
-        foreach (var display in SpecificationViewBuilder.Build(specification, context))
+        foreach (var (display, values) in Rows(specification, context))
         {
-            WriteRow(sheet, row, display);
+            WriteRow(sheet, row, display, values);
             row++;
         }
 
@@ -78,9 +78,78 @@ public static class ExcelExporter
         sheet.PageSetup.SetRowsToRepeatAtTop(1, 1);
     }
 
-    private static void WriteRow(IXLWorksheet sheet, int row, DisplayRow display)
+    /// <summary>
+    /// Строки листа «Спецификация» — те же, что пишутся в файл: по ним окно спецификации показывает границы листов PDF
+    /// (<c>Display</c> — строка окна; <c>null</c> — служебная строка «Новый лист» перед разделом или группой с нового листа).
+    /// </summary>
+    public static List<(DisplayRow? Display, SheetRow Values)> Rows(Specification specification, SpecificationContext context) =>
+        Rows(specification, SpecificationViewBuilder.Build(specification, context));
+
+    /// <param name="displays">Строки окна, уже построенные <see cref="SpecificationViewBuilder"/>.</param>
+    public static List<(DisplayRow? Display, SheetRow Values)> Rows(Specification specification, IEnumerable<DisplayRow> displays)
+    {
+        var result = new List<(DisplayRow?, SheetRow)>();
+        foreach (var display in displays)
+        {
+            var newPage = display.Kind switch
+            {
+                DisplayRowKind.GroupHeader => specification.StartsNewPage(display.GroupId, ""),
+                DisplayRowKind.SectionHeader => specification.StartsNewPage(display.GroupId, display.SectionId),
+                _ => false,
+            };
+            if (newPage)
+            {
+                result.Add((null, new SheetRow(ExcelFormat.RowTypes.PageBreak, "", "", "", "", "", "", "", "")));
+            }
+
+            result.Add((display, ToSheetRow(display)));
+        }
+
+        return result;
+    }
+
+    /// <summary>Значения строки файла Excel для строки окна (как их прочитает утилита PDF).</summary>
+    public static SheetRow ToSheetRow(DisplayRow display)
+    {
+        switch (display.Kind)
+        {
+            case DisplayRowKind.GroupHeader:
+                return new SheetRow(ExcelFormat.RowTypes.Group, "", "", "", "", display.SectionName, "", "", "");
+            case DisplayRowKind.SectionHeader:
+                return new SheetRow(ExcelFormat.RowTypes.Section, "", "", "", "", display.SectionName, "", "", "");
+            case DisplayRowKind.Reserve:
+                return new SheetRow(ExcelFormat.RowTypes.Reserve, "", "", display.ReservedPosition?.ToString() ?? "", "", "", "", "", "");
+            case DisplayRowKind.Row when display.Row is { Kind: RowKind.Note } note:
+                return new SheetRow(ExcelFormat.RowTypes.Text, "", "", "", "", note.Get(SpecColumn.Name), "", "", "");
+            case DisplayRowKind.Row when display.Row is { } item:
+                // Несколько форматов или дополнительный формат — «*)» в графе «Формат», форматы — в «Примечании».
+                var (format, itemNote) = SheetFormats.ForColumns(item.Get(SpecColumn.Format), item.Get(SpecColumn.Note));
+                return new SheetRow(
+                    ExcelFormat.RowTypes.Item,
+                    format,
+                    item.Get(SpecColumn.Zone),
+                    item.Position?.ToString() ?? "",
+                    item.Get(SpecColumn.Designation),
+                    item.Get(SpecColumn.Name),
+                    // У документов количество не пишется (ГОСТ 2.106).
+                    ComponentSnapshot.IsDocument(item.SectionId) ? "" : item.Get(SpecColumn.Quantity),
+                    item.Get(SpecColumn.Unit),
+                    itemNote);
+            default:
+                return new SheetRow("", "", "", "", "", "", "", "", "");
+        }
+    }
+
+    private static void WriteRow(IXLWorksheet sheet, int row, DisplayRow? display, SheetRow values)
     {
         var range = sheet.Range(row, 1, row, ExcelFormat.Columns.Length);
+        if (display is null)
+        {
+            sheet.Cell(row, ExcelFormat.TypeColumn).Value = values.Type;
+            sheet.Cell(row, ExcelFormat.TypeColumn).Style.Font.FontColor = MutedFont;
+            return;
+        }
+
         switch (display.Kind)
         {
             case DisplayRowKind.GroupHeader:
@@ -116,26 +185,23 @@ public static class ExcelExporter
                 break;
 
             case DisplayRowKind.Row when display.Row is { } item:
-                // Несколько форматов или дополнительный формат — «*)» в графе «Формат», форматы — в «Примечании».
-                var (format, itemNote) = SheetFormats.ForColumns(item.Get(SpecColumn.Format), item.Get(SpecColumn.Note));
                 sheet.Cell(row, ExcelFormat.TypeColumn).Value = ExcelFormat.RowTypes.Item;
-                sheet.Cell(row, ExcelFormat.FormatColumn).Value = format;
-                sheet.Cell(row, ExcelFormat.ZoneColumn).Value = item.Get(SpecColumn.Zone);
+                sheet.Cell(row, ExcelFormat.FormatColumn).Value = values.Format;
+                sheet.Cell(row, ExcelFormat.ZoneColumn).Value = values.Zone;
                 if (item.Position is { } position)
                 {
                     sheet.Cell(row, ExcelFormat.PositionColumn).Value = position;
                 }
 
-                sheet.Cell(row, ExcelFormat.DesignationColumn).Value = item.Get(SpecColumn.Designation);
-                sheet.Cell(row, ExcelFormat.NameColumn).Value = item.Get(SpecColumn.Name);
-                // У документов количество не пишется (ГОСТ 2.106).
-                if (!ComponentSnapshot.IsDocument(item.SectionId))
+                sheet.Cell(row, ExcelFormat.DesignationColumn).Value = values.Designation;
+                sheet.Cell(row, ExcelFormat.NameColumn).Value = values.Name;
+                if (values.Quantity.Length > 0)
                 {
-                    SetQuantity(sheet.Cell(row, ExcelFormat.QuantityColumn), item.Get(SpecColumn.Quantity));
+                    SetQuantity(sheet.Cell(row, ExcelFormat.QuantityColumn), values.Quantity);
                 }
 
-                sheet.Cell(row, ExcelFormat.UnitColumn).Value = item.Get(SpecColumn.Unit);
-                sheet.Cell(row, ExcelFormat.NoteColumn).Value = itemNote;
+                sheet.Cell(row, ExcelFormat.UnitColumn).Value = values.Unit;
+                sheet.Cell(row, ExcelFormat.NoteColumn).Value = values.Note;
                 break;
         }
 

@@ -120,3 +120,48 @@ public class ExcelExporterTests : IDisposable
         Assert.Equal("10.25", changes[1].Date);
     }
 }
+
+public class NewPageTests
+{
+    [Fact]
+    public void New_page_row_goes_before_flagged_section_and_group_and_is_read_back()
+    {
+        var spec = new Specification();
+        var context = SpecificationContext.Create(null, spec);
+        SpecificationUpdater.Update(spec, new[]
+        {
+            new ComponentData { Key = "a.ipt", Kind = ComponentKind.Part, Designation = "А.001", Name = "Корпус", Quantity = 1 },
+            new ComponentData { Key = "u.iam", Kind = ComponentKind.Assembly, Designation = "Б.001", Name = "Узел", Quantity = 1 },
+        }, context, DateTime.UtcNow);
+        var group = SpecificationEditor.AddGroup(spec, "Изделия, устанавливаемые по чертежу А.000МЭ", startsNewPage: true);
+        SpecificationEditor.MoveToGroup(spec, context, spec.Rows.Single(r => r.Get(SpecColumn.Name) == "Корпус"), group.Id);
+        spec.SetStartsNewPage("", SectionIds.AssemblyUnits, true);
+
+        var rows = ExcelExporter.Rows(spec, context);
+        var types = rows.Select(r => r.Values.Type).ToList();
+
+        var units = rows.FindIndex(r => r.Display?.Kind == Core.View.DisplayRowKind.SectionHeader && r.Display.SectionId == SectionIds.AssemblyUnits);
+        Assert.Equal(ExcelFormat.RowTypes.PageBreak, types[units - 1]);
+        var groupHeader = types.IndexOf(ExcelFormat.RowTypes.Group);
+        Assert.Equal(ExcelFormat.RowTypes.PageBreak, types[groupHeader - 1]);
+        Assert.Equal(2, types.Count(t => t == ExcelFormat.RowTypes.PageBreak));
+
+        // Выключено — строки «Новый лист» нет.
+        spec.SetStartsNewPage("", SectionIds.AssemblyUnits, false);
+        spec.SetStartsNewPage(group.Id, "", false);
+        Assert.DoesNotContain(ExcelExporter.Rows(spec, context), r => r.Values.Type == ExcelFormat.RowTypes.PageBreak);
+
+        // Файл Excel: та же строка, утилита PDF её читает.
+        spec.SetStartsNewPage("", SectionIds.AssemblyUnits, true);
+        var path = Path.Combine(Path.GetTempPath(), $"np-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            ExcelExporter.Export(spec, context, new TitleBlock(), path);
+            Assert.Contains(ExcelReader.Read(path).Rows, r => r.Type == ExcelFormat.RowTypes.PageBreak);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+}

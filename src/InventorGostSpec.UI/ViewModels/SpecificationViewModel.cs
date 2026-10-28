@@ -160,6 +160,8 @@ public sealed class SpecificationViewModel : ObservableObject
                 OnPropertyChanged(nameof(CanAddExternalDocument));
                 OnPropertyChanged(nameof(IsDocumentSelected));
                 OnPropertyChanged(nameof(IsNotDocumentSelected));
+                OnPropertyChanged(nameof(CanSetNewPage));
+                OnPropertyChanged(nameof(SelectedStartsNewPage));
             }
         }
     }
@@ -275,6 +277,27 @@ public sealed class SpecificationViewModel : ObservableObject
 
     /// <summary>Показать файл компонента выбранной строки в Проводнике.</summary>
     public ICommand ShowComponentFileCommand { get; }
+
+    /// <summary>Выбран заголовок раздела или группы — в меню есть флаг «Начинать с нового листа».</summary>
+    public bool CanSetNewPage => SelectedRow?.IsHeader == true;
+
+    /// <summary>Раздел или группа выбранного заголовка начинается с нового листа (в PDF). По умолчанию выключено.</summary>
+    public bool SelectedStartsNewPage
+    {
+        get => SelectedRow is { IsHeader: true } header &&
+               Specification.StartsNewPage(header.GroupId, header.IsGroupHeader ? "" : header.SectionId);
+        set
+        {
+            if (SelectedRow is not { IsHeader: true } header || value == SelectedStartsNewPage)
+            {
+                return;
+            }
+
+            Specification.SetStartsNewPage(header.GroupId, header.IsGroupHeader ? "" : header.SectionId, value);
+            Changed(rebuild: true);
+            OnPropertyChanged();
+        }
+    }
 
     /// <summary>Варианты графы «Формат» у детали без чертежа.</summary>
     public IReadOnlyList<Option> PartWithoutDrawingOptions { get; } = new[]
@@ -1513,8 +1536,53 @@ public sealed class SpecificationViewModel : ObservableObject
         }
         else
         {
+            // Строки не перестраиваются, но текст мог стать длиннее или короче — границы листов пересчитываются.
+            var pageStarts = PageStarts();
+            foreach (var row in Rows)
+            {
+                row.PageStart = pageStarts.TryGetValue(row.Display, out var sheet) ? sheet : null;
+            }
+
             UpdateStatus();
         }
+    }
+
+    /// <summary>Все строки окна (без учёта поиска) — по ним считаются границы листов.</summary>
+    private IReadOnlyList<DisplayRow> _displays = Array.Empty<DisplayRow>();
+
+    /// <summary>Сколько листов получится в PDF (по настройкам утилиты PDF); 0 — не удалось посчитать.</summary>
+    public int PageCount { get; private set; }
+
+    /// <summary>
+    /// Строки, с которых начинаются листы PDF (кроме первого), → номер листа. Раскладка та же, что у утилиты PDF:
+    /// строки файла Excel, шрифт, размеры и сужение из её настроек. Ошибка (нет шрифта) — без разметки.
+    /// </summary>
+    private Dictionary<DisplayRow, int> PageStarts()
+    {
+        var result = new Dictionary<DisplayRow, int>(ReferenceEqualityComparer.Instance);
+        PageCount = 0;
+        try
+        {
+            var rows = Excel.ExcelExporter.Rows(Specification, _displays);
+            var file = new Excel.SpecificationFile();
+            file.Rows.AddRange(rows.Select(r => r.Values));
+            var pages = Pdf.GostPdfWriter.Paginate(file, Pdf.PdfSettings.Load().ToOptions());
+            PageCount = pages.Count;
+            for (var page = 1; page < pages.Count; page++)
+            {
+                var source = pages[page].Select(l => l.SourceRow).FirstOrDefault(i => i >= 0, -1);
+                if (source >= 0 && rows[source].Display is { } display)
+                {
+                    result.TryAdd(display, page + 1);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _host.ReportError(ex);
+        }
+
+        return result;
     }
 
     private void Rebuild(string? selectRowId = null)
@@ -1528,9 +1596,11 @@ public sealed class SpecificationViewModel : ObservableObject
 
         Rebuilding?.Invoke();
         Rows.Clear();
-        foreach (var display in Filter(SpecificationViewBuilder.Build(Specification, _context)))
+        _displays = SpecificationViewBuilder.Build(Specification, _context);
+        var pageStarts = PageStarts();
+        foreach (var display in Filter(_displays))
         {
-            Rows.Add(new SpecRowViewModel(this, display));
+            Rows.Add(new SpecRowViewModel(this, display) { PageStart = pageStarts.TryGetValue(display, out var sheet) ? sheet : null });
         }
 
         OnPropertyChanged(nameof(IsEmpty));
@@ -1717,6 +1787,7 @@ public sealed class SpecificationViewModel : ObservableObject
         AddCount(parts, "новых", rows.Count(r => r.Status.HasFlag(RowStatus.New)));
         AddCount(parts, "изменённых", rows.Count(r => r.Status.HasFlag(RowStatus.Changed)));
         AddCount(parts, "удалённых из сборки", rows.Count(r => r.IsRemoved));
+        AddCount(parts, "листов PDF", PageCount);
         AddCount(parts, "изменённых файлов документов", rows.Count(r => r.Status.HasFlag(RowStatus.FileChanged)));
         AddCount(parts, "без позиции", rows.Count(r => !r.IsRemoved && r.Position is null && PositionAllocator.IsNumbered(r, _context)));
         if (Specification.LastUpdatedUtc is { } updated)

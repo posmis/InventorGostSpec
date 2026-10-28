@@ -56,6 +56,28 @@ public sealed class SpecRowViewModel : ObservableObject
 
     public SpecRowKind Kind { get; }
 
+    /// <summary>Номер листа PDF, который начинается с этой строки (над строкой — линия границы листа).</summary>
+    public int? PageStart
+    {
+        get => _pageStart;
+        set
+        {
+            if (SetField(ref _pageStart, value))
+            {
+                OnPropertyChanged(nameof(IsPageStart));
+                OnPropertyChanged(nameof(PageStartText));
+            }
+        }
+    }
+
+    private int? _pageStart;
+
+    internal DisplayRow Display => _display;
+
+    public bool IsPageStart => PageStart is not null;
+
+    public string? PageStartText => PageStart is { } page ? $"Лист {page}" : null;
+
     public SpecRow? Row => _display.Row;
 
     public string? RowId => Row?.Id;

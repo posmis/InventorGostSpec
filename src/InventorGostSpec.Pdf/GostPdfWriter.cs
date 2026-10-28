@@ -145,7 +145,25 @@ public static class GostPdfWriter
             for (var column = 1; column < ColumnWidths.Length; column++)
             {
                 var x = ColumnLeft(column);
-                _gfx.DrawLine(Thick, x, FrameTop, x, TitleTop);
+                if (column != NameColumn)
+                {
+                    _gfx.DrawLine(Thick, x, FrameTop, x, TitleTop);
+                    continue;
+                }
+
+                // Линия между «Обозначением» и «Наименованием» прерывается в строках с объединёнными графами.
+                var top = FrameTop;
+                for (var i = 0; i < lines.Count; i++)
+                {
+                    if (lines[i].Wide)
+                    {
+                        var rowTop = headerBottom + i * rowHeight;
+                        _gfx.DrawLine(Thick, x, top, x, rowTop);
+                        top = rowTop + rowHeight;
+                    }
+                }
+
+                _gfx.DrawLine(Thick, x, top, x, TitleTop);
             }
 
             for (var column = 0; column < ColumnWidths.Length; column++)

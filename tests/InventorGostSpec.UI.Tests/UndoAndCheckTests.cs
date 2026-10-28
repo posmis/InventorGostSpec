@@ -800,7 +800,7 @@ public class VersionWindowTests
 
         Assert.Equal("АБВГ.00.00.000", _host.VersionMarks.Single().Value);
         var names = vm.Rows.Select(r => r.Name).ToList();
-        Assert.Contains("Переменные данные для исполнений", names);
+        Assert.Contains("Переменные данные для исполнений:", names);
         Assert.Contains("АБВГ.00.00.000", names);
         Assert.Contains("АБВГ.00.00.000-01", names);
 

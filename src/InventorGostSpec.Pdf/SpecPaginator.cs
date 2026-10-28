@@ -27,8 +27,8 @@ public sealed class PrintLine
     public LineStyle Style { get; init; }
 
     /// <summary>
-    /// Заголовок шире графы «Наименование»: пишется одной строкой по центру граф «Обозначение» и «Наименование»
-    /// (как «Переменные данные для исполнений» в примере ГОСТ 2.113).
+    /// Заголовок шире графы «Наименование» (и «Переменные данные для исполнений:»): графы «Обозначение» и «Наименование»
+    /// в этой строке объединяются — без линии между ними, текст одной строкой по центру.
     /// </summary>
     public bool Wide { get; init; }
 
@@ -198,7 +198,9 @@ public static class SpecPaginator
                 var lines = new List<PrintLine> { PrintLine.Spacer };
                 var wrapped = wrap(row.Name, nameWidth);
                 var wideWidth = GostLayout.ColumnWidths[GostLayout.DesignationColumn] + GostLayout.ColumnWidths[GostLayout.NameColumn] - 2 * GostLayout.Padding;
-                if (wrapped.Count > 1 && !row.Name.Contains('\n') && wrap(row.Name, wideWidth) is { Count: 1 } wide)
+                // «Переменные данные для исполнений:» — всегда в объединённых графах «Обозначение» и «Наименование».
+                var variableData = row.Name.Trim() == Core.Versions.VersionSync.VariableDataTitle;
+                if ((wrapped.Count > 1 || variableData) && !row.Name.Contains('\n') && wrap(row.Name, wideWidth) is { Count: 1 } wide)
                 {
                     lines.Add(new PrintLine { Name = wide[0], Style = style, Wide = true });
                 }

@@ -13,7 +13,8 @@ namespace InventorGostSpec.Core.Versions;
 /// </summary>
 public static class VersionSync
 {
-    public const string VariableDataTitle = "Переменные данные для исполнений";
+    /// <summary>Общий заголовок; в PDF — по центру объединённых граф «Обозначение» и «Наименование».</summary>
+    public const string VariableDataTitle = "Переменные данные для исполнений:";
 
     public static IEnumerable<SpecGroup> Versions(Specification spec) => spec.Groups.Where(g => g.IsVersion);
 

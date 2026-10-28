@@ -266,3 +266,24 @@ public class NoteWrapTests
     public void Syllable_points(string word, int[] expected) =>
         Assert.Equal(expected, Hyphenation.Points(word));
 }
+
+public class WideHeadingTests
+{
+    private static double Measure(string text, double capHeight) => text.Length * 2.0;
+
+    [Fact]
+    public void Variable_data_heading_spans_designation_and_name_other_groups_wrap()
+    {
+        var rows = new[]
+        {
+            new SheetRow(ExcelFormat.RowTypes.Group, "", "", "", "", Core.Versions.VersionSync.VariableDataTitle, "", "", ""),
+            new SheetRow(ExcelFormat.RowTypes.Group, "", "", "", "", "Изделия, устанавливаемые по чертежу АБВГ.301234.001МЭ", "", "", ""),
+        };
+
+        var lines = Assert.Single(SpecPaginator.Paginate(rows, Measure)).Where(l => l.Name.Length > 0).ToList();
+
+        var variable = Assert.Single(lines, l => l.Wide);
+        Assert.Equal(Core.Versions.VersionSync.VariableDataTitle, variable.Name);
+        Assert.True(lines.Count(l => !l.Wide) > 1); // длинный заголовок группы переносится внутри «Наименования»
+    }
+}

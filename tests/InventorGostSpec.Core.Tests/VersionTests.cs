@@ -82,6 +82,18 @@ public class VersionTests
     }
 
     [Fact]
+    public void Version_rows_are_read_only_in_the_editor()
+    {
+        var (spec, context, version) = Build();
+        var items = spec.Rows.Where(r => r.GroupId == version.Id && r.SectionId == SectionIds.AssemblyUnits).ToList();
+
+        Assert.False(Editing.SpecificationEditor.MoveRow(spec, items[1].Id, items[0].Id));
+        Assert.False(Editing.SpecificationEditor.DeleteRow(spec, items[0].Id));
+        Editing.SpecificationEditor.SetCell(spec, context, items[0], SpecColumn.Name, "Другое");
+        Assert.NotEqual("Другое", items[0].Get(SpecColumn.Name));
+    }
+
+    [Fact]
     public void Replacing_part_takes_the_number_of_the_replaced_one()
     {
         var (spec, context, version) = Build();

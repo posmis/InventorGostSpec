@@ -165,3 +165,51 @@ public class NewPageTests
         }
     }
 }
+
+public class RoundTripTests
+{
+    [Fact]
+    public void Excel_rows_are_read_back_exactly_as_the_window_counts_sheets()
+    {
+        var spec = new Specification();
+        var context = SpecificationContext.Create(null, spec);
+        var head = new[]
+        {
+            new ComponentData { Key = "drawing:a.idw", Kind = ComponentKind.Document, Designation = "А.000СБ", Name = "Сборочный чертеж", Format = "А3" },
+            new ComponentData { Key = "a.ipt", Kind = ComponentKind.Part, Designation = "А.001", Name = "Корпус", Format = "А1, А2", Quantity = 2.5m },
+            new ComponentData { Key = "b.ipt", Kind = ComponentKind.Part, Designation = "А.002", Name = "Ось", Format = "А4", Quantity = 1 },
+            new ComponentData { Key = "u.iam", Kind = ComponentKind.Assembly, Designation = "Б.001", Name = "Узел", Quantity = 1 },
+        };
+        SpecificationUpdater.Update(spec, head, context, DateTime.UtcNow);
+        SpecificationEditor.AddNote(spec, context, SectionIds.Parts, "Текст", null);
+        spec.Rows.Single(r => r.Get(SpecColumn.Name) == "Ось").Note = "Покупная";
+        var version = Core.Versions.VersionSync.AddVersion(spec, "А.000", "А.000-01", "v.iam");
+        Core.Versions.VersionSync.Sync(spec, context, head, new Dictionary<string, Core.Versions.VersionComponents>
+        {
+            [version.Id] = new(head.Where(c => c.Key != "b.ipt").ToList()),
+        });
+        spec.SetStartsNewPage("", SectionIds.AssemblyUnits, true);
+
+        var expected = ExcelExporter.Rows(spec, context).Select(r => r.Values).ToList();
+        var path = Path.Combine(Path.GetTempPath(), $"rt-{Guid.NewGuid():N}.xlsx");
+        try
+        {
+            ExcelExporter.Export(spec, context, new TitleBlock(), path);
+            var read = ExcelReader.Read(path).Rows;
+
+            Assert.Equal(expected.Count, read.Count);
+            for (var i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], read[i]);
+            }
+
+            Assert.Contains(read, r => r.Type == ExcelFormat.RowTypes.Group && r.Name == Core.Versions.VersionSync.VariableDataTitle);
+            Assert.Contains(read, r => r.Type == ExcelFormat.RowTypes.PageBreak);
+            Assert.Contains(read, r => r.Format == "*)" && r.Note == "*)А1, А2");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+}

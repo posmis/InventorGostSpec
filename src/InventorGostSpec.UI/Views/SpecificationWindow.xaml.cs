@@ -382,14 +382,7 @@ public partial class SpecificationWindow : Window, IDialogService
         e.Handled = true;
     }
 
-    private void OnMoveToSectionClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { DataContext: Option option } && _viewModel?.MoveToSectionCommand is { } command &&
-            command.CanExecute(option.Id))
-        {
-            command.Execute(option.Id);
-        }
-    }
+    private void OnMoveToSectionClick(object sender, RoutedEventArgs e) => ExecuteOption(sender, _viewModel?.MoveToSectionCommand);
 
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
 
@@ -469,37 +462,18 @@ public partial class SpecificationWindow : Window, IDialogService
         menu.IsOpen = true;
     }
 
-    private void OnDocumentTypeClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { DataContext: Option option } && _viewModel?.SetDocumentTypeCommand is { } command &&
-            command.CanExecute(option.Id))
-        {
-            command.Execute(option.Id);
-        }
-    }
+    private void OnDocumentTypeClick(object sender, RoutedEventArgs e) => ExecuteOption(sender, _viewModel?.SetDocumentTypeCommand);
 
-    private void OnSortGroupClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { DataContext: Option option } && _viewModel?.SetSortGroupCommand is { } command &&
-            command.CanExecute(option.Id))
-        {
-            command.Execute(option.Id);
-        }
-    }
+    private void OnSortGroupClick(object sender, RoutedEventArgs e) => ExecuteOption(sender, _viewModel?.SetSortGroupCommand);
 
-    private void OnReplacesClick(object sender, RoutedEventArgs e)
-    {
-        if (sender is MenuItem { DataContext: Option option } && _viewModel?.SetReplacesCommand is { } command &&
-            command.CanExecute(option.Id))
-        {
-            command.Execute(option.Id);
-        }
-    }
+    private void OnReplacesClick(object sender, RoutedEventArgs e) => ExecuteOption(sender, _viewModel?.SetReplacesCommand);
 
-    private void OnMoveToGroupClick(object sender, RoutedEventArgs e)
+    private void OnMoveToGroupClick(object sender, RoutedEventArgs e) => ExecuteOption(sender, _viewModel?.MoveToGroupCommand);
+
+    /// <summary>Пункт подменю, построенного из <see cref="Option"/>: команда с параметром — <see cref="Option.Id"/>.</summary>
+    private static void ExecuteOption(object sender, System.Windows.Input.ICommand? command)
     {
-        if (sender is MenuItem { DataContext: Option option } && _viewModel?.MoveToGroupCommand is { } command &&
-            command.CanExecute(option.Id))
+        if (sender is MenuItem { DataContext: Option option } && command is not null && command.CanExecute(option.Id))
         {
             command.Execute(option.Id);
         }

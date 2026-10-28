@@ -877,6 +877,30 @@ public class VersionWindowTests
     }
 
     [Fact]
+    public void Read_only_version_rejects_sections_and_documents_but_own_group_gets_the_document()
+    {
+        var vm = Open();
+        vm.AddVersionCommand.Execute(null);
+
+        // У исполнения -01 (данные из его сборки) разделы и документы не добавляются.
+        vm.SelectedRow = vm.Rows.Single(r => r.IsVersionItem && r.Name == "Шайба");
+        Assert.Empty(vm.InsertableSections());
+        Assert.False(vm.InsertSectionCommand.CanExecute(SectionIds.Documentation));
+        Assert.False(vm.AddNoteCommand.CanExecute(null));
+
+        // В основном исполнении — можно: документ попадает в «Документацию» именно этого исполнения.
+        var baseVersion = Core.Versions.VersionSync.Base(vm.Specification)!;
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Ось");
+        vm.InsertSectionCommand.Execute(SectionIds.Documentation);
+        vm.SelectedRow = vm.Rows.Single(r => r.IsHeader && r.GroupId == baseVersion.Id && r.SectionId == SectionIds.Documentation);
+        Assert.True(vm.CanAddExternalDocument);
+        _dialogs.DocumentFiles = new[] { Path.Combine(_host.AssemblyFolder, "АБВГ.00.00.000ТУ-ТУ.pdf") };
+        vm.AddExternalDocumentCommand.Execute(null);
+
+        Assert.Equal(baseVersion.Id, vm.Specification.Rows.Single(r => r.DocumentFile.Length > 0).GroupId);
+    }
+
+    [Fact]
     public void Version_assembly_shows_a_notice()
     {
         _host.VersionOf = "Эта сборка — исполнение А-01 сборки А";

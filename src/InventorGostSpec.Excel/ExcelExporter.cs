@@ -143,35 +143,39 @@ public static class ExcelExporter
         }
     }
 
+    /// <summary>Записывает значения строки (<see cref="ToSheetRow"/>) и оформляет её по виду строки окна.</summary>
     private static void WriteRow(IXLWorksheet sheet, int row, DisplayRow? display, SheetRow values)
     {
-        var range = sheet.Range(row, 1, row, ExcelFormat.Columns.Length);
-        if (display is null)
+        sheet.Cell(row, ExcelFormat.TypeColumn).Value = values.Type;
+        sheet.Cell(row, ExcelFormat.FormatColumn).Value = values.Format;
+        sheet.Cell(row, ExcelFormat.ZoneColumn).Value = values.Zone;
+        if (int.TryParse(values.Position, out var position))
         {
-            sheet.Cell(row, ExcelFormat.TypeColumn).Value = values.Type;
-            sheet.Cell(row, ExcelFormat.TypeColumn).Style.Font.FontColor = MutedFont;
-            return;
+            sheet.Cell(row, ExcelFormat.PositionColumn).Value = position;
         }
 
-        switch (display.Kind)
+        sheet.Cell(row, ExcelFormat.DesignationColumn).Value = values.Designation;
+        sheet.Cell(row, ExcelFormat.NameColumn).Value = values.Name;
+        if (values.Quantity.Length > 0)
         {
-            case DisplayRowKind.Notice:
-                sheet.Cell(row, ExcelFormat.TypeColumn).Value = values.Type;
-                sheet.Cell(row, ExcelFormat.NameColumn).Value = values.Name;
-                break;
+            SetQuantity(sheet.Cell(row, ExcelFormat.QuantityColumn), values.Quantity);
+        }
 
+        sheet.Cell(row, ExcelFormat.UnitColumn).Value = values.Unit;
+        sheet.Cell(row, ExcelFormat.NoteColumn).Value = values.Note;
+        sheet.Cell(row, ExcelFormat.TypeColumn).Style.Font.FontColor = MutedFont;
+
+        var range = sheet.Range(row, 1, row, ExcelFormat.Columns.Length);
+        switch (display?.Kind)
+        {
             case DisplayRowKind.GroupHeader:
             case DisplayRowKind.VersionsHeader:
-                sheet.Cell(row, ExcelFormat.TypeColumn).Value = ExcelFormat.RowTypes.Group;
-                sheet.Cell(row, ExcelFormat.NameColumn).Value = display.SectionName;
                 range.Style.Fill.BackgroundColor = GroupFill;
                 range.Style.Font.Bold = true;
                 break;
 
             case DisplayRowKind.SectionHeader:
-                sheet.Cell(row, ExcelFormat.TypeColumn).Value = ExcelFormat.RowTypes.Section;
                 var name = sheet.Cell(row, ExcelFormat.NameColumn);
-                name.Value = display.SectionName;
                 name.Style.Font.Underline = XLFontUnderlineValues.Single;
                 name.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                 range.Style.Fill.BackgroundColor = SectionFill;
@@ -179,42 +183,9 @@ public static class ExcelExporter
                 break;
 
             case DisplayRowKind.Reserve:
-                sheet.Cell(row, ExcelFormat.TypeColumn).Value = ExcelFormat.RowTypes.Reserve;
-                if (display.ReservedPosition is { } reserved)
-                {
-                    sheet.Cell(row, ExcelFormat.PositionColumn).Value = reserved;
-                }
-
                 range.Style.Font.FontColor = MutedFont;
                 break;
-
-            case DisplayRowKind.Row when display.Row is { Kind: RowKind.Note } note:
-                sheet.Cell(row, ExcelFormat.TypeColumn).Value = ExcelFormat.RowTypes.Text;
-                sheet.Cell(row, ExcelFormat.NameColumn).Value = note.Get(SpecColumn.Name);
-                break;
-
-            case DisplayRowKind.Row when display.Row is { } item:
-                sheet.Cell(row, ExcelFormat.TypeColumn).Value = ExcelFormat.RowTypes.Item;
-                sheet.Cell(row, ExcelFormat.FormatColumn).Value = values.Format;
-                sheet.Cell(row, ExcelFormat.ZoneColumn).Value = values.Zone;
-                if (item.Position is { } position)
-                {
-                    sheet.Cell(row, ExcelFormat.PositionColumn).Value = position;
-                }
-
-                sheet.Cell(row, ExcelFormat.DesignationColumn).Value = values.Designation;
-                sheet.Cell(row, ExcelFormat.NameColumn).Value = values.Name;
-                if (values.Quantity.Length > 0)
-                {
-                    SetQuantity(sheet.Cell(row, ExcelFormat.QuantityColumn), values.Quantity);
-                }
-
-                sheet.Cell(row, ExcelFormat.UnitColumn).Value = values.Unit;
-                sheet.Cell(row, ExcelFormat.NoteColumn).Value = values.Note;
-                break;
         }
-
-        sheet.Cell(row, ExcelFormat.TypeColumn).Style.Font.FontColor = MutedFont;
     }
 
     /// <summary>Количество — числом, если это число (удобно править и считать), иначе текстом («по месту»).</summary>

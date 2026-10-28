@@ -172,6 +172,13 @@ public static class SpecificationEditor
         }
 
         var target = targetRowId is null ? null : spec.FindRow(targetRowId);
+
+        // Строки других исполнений идут по номерам основного исполнения (ГОСТ 2.113) — вручную не переставляются.
+        if (row.Kind == RowKind.VersionItem || target?.Kind == RowKind.VersionItem)
+        {
+            return false;
+        }
+
         if (targetRowId is not null && (target is null || !SpecBlocks.Same(target, row)))
         {
             return false;
@@ -252,13 +259,15 @@ public static class SpecificationEditor
     /// (см. <see cref="ExternalDocuments"/>), формат вписывается вручную.
     /// </summary>
     /// <param name="documentFile">Путь, который хранится в строке (относительно папки сборки).</param>
+    /// <param name="groupId">Группа «устанавливаемые по …» или исполнение; пусто — основная часть.</param>
     public static SpecRow AddExternalDocument(
         Specification spec,
         SpecificationContext context,
         string documentFile,
-        string? afterRowId = null)
+        string? afterRowId = null,
+        string groupId = "")
     {
-        var row = AddManualItem(spec, context, ExternalDocuments.FromFile(documentFile), afterRowId);
+        var row = AddManualItem(spec, context, ExternalDocuments.FromFile(documentFile), afterRowId, groupId);
         row.DocumentFile = documentFile;
         return row;
     }

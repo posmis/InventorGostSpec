@@ -151,7 +151,8 @@ public static class SpecificationUpdater
         }
     }
 
-    private static Dictionary<string, ComponentSnapshot> Aggregate(IEnumerable<ComponentData> components)
+    /// <summary>Снимки компонентов по ключу; количество одинаковых вхождений суммируется.</summary>
+    internal static Dictionary<string, ComponentSnapshot> Aggregate(IEnumerable<ComponentData> components)
     {
         var quantities = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
         var first = new Dictionary<string, ComponentData>(StringComparer.OrdinalIgnoreCase);

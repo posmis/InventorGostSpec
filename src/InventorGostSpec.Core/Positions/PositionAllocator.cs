@@ -1,4 +1,5 @@
 using InventorGostSpec.Core.Model;
+using InventorGostSpec.Core.Versions;
 
 namespace InventorGostSpec.Core.Positions;
 
@@ -71,6 +72,8 @@ public static class PositionAllocator
             next += Math.Max(0, reserve.Count);
             first = false;
         }
+
+        VersionSync.ApplyInheritedPositions(spec);
     }
 
     /// <summary>
@@ -176,6 +179,7 @@ public static class PositionAllocator
             row.Position = null;
         }
 
+        VersionSync.ApplyInheritedPositions(spec);
         return result;
     }
 
@@ -272,8 +276,9 @@ public static class PositionAllocator
     private static IEnumerable<SpecBlock> NumberedBlocks(Specification spec, SpecificationContext context) =>
         SpecBlocks.All(spec, context).Where(b => b.Section.HasPositions);
 
+    /// <summary>Строки блока, которые нумеруются сами (номер строк исполнений, наследующих номер, копируется потом).</summary>
     private static IEnumerable<SpecRow> BlockRows(Specification spec, SpecBlock block) =>
-        spec.Rows.Where(r => r.CanHavePosition && block.Contains(r));
+        spec.Rows.Where(r => r.CanHavePosition && !r.InheritsPosition && block.Contains(r));
 
     private static int RoundUpWithin(int value, int step, int upper)
     {

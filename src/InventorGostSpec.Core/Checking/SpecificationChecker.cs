@@ -119,7 +119,8 @@ public static class SpecificationChecker
         }
 
         // Номера удалённых строк тоже заняты: они остаются на выносках, пока изменения не приняты.
-        foreach (var duplicate in rows.Where(r => r.Position.HasValue).GroupBy(r => r.Position!.Value).Where(g => g.Count() > 1))
+        // Строки исполнений, наследующие номер той же составной части, повтором не считаются.
+        foreach (var duplicate in rows.Where(r => r.Position.HasValue && !r.InheritsPosition).GroupBy(r => r.Position!.Value).Where(g => g.Count() > 1))
         {
             var list = duplicate.ToList();
             foreach (var row in list.Skip(1))
@@ -131,7 +132,8 @@ public static class SpecificationChecker
 
         // ГОСТ 2.106: позиции идут в порядке записи.
         var previous = 0;
-        foreach (var row in active.Where(r => r.Position.HasValue))
+        // У исполнений номера идут по номерам основного исполнения (ГОСТ 2.113) — их порядок не проверяется.
+        foreach (var row in active.Where(r => r.Position.HasValue && r.Kind != RowKind.VersionItem))
         {
             if (row.Position!.Value < previous)
             {
@@ -189,7 +191,7 @@ public static class SpecificationChecker
     private static void CheckDuplicateDesignations(List<SpecRow> active, List<SpecIssue> issues)
     {
         var groups = active
-            .Where(r => r.Get(SpecColumn.Designation).Length > 0)
+            .Where(r => r.Get(SpecColumn.Designation).Length > 0 && r.Kind != RowKind.VersionItem)
             .GroupBy(r => NaturalComparer.Normalize(r.Get(SpecColumn.Designation)));
         foreach (var group in groups.Where(g => g.Count() > 1))
         {

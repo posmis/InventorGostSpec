@@ -17,6 +17,12 @@ public static class SpecificationEditor
     /// </summary>
     public static void SetCell(Specification spec, SpecificationContext context, SpecRow row, SpecColumn column, string? value)
     {
+        // Строки других исполнений — только для чтения: их данные из сборки-исполнения.
+        if (row.Kind == RowKind.VersionItem)
+        {
+            return;
+        }
+
         value = value?.Trim() ?? "";
         var oldSection = row.SectionId;
         var oldDesignation = row.Get(SpecColumn.Designation);
@@ -264,7 +270,7 @@ public static class SpecificationEditor
     public static bool DeleteRow(Specification spec, string rowId)
     {
         var row = spec.FindRow(rowId);
-        if (row is null || (row.Kind == RowKind.Component && !row.IsRemoved))
+        if (row is null || (row.Kind == RowKind.Component && !row.IsRemoved) || row.Kind == RowKind.VersionItem)
         {
             return false;
         }
@@ -387,7 +393,10 @@ public static class SpecificationEditor
     public static SpecGroup AddGroup(Specification spec, string title, bool startsNewPage = false)
     {
         var group = new SpecGroup { Title = title.Trim(), StartsNewPage = startsNewPage };
-        spec.Groups.Add(group);
+
+        // Группы «устанавливаемые по …» — в постоянных данных, до «Переменных данных для исполнений».
+        var firstVersion = spec.Groups.FindIndex(g => g.IsVersion);
+        spec.Groups.Insert(firstVersion < 0 ? spec.Groups.Count : firstVersion, group);
         return group;
     }
 
@@ -448,7 +457,7 @@ public static class SpecificationEditor
         PositionAllocator.AssignMissing(spec, context);
     }
 
-    private static void MoveToGroup(Specification spec, SpecificationContext context, SpecRow row, string groupId, bool assignPositions)
+    internal static void MoveToGroup(Specification spec, SpecificationContext context, SpecRow row, string groupId, bool assignPositions)
     {
         if (groupId.Length > 0 && context.FindGroup(groupId) is null)
         {

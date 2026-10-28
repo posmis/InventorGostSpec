@@ -19,6 +19,20 @@ public sealed class SpecGroup
 
     /// <summary>Группа начинается с нового листа (в Excel перед её заголовком — строка «Новый лист»).</summary>
     public bool StartsNewPage { get; set; }
+
+    /// <summary>
+    /// Исполнение в «Переменных данных для исполнений» (ГОСТ 2.113, вариант А), а не группа «устанавливаемые по …».
+    /// Заголовок — обозначение исполнения.
+    /// </summary>
+    public bool IsVersion { get; set; }
+
+    /// <summary>
+    /// Файл сборки-исполнения относительно папки головной сборки. Пусто у основного исполнения — это сама сборка.
+    /// </summary>
+    public string VersionFile { get; set; } = "";
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool IsBaseVersion => IsVersion && VersionFile.Length == 0;
 }
 
 /// <summary>Раздел, вставленный вручную (в основную часть или в группу): показывается и без строк.</summary>

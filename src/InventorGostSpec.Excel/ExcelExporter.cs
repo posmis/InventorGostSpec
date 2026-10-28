@@ -114,7 +114,10 @@ public static class ExcelExporter
         switch (display.Kind)
         {
             case DisplayRowKind.GroupHeader:
+            case DisplayRowKind.VersionsHeader:
                 return new SheetRow(ExcelFormat.RowTypes.Group, "", "", "", "", display.SectionName, "", "", "");
+            case DisplayRowKind.Notice:
+                return new SheetRow(ExcelFormat.RowTypes.Text, "", "", "", "", display.SectionName, "", "", "");
             case DisplayRowKind.SectionHeader:
                 return new SheetRow(ExcelFormat.RowTypes.Section, "", "", "", "", display.SectionName, "", "", "");
             case DisplayRowKind.Reserve:
@@ -152,7 +155,13 @@ public static class ExcelExporter
 
         switch (display.Kind)
         {
+            case DisplayRowKind.Notice:
+                sheet.Cell(row, ExcelFormat.TypeColumn).Value = values.Type;
+                sheet.Cell(row, ExcelFormat.NameColumn).Value = values.Name;
+                break;
+
             case DisplayRowKind.GroupHeader:
+            case DisplayRowKind.VersionsHeader:
                 sheet.Cell(row, ExcelFormat.TypeColumn).Value = ExcelFormat.RowTypes.Group;
                 sheet.Cell(row, ExcelFormat.NameColumn).Value = display.SectionName;
                 range.Style.Fill.BackgroundColor = GroupFill;

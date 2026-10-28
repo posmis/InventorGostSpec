@@ -315,6 +315,30 @@
             </DrawingGroup>
         </DrawingImage.Drawing>
     </DrawingImage>
+    <!-- Основная надпись: лист с таблицей в нижней части. -->
+    <DrawingImage x:Key="Icon.TitleBlock">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="Transparent" Geometry="M 0 0 L 16 0 L 16 16 L 0 16 Z" />
+                <GeometryDrawing Brush="White" Geometry="M 2.5 1.5 L 13.5 1.5 L 13.5 14.5 L 2.5 14.5 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#4B5563" Thickness="1" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#BFDBFE" Geometry="M 2.5 9.5 L 13.5 9.5 L 13.5 14.5 L 2.5 14.5 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#1F6FD1" Thickness="1" LineJoin="Round" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Geometry="M 6.5 9.5 L 6.5 14.5 M 2.5 12 L 6.5 12 M 6.5 12 L 13.5 12">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="#1F6FD1" Thickness="1" />
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
     <DrawingImage x:Key="Icon.Properties">
         <DrawingImage.Drawing>
             <DrawingGroup>

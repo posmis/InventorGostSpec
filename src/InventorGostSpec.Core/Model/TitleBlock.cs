@@ -53,8 +53,34 @@ public sealed class ChangeRecord
     /// <summary>Дата внесения («Дата»).</summary>
     public string Date { get; set; } = "";
 
+    public ChangeRecord Clone() => (ChangeRecord)MemberwiseClone();
+
     /// <summary>Ни одна графа не заполнена (пустая строка таблицы изменений).</summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsEmpty =>
         new[] { Number, Areas, Sheet, Document, Signature, Date }.All(v => string.IsNullOrWhiteSpace(v));
+}
+
+/// <summary>
+/// Данные основной надписи, которых нет в iProperties, — хранятся в спецификации (в файле сборки):
+/// литера, высота шрифта наименования, изменения. Фамилии, организация и «Перв. примен.» — в iProperties сборки.
+/// </summary>
+public sealed class SpecTitleData
+{
+    /// <summary>Заполнялось в окне спецификации; нет — берётся из прежнего файла Excel (как раньше).</summary>
+    public bool IsSet { get; set; }
+
+    public string Letter { get; set; } = "";
+
+    public double? NameTextHeight { get; set; }
+
+    public List<ChangeRecord> Changes { get; set; } = new();
+
+    /// <summary>Переносит данные в основную надпись.</summary>
+    public void ApplyTo(TitleBlock title)
+    {
+        title.Letter = Letter;
+        title.NameTextHeight = NameTextHeight;
+        title.Changes = Changes.Where(c => !c.IsEmpty).Select(c => c.Clone()).ToList();
+    }
 }

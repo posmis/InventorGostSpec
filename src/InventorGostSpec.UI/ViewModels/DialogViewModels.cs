@@ -185,3 +185,92 @@ public sealed class GroupViewModel : ObservableObject
 
     public string? Validate() => string.IsNullOrWhiteSpace(Title) ? "Введите заголовок группы." : null;
 }
+
+/// <summary>
+/// Основная надпись в окне спецификации: фамилии, организация и «Перв. примен.» записываются в iProperties сборки,
+/// литера, шрифт наименования и изменения — в спецификацию.
+/// </summary>
+public sealed class TitleBlockViewModel : ObservableObject
+{
+    private static readonly System.Globalization.CultureInfo Russian = System.Globalization.CultureInfo.GetCultureInfo("ru-RU");
+
+    public TitleBlockViewModel(TitleBlock title)
+    {
+        Designation = title.Designation;
+        Name = title.Name;
+        Developer = title.Developer;
+        Checker = title.Checker;
+        NormControl = title.NormControl;
+        Approver = title.Approver;
+        Organization = title.Organization;
+        FirstUse = title.FirstUse;
+        Letter = title.Letter;
+        NameTextHeight = title.NameTextHeight?.ToString("0.##", Russian) ?? "";
+        Changes = new System.Collections.ObjectModel.ObservableCollection<ChangeRecord>(title.Changes.Select(c => c.Clone()));
+    }
+
+    /// <summary>Обозначение и наименование — из iProperties сборки (Part Number, Description), здесь только для справки.</summary>
+    public string Designation { get; }
+
+    public string Name { get; }
+
+    public string Developer { get; set; }
+
+    public string Checker { get; set; }
+
+    public string NormControl { get; set; }
+
+    public string Approver { get; set; }
+
+    public string Organization { get; set; }
+
+    public string FirstUse { get; set; }
+
+    public string Letter { get; set; }
+
+    /// <summary>Высота шрифта наименования, мм; пусто — из настроек утилиты PDF.</summary>
+    public string NameTextHeight { get; set; }
+
+    /// <summary>Изменения по порядку внесения (в основной надписи — последние две).</summary>
+    public System.Collections.ObjectModel.ObservableCollection<ChangeRecord> Changes { get; }
+
+    public string? Validate() =>
+        NameTextHeight.Trim().Length > 0 && ParseHeight() is null
+            ? "Шрифт наименования — число мм (2,5; 3,5; 5; 7; 10) или пусто."
+            : null;
+
+    /// <summary>Фамилии, организация, «Перв. примен.» — для записи в iProperties сборки.</summary>
+    public TitleBlock ToProperties() => new()
+    {
+        Developer = Developer.Trim(),
+        Checker = Checker.Trim(),
+        NormControl = NormControl.Trim(),
+        Approver = Approver.Trim(),
+        Organization = Organization.Trim(),
+        FirstUse = FirstUse.Trim(),
+    };
+
+    /// <summary>Литера, шрифт и изменения — для хранения в спецификации.</summary>
+    public SpecTitleData ToTitleData() => new()
+    {
+        IsSet = true,
+        Letter = Letter.Trim(),
+        NameTextHeight = ParseHeight(),
+        Changes = Changes.Where(c => !c.IsEmpty).Select(Trimmed).ToList(),
+    };
+
+    private double? ParseHeight() =>
+        double.TryParse(NameTextHeight.Trim().Replace('.', ','), System.Globalization.NumberStyles.Float, Russian, out var value) && value > 0 && value < 100
+            ? value
+            : null;
+
+    private static ChangeRecord Trimmed(ChangeRecord c) => new()
+    {
+        Number = (c.Number ?? "").Trim(),
+        Areas = (c.Areas ?? "").Trim(),
+        Sheet = (c.Sheet ?? "").Trim(),
+        Document = (c.Document ?? "").Trim(),
+        Signature = (c.Signature ?? "").Trim(),
+        Date = (c.Date ?? "").Trim(),
+    };
+}

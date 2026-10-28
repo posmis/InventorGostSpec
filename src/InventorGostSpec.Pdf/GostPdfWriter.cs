@@ -119,6 +119,10 @@ public static class GostPdfWriter
             DrawMarginGraphs();
             _gfx.DrawRectangle(Thick, FrameLeft, FrameTop, FrameRight - FrameLeft, FrameBottom - FrameTop);
 
+            // Граница листа А4 тонкой линией (как внешняя рамка в КОМПАС-3D): видна, когда PDF вставляют в другую
+            // программу. Линия внутри листа целиком — сдвинута на половину толщины.
+            _gfx.DrawRectangle(Thin, ThinLine / 2, ThinLine / 2, PageWidth - ThinLine, PageHeight - ThinLine);
+
             // Под рамкой — как в бланке КОМПАС-3D: «Копировал» с 95,5 мм, «Формат» с 166 мм, значение формата с 186 мм.
             _text.Draw(_gfx, "Копировал", 95.5, 296, _sizes.Margin, 30, TextAlign.Left);
             _text.Draw(_gfx, "Формат", 166, 296, _sizes.Margin, 18, TextAlign.Left);

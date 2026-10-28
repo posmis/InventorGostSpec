@@ -73,6 +73,9 @@ public sealed class Specification
         }
     }
 
+    /// <summary>Литера, шрифт наименования и изменения для основной надписи (вводятся в окне спецификации).</summary>
+    public SpecTitleData Title { get; set; } = new();
+
     /// <summary>Резервы позиций этой спецификации, важнее глобальных настроек.</summary>
     public Dictionary<string, ReserveSettings> ReserveOverrides { get; set; } = new();
 

@@ -705,3 +705,68 @@ public class PageMarkTests
         Assert.Equal(2, vm.Rows.Single(r => r.IsGroupHeader).PageStart);
     }
 }
+
+public class TitleBlockEditTests
+{
+    private readonly FakeHost _host = new();
+    private readonly FakeDialogs _dialogs = new();
+
+    [Fact]
+    public void People_go_to_iproperties_changes_and_letter_to_specification_and_export()
+    {
+        _host.Components.Add(new ComponentData { Key = "a.ipt", Kind = ComponentKind.Part, Designation = "А.001", Name = "Корпус", Format = "А4", Quantity = 1 });
+        _host.Title = () => new TitleBlock { Designation = "АБВГ.301234.001", Name = "Привод", Developer = "Иванов" };
+        _host.ExportFolder = Path.Combine(Path.GetTempPath(), "tb-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_host.ExportFolder);
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, _host.Components, SpecificationContext.Create(_host.Settings, spec), DateTime.UtcNow);
+        var vm = new SpecificationViewModel(_host, _dialogs, spec, post: action => action());
+        try
+        {
+            _dialogs.OnTitleBlock = t =>
+            {
+                Assert.Equal("Иванов", t.Developer);
+                t.NormControl = "Сидоров";
+                t.Organization = "ООО «Ромашка»";
+                t.Letter = "О1";
+                t.NameTextHeight = "7";
+                t.Changes.Add(new ChangeRecord { Number = "1", Sheet = "1", Document = "АБВГ.12-24", Date = "10.24" });
+                t.Changes.Add(new ChangeRecord()); // пустая строка таблицы не сохраняется
+            };
+
+            vm.EditTitleBlockCommand.Execute(null);
+
+            var written = Assert.Single(_host.WrittenTitles);
+            Assert.Equal(("Иванов", "Сидоров", "ООО «Ромашка»"), (written.Developer, written.NormControl, written.Organization));
+            Assert.True(vm.Specification.Title.IsSet);
+            Assert.Equal("АБВГ.12-24", Assert.Single(vm.Specification.Title.Changes).Document);
+            Assert.True(vm.IsDirty);
+
+            // Выгрузка: литера, шрифт и изменения — из спецификации.
+            vm.ExportExcelCommand.Execute(null);
+            var file = Excel.ExcelReader.Read(Path.Combine(_host.ExportFolder, "spec.xlsx"));
+            Assert.Equal("О1", file.TitleBlock.Letter);
+            Assert.Equal(7, file.TitleBlock.NameTextHeight);
+            Assert.Equal("АБВГ.12-24", Assert.Single(file.TitleBlock.Changes).Document);
+
+            // Повторно без изменений подписей — iProperties не перезаписываются.
+            _dialogs.OnTitleBlock = _ => { };
+            vm.EditTitleBlockCommand.Execute(null);
+            Assert.Single(_host.WrittenTitles);
+        }
+        finally
+        {
+            Directory.Delete(_host.ExportFolder, true);
+        }
+    }
+
+    [Fact]
+    public void Name_font_must_be_a_number()
+    {
+        var vm = new TitleBlockViewModel(new TitleBlock()) { NameTextHeight = "пять" };
+        Assert.NotNull(vm.Validate());
+        vm.NameTextHeight = "3.5";
+        Assert.Null(vm.Validate());
+        Assert.Equal(3.5, vm.ToTitleData().NameTextHeight);
+    }
+}

@@ -76,6 +76,7 @@ public sealed class SpecificationViewModel : ObservableObject
         ExportExcelCommand = new RelayCommand(ExportExcel, () => !IsEmpty);
         ExportPdfCommand = new RelayCommand(ExportPdf, () => !IsEmpty);
         PdfSettingsCommand = new RelayCommand(OpenPdfSettings);
+        EditTitleBlockCommand = new RelayCommand(EditTitleBlock);
         InsertComponentNoteCommand = new RelayCommand(InsertComponentNote, () => TargetRows.Any(CanEditComponent));
         SetSortGroupCommand = new RelayCommand(SetSortGroup, p => p is string && TargetRows.Any(r => r.Kind != RowKind.Note));
         EditComponentCommand = new RelayCommand(EditComponent, () => TargetRows.Any(CanEditComponent));
@@ -277,6 +278,9 @@ public sealed class SpecificationViewModel : ObservableObject
 
     /// <summary>Показать файл компонента выбранной строки в Проводнике.</summary>
     public ICommand ShowComponentFileCommand { get; }
+
+    /// <summary>Основная надпись: подписи, организация, литера, изменения.</summary>
+    public ICommand EditTitleBlockCommand { get; }
 
     /// <summary>Выбран заголовок раздела или группы — в меню есть флаг «Начинать с нового листа».</summary>
     public bool CanSetNewPage => SelectedRow?.IsHeader == true;
@@ -1165,7 +1169,7 @@ public sealed class SpecificationViewModel : ObservableObject
 
         try
         {
-            KeepManualTitleData(info.TitleBlock, path);
+            ApplyTitleData(info.TitleBlock, path);
 
             Excel.ExcelExporter.Export(Specification, _context, info.TitleBlock, path);
         }
@@ -1210,7 +1214,7 @@ public sealed class SpecificationViewModel : ObservableObject
 
         try
         {
-            KeepManualTitleData(info.TitleBlock, info.DefaultPath);
+            ApplyTitleData(info.TitleBlock, info.DefaultPath);
         }
         catch (System.IO.IOException)
         {
@@ -1277,6 +1281,85 @@ public sealed class SpecificationViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Литера, шрифт наименования и изменения: из спецификации, если их вводили в окне «Основная надпись»,
+    /// иначе — из прежнего файла Excel (как раньше).
+    /// </summary>
+    private void ApplyTitleData(TitleBlock title, string excelPath)
+    {
+        if (Specification.Title.IsSet)
+        {
+            Specification.Title.ApplyTo(title);
+            if (title.FirstUse.Length == 0)
+            {
+                KeepFirstUse(title, excelPath);
+            }
+
+            return;
+        }
+
+        KeepManualTitleData(title, excelPath);
+    }
+
+    private static void KeepFirstUse(TitleBlock title, string path)
+    {
+        try
+        {
+            if (Excel.ExcelReader.ReadManualTitleData(path) is { } previous)
+            {
+                title.FirstUse = previous.FirstUse;
+            }
+        }
+        catch (Exception)
+        {
+            // Нет файла Excel — «Перв. примен.» пустое.
+        }
+    }
+
+    private void EditTitleBlock()
+    {
+        CommitEdits?.Invoke();
+        if (TryHost(() => _host.GetExportInfo()) is not { } info)
+        {
+            _dialogs.Warning("Не удалось прочитать iProperties сборки.");
+            return;
+        }
+
+        var title = info.TitleBlock;
+        try
+        {
+            ApplyTitleData(title, info.DefaultPath);
+        }
+        catch (System.IO.IOException)
+        {
+            // Файл Excel занят — изменения из него не подтянулись.
+        }
+
+        var before = (title.Developer, title.Checker, title.NormControl, title.Approver, title.Organization, title.FirstUse);
+        var viewModel = new TitleBlockViewModel(title);
+        if (!_dialogs.EditTitleBlock(viewModel))
+        {
+            return;
+        }
+
+        var properties = viewModel.ToProperties();
+        if ((properties.Developer, properties.Checker, properties.NormControl, properties.Approver, properties.Organization, properties.FirstUse) != before)
+        {
+            try
+            {
+                _host.WriteTitleProperties(properties);
+            }
+            catch (Exception ex)
+            {
+                _host.ReportError(ex);
+                _dialogs.Warning($"Не удалось записать iProperties сборки (файл только для чтения?).\n\n{ex.Message}");
+            }
+        }
+
+        Specification.Title = viewModel.ToTitleData();
+        Changed(rebuild: false);
+    }
+
+    /// <summary>
     /// Данные, которые ведут вручную в файле Excel (изменения, высота шрифта наименования), переносятся из прежнего
     /// файла. Файл недоступен — исключение IOException; не книга Excel — ничего не переносится.
     /// </summary>
@@ -1303,6 +1386,10 @@ public sealed class SpecificationViewModel : ObservableObject
         }
 
         title.NameTextHeight ??= previous.NameTextHeight;
+        if (title.Letter.Length == 0)
+        {
+            title.Letter = previous.Letter;
+        }
 
         // «Перв. примен.» берётся из свойства сборки; не задано — остаётся вписанное в Excel.
         if (title.FirstUse.Length == 0)

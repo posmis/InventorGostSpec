@@ -61,6 +61,12 @@ public interface ISpecificationHost
     ExportInfo GetExportInfo();
 
     /// <summary>
+    /// Записывает в iProperties сборки фамилии (Разработал, Проверил, Н. контр., Утвердил), организацию
+    /// и «Перв. примен.» (SPEC_FirstUse).
+    /// </summary>
+    void WriteTitleProperties(TitleBlock title);
+
+    /// <summary>
     /// Строит PDF по ГОСТ из файла Excel внешней утилитой (InventorGostSpec.PdfTool).
     /// <c>null</c> — готово, иначе текст ошибки для пользователя.
     /// </summary>
@@ -102,6 +108,8 @@ public interface IDialogService
     bool EditGroup(GroupViewModel viewModel);
 
     bool EditComponentProperties(AssignSectionViewModel viewModel);
+
+    bool EditTitleBlock(TitleBlockViewModel viewModel);
 
     /// <summary>Выбор файла для сохранения Excel. <c>null</c> — отмена.</summary>
     string? AskExportPath(string defaultPath);

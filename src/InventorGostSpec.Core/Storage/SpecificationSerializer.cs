@@ -61,6 +61,18 @@ public static class SpecificationSerializer
         spec.CustomSections ??= new List<Sections.SectionDefinition>();
         spec.ReserveOverrides ??= new Dictionary<string, ReserveSettings>();
         spec.ShownSections ??= new List<ShownSection>();
+        spec.NewPageSections ??= new List<ShownSection>();
+        spec.NewPageSections.RemoveAll(s => s is null);
+        foreach (var section in spec.NewPageSections)
+        {
+            section.GroupId ??= "";
+            section.SectionId ??= "";
+        }
+
+        spec.Title ??= new SpecTitleData();
+        spec.Title.Letter ??= "";
+        spec.Title.Changes ??= new List<ChangeRecord>();
+        spec.Title.Changes.RemoveAll(c => c is null);
         spec.ShownSections.RemoveAll(s => s is null || string.IsNullOrWhiteSpace(s.SectionId));
         foreach (var shown in spec.ShownSections)
         {

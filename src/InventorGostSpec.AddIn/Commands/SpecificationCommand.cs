@@ -160,6 +160,20 @@ internal sealed class SpecificationCommand : AddInCommand
             return new ExportInfo(title, System.IO.Path.Combine(folder, fileName));
         }
 
+        public void WriteTitleProperties(TitleBlock title)
+        {
+            var document = (Document)_assembly;
+            var sets = document.PropertySets;
+            using var transaction = new InventorTransaction(_context.Application, document, "Основная надпись");
+            PropertyAccess.Set(sets, PropertyAccess.DesignTrackingSet, PropertyAccess.Designer, title.Developer);
+            PropertyAccess.Set(sets, PropertyAccess.DesignTrackingSet, PropertyAccess.CheckedBy, title.Checker);
+            PropertyAccess.Set(sets, PropertyAccess.DesignTrackingSet, PropertyAccess.EngineeringApprovedBy, title.NormControl);
+            PropertyAccess.Set(sets, PropertyAccess.DesignTrackingSet, PropertyAccess.ManufacturingApprovedBy, title.Approver);
+            PropertyAccess.Set(sets, PropertyAccess.DocumentSummarySet, PropertyAccess.Company, title.Organization);
+            PropertyAccess.SetCustom(sets, PropertyNames.FirstUse, title.FirstUse);
+            transaction.Commit();
+        }
+
         public string GetAutoSectionId(string componentKey) =>
             FindItem(componentKey) is { } item
                 ? SectionResolver.GetDefault(item.Target.Kind, item.Target.IsContentCenter)

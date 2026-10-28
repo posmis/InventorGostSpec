@@ -58,6 +58,11 @@ internal sealed class FakeHost : ISpecificationHost
 
     public ExportInfo GetExportInfo() => new(Title(), Path.Combine(ExportFolder, "spec.xlsx"));
 
+    /// <summary>Записанные в «iProperties сборки» данные основной надписи.</summary>
+    public List<TitleBlock> WrittenTitles { get; } = new();
+
+    public void WriteTitleProperties(TitleBlock title) => WrittenTitles.Add(title);
+
     /// <summary>Вызовы утилиты PDF: (Excel, PDF). Пока идёт вызов, временный Excel существует.</summary>
     public List<(string Excel, string Pdf, bool ExcelExisted)> PdfCalls { get; } = new();
 
@@ -225,6 +230,14 @@ internal sealed class FakeDialogs : IDialogService
     {
         OnComponentProperties?.Invoke(viewModel);
         return OnComponentProperties is not null;
+    }
+
+    public Action<TitleBlockViewModel>? OnTitleBlock { get; set; }
+
+    public bool EditTitleBlock(TitleBlockViewModel viewModel)
+    {
+        OnTitleBlock?.Invoke(viewModel);
+        return OnTitleBlock is not null;
     }
 
     public bool EditGroup(GroupViewModel viewModel)

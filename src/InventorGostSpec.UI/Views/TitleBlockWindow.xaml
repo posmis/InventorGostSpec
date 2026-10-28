@@ -1,0 +1,94 @@
+<Window x:Class="InventorGostSpec.UI.Views.TitleBlockWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Основная надпись"
+        Width="640"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+    <Window.Resources>
+        <Style TargetType="TextBlock" x:Key="Label">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0,3,8,3" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Margin" Value="0,3" />
+            <Setter Property="Padding" Value="2" />
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="12">
+        <TextBlock FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,8">
+            <Run Text="{Binding Designation, Mode=OneWay}" /> <Run Text="{Binding Name, Mode=OneWay}" />
+        </TextBlock>
+
+        <GroupBox Header="Подписи и организация — записываются в iProperties сборки" Padding="6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="110" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="16" />
+                    <ColumnDefinition Width="110" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition />
+                    <RowDefinition />
+                    <RowDefinition />
+                </Grid.RowDefinitions>
+                <TextBlock Style="{StaticResource Label}" Text="Разраб." />
+                <TextBox x:Name="DeveloperBox" Grid.Column="1" Text="{Binding Developer}" ToolTip="iProperty «Проектировщик» (Designer)" />
+                <TextBlock Grid.Column="3" Style="{StaticResource Label}" Text="Пров." />
+                <TextBox Grid.Column="4" Text="{Binding Checker}" ToolTip="iProperty «Проверил» (Checked By)" />
+                <TextBlock Grid.Row="1" Style="{StaticResource Label}" Text="Н. контр." />
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding NormControl}" ToolTip="iProperty «Утвердил (инженер)» (Engr Approved By)" />
+                <TextBlock Grid.Row="1" Grid.Column="3" Style="{StaticResource Label}" Text="Утв." />
+                <TextBox Grid.Row="1" Grid.Column="4" Text="{Binding Approver}" ToolTip="iProperty «Утвердил (технолог)» (Mfg Approved By)" />
+                <TextBlock Grid.Row="2" Style="{StaticResource Label}" Text="Организация" />
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Organization}" ToolTip="iProperty «Организация» (Company)" />
+                <TextBlock Grid.Row="2" Grid.Column="3" Style="{StaticResource Label}" Text="Перв. примен." />
+                <TextBox Grid.Row="2" Grid.Column="4" Text="{Binding FirstUse}" ToolTip="Свойство сборки SPEC_FirstUse" />
+            </Grid>
+        </GroupBox>
+
+        <GroupBox Header="Хранится в спецификации" Padding="6" Margin="0,8,0,0">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="160" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Label}" Text="Литера" />
+                    <TextBox Grid.Column="1" Text="{Binding Letter}" ToolTip="Графа «Лит.»: до трёх литер, например «О1»" />
+                    <TextBlock Grid.Column="3" Style="{StaticResource Label}" Text="Шрифт наименования, мм" />
+                    <TextBox Grid.Column="4" Text="{Binding NameTextHeight}" ToolTip="2,5; 3,5; 5; 7; 10. Пусто — из настроек утилиты PDF" />
+                </Grid>
+
+                <TextBlock Text="Изменения (в основной надписи — последние две; на листах — изменения этого листа по графе «Лист»)"
+                           TextWrapping="Wrap" Margin="0,8,0,4" />
+                <DataGrid x:Name="ChangesGrid" ItemsSource="{Binding Changes}" AutoGenerateColumns="False" CanUserAddRows="True"
+                          CanUserDeleteRows="True" HeadersVisibility="Column" Height="150" SelectionUnit="FullRow">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Изм." Binding="{Binding Number}" Width="50" />
+                        <DataGridTextColumn Header="Кол. уч." Binding="{Binding Areas}" Width="60" />
+                        <DataGridTextColumn Header="Лист" Binding="{Binding Sheet}" Width="60" />
+                        <DataGridTextColumn Header="№ докум. (извещение)" Binding="{Binding Document}" Width="*" />
+                        <DataGridTextColumn Header="Подп." Binding="{Binding Signature}" Width="90" />
+                        <DataGridTextColumn Header="Дата" Binding="{Binding Date}" Width="70" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <TextBlock Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"
+                           Text="Новая строка — внизу таблицы; удалить — выделить строку и нажать Delete." />
+            </StackPanel>
+        </GroupBox>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="ОК" Width="90" IsDefault="True" Click="OnOk" />
+            <Button Content="Отмена" Width="90" Margin="8,0,0,0" IsCancel="True" />
+        </StackPanel>
+    </StackPanel>
+</Window>

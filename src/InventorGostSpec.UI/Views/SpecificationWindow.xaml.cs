@@ -155,6 +155,9 @@ public partial class SpecificationWindow : Window, IDialogService
     public bool EditGroup(GroupViewModel viewModel) =>
         new GroupWindow(viewModel) { Owner = this }.ShowDialog() == true;
 
+    public bool EditTitleBlock(TitleBlockViewModel viewModel) =>
+        new TitleBlockWindow(viewModel) { Owner = this }.ShowDialog() == true;
+
     public string? ShowCheckResults(CheckViewModel viewModel) =>
         new CheckWindow(viewModel) { Owner = this }.ShowDialog() == true ? viewModel.RowToShow : null;
 

@@ -115,6 +115,10 @@ public static class SpecificationSerializer
         {
             row.Id = Guid.NewGuid().ToString("N");
         }
+
+        // Какие строки исполнений берут номер у других — пересчитывается (в старых файлах этого не было).
+        Versions.VersionSync.MarkInherited(spec);
+        Versions.VersionSync.ApplyInheritedPositions(spec);
     }
 
     public static string SerializeSettings(SpecSettings settings) => JsonSerializer.Serialize(settings, Options);

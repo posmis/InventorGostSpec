@@ -23,7 +23,7 @@ public class StorageTests
         var group = Editing.SpecificationEditor.AddGroup(spec, "Изделия, устанавливаемые по А-01МЭ", startsNewPage: true, versionId: version.Id);
         spec.Rows.Add(new SpecRow
         {
-            Kind = RowKind.VersionItem, ComponentKey = "x.ipt", GroupId = group.Id, InheritsPosition = true, ReplacesKey = "y.ipt",
+            Kind = RowKind.VersionItem, ComponentKey = "x.ipt", GroupId = group.Id, InheritsFrom = "y.ipt", ReplacesKey = "y.ipt",
             DocumentFile = @"Док\А.pdf", DocumentHash = "AB", ManualVersionPlacement = true,
         });
 

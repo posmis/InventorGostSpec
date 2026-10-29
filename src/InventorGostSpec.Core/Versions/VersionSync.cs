@@ -252,29 +252,58 @@ public static class VersionSync
         ?? SpecificationEditor.AddGroup(spec, title, versionId: version.Id);
 
     /// <summary>
-    /// Строки исполнений, чья составная часть уже есть в постоянных данных, у основного или у предыдущего исполнения,
-    /// получают её номер позиции (ГОСТ 2.113, п. 5.5.1 г); заменяющие («Заменяет поз. …») — номер заменяемой.
+    /// Строки исполнений получают номер позиции той же составной части в постоянных данных, у основного или
+    /// у предыдущего исполнения (ГОСТ 2.113, п. 5.5.1 г). Та же составная часть, по порядку проверки:
+    /// «Заменяет поз. …» (вручную); тот же файл; то же обозначение; другое исполнение того же изделия — то же
+    /// обозначение без номера исполнения («АБВГ.10.10.000-01» — исполнение «АБВГ.10.10.000»). Каждая составная часть
+    /// даёт номер в исполнении только одной строке; остальные — новые составные части со своими номерами.
     /// </summary>
     public static void MarkInherited(Specification spec)
     {
-        var known = new HashSet<string>(
-            spec.Rows.Where(r => r.Kind != RowKind.VersionItem && r.ComponentKey is not null).Select(r => r.ComponentKey!),
-            StringComparer.OrdinalIgnoreCase);
+        // Чьи номера можно взять: строки головной сборки и собственные (не наследующие) строки предыдущих исполнений.
+        var sources = spec.Rows.Where(r => r.Kind != RowKind.VersionItem && r.Kind != RowKind.Note && !r.IsRemoved && r.ComponentKey is not null).ToList();
         foreach (var version in Versions(spec).Where(g => !g.IsBaseVersion).ToList())
         {
             var scope = Scope(spec, version).ToHashSet();
             var rows = spec.Rows.Where(r => scope.Contains(r.GroupId) && r.Kind == RowKind.VersionItem).ToList();
+            var matched = new Dictionary<SpecRow, string>();
+            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            void Match(Func<SpecRow, string?> find)
+            {
+                foreach (var row in rows.Where(r => !matched.ContainsKey(r)))
+                {
+                    if (find(row) is { } key && used.Add(key))
+                    {
+                        matched[row] = key;
+                    }
+                }
+            }
+
+            static string Normalized(string? designation) => Sorting.NaturalComparer.Normalize(designation ?? "");
+            string? ByDesignation(SpecRow row, Func<string?, string> form)
+            {
+                var designation = form(row.Get(SpecColumn.Designation));
+                return designation.Length == 0 ? null
+                    : sources.FirstOrDefault(s => !used.Contains(s.ComponentKey!) && form(s.Get(SpecColumn.Designation)) == designation)?.ComponentKey;
+            }
+
+            Match(r => r.ReplacesKey);
+            Match(r => sources.Any(s => string.Equals(s.ComponentKey, r.ComponentKey, StringComparison.OrdinalIgnoreCase)) ? r.ComponentKey : null);
+            Match(r => ByDesignation(r, d => Normalized(d)));
+            Match(r => ByDesignation(r, d => Normalized(Designations.WithoutVersionNumber(d))));
+
             foreach (var row in rows)
             {
-                var inherits = row.ReplacesKey is not null || known.Contains(row.ComponentKey ?? "");
-                if (inherits != row.InheritsPosition)
+                var from = matched.TryGetValue(row, out var key) ? key : null;
+                if (!string.Equals(from, row.InheritsFrom, StringComparison.OrdinalIgnoreCase))
                 {
-                    row.InheritsPosition = inherits;
+                    row.InheritsFrom = from;
                     row.Position = null;
                 }
             }
 
-            known.UnionWith(rows.Select(r => r.ComponentKey ?? ""));
+            sources.AddRange(rows.Where(r => !r.InheritsPosition));
         }
     }
 
@@ -298,7 +327,7 @@ public static class VersionSync
 
         foreach (var row in inherited)
         {
-            row.Position = byKey.TryGetValue(row.ReplacesKey ?? row.ComponentKey ?? "", out var position) ? position : null;
+            row.Position = byKey.TryGetValue(row.InheritsFrom!, out var position) ? position : null;
         }
 
         // Внутри каждого раздела исполнения: сначала составные части с унаследованными номерами по возрастанию, затем новые.

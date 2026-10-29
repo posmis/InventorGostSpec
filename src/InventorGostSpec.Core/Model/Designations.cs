@@ -41,6 +41,17 @@ public static class Designations
         return rest.Length == 0 || rest[0] is ' ' or '_' || Regex.IsMatch(rest, @"^[СC]Б", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
     }
 
+    /// <summary>
+    /// Базовое обозначение — без порядкового номера исполнения: «АБВГ.301234.001-01» → «АБВГ.301234.001»,
+    /// «АБВГ.10.10.000-01» → «АБВГ.10.10.000». Без номера исполнения — само обозначение.
+    /// </summary>
+    public static string WithoutVersionNumber(string? designation)
+    {
+        var trimmed = (designation ?? "").Trim();
+        var match = Regex.Match(trimmed, @"^(.+?)\s*[-–]\s*\d{2,3}$", RegexOptions.CultureInvariant);
+        return match.Success ? match.Groups[1].Value : trimmed;
+    }
+
     /// <summary>Обозначение сборочного чертежа: «АБВГ.301234.001» и «АБВГ.301234.001СБ» → «АБВГ.301234.001СБ».</summary>
     public static string AssemblyDrawing(string? assemblyDesignation)
     {

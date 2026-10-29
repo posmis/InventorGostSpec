@@ -82,6 +82,55 @@ public class VersionTests
     }
 
     [Fact]
+    public void Versions_of_the_same_product_and_same_designation_share_the_position()
+    {
+        // Ящик: основное исполнение и -01. Блоки -01 — другие файлы, исполнения тех же изделий; «12.00.000» в -01 —
+        // другой файл с тем же обозначением; «10.43.000» — новая составная часть.
+        var head = new[]
+        {
+            TestData.Assembly("АБВГ.10.10.000", "Блок электроники"),
+            TestData.Assembly("АБВГ.10.30.000", "Блок контроллеров"),
+            TestData.Assembly("АБВГ.12.00.000", "Жгут"),
+            TestData.Part("АБВГ.00.00.001", "Корпус"),
+        };
+        var version01 = new[]
+        {
+            TestData.Assembly("АБВГ.10.10.000-01", "Блок электроники"),
+            TestData.Assembly("АБВГ.10.30.000-01", "Блок контроллеров"),
+            TestData.Assembly("АБВГ.10.43.000", "Блок электроники лебедки"),
+            new ComponentData { Key = @"Исп01\АБВГ.12.00.000.iam", Kind = ComponentKind.Assembly, Designation = "АБВГ.12.00.000", Name = "Жгут", Quantity = 1 },
+            TestData.Part("АБВГ.00.00.001", "Корпус"),
+        };
+        var spec = new Specification();
+        var context = TestData.Context(spec);
+        SpecificationUpdater.Update(spec, head, context, TestData.Now);
+        var version = VersionSync.AddVersion(spec, "АБВГ.10.00.000", "АБВГ.10.00.000-01", "v1.iam");
+        VersionSync.Sync(spec, context, head, new Dictionary<string, VersionComponents> { [version.Id] = new VersionComponents(version01) });
+        PositionAllocator.RenumberAll(spec, context);
+        var baseId = VersionSync.Base(spec)!.Id;
+
+        Assert.Equal(Row(spec, "АБВГ.10.10.000", baseId).Position, Row(spec, "АБВГ.10.10.000-01", version.Id).Position);
+        Assert.Equal(Row(spec, "АБВГ.10.30.000", baseId).Position, Row(spec, "АБВГ.10.30.000-01", version.Id).Position);
+        Assert.Equal(Row(spec, "АБВГ.12.00.000", baseId).Position, Row(spec, "АБВГ.12.00.000", version.Id).Position);
+        var baseMax = spec.Rows.Where(r => r.GroupId == baseId).Max(r => r.Position!.Value);
+        Assert.Equal(baseMax + 1, Row(spec, "АБВГ.10.43.000", version.Id).Position);
+        Assert.DoesNotContain(Checking.SpecificationChecker.Check(spec, context), i => i.Severity == Checking.IssueSeverity.Error);
+
+        // То же после сохранения и чтения.
+        var copy = Storage.SpecificationSerializer.Deserialize(Storage.SpecificationSerializer.Serialize(spec));
+        Assert.Equal(Row(spec, "АБВГ.10.10.000", baseId).Position, Row(copy, "АБВГ.10.10.000-01", version.Id).Position);
+    }
+
+    [Theory]
+    [InlineData("АБВГ.10.10.000-01", "АБВГ.10.10.000")]
+    [InlineData("АБВГ.301234.001 - 12", "АБВГ.301234.001")]
+    [InlineData("АБВГ.301234.001", "АБВГ.301234.001")]
+    [InlineData("АБВГ.686189.349-08", "АБВГ.686189.349")]
+    [InlineData("М12-6g", "М12-6g")]
+    public void Version_number_is_stripped(string designation, string expected) =>
+        Assert.Equal(expected, Designations.WithoutVersionNumber(designation));
+
+    [Fact]
     public void Version_rows_are_read_only_in_the_editor()
     {
         var (spec, context, version) = Build();

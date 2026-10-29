@@ -132,8 +132,9 @@ public class PaginatorTests
     [InlineData("1, 4", 4, true)]
     [InlineData("1, 4", 2, false)]
     [InlineData("", 1, true)]
-    [InlineData("", 2, false)]
+    [InlineData("", 2, true)]
     [InlineData("Все", 1, true)]
+    [InlineData("все", 3, true)]
     public void Change_record_sheet_numbers(string sheets, int sheet, bool expected)
     {
         Assert.Equal(expected, GostPdfWriter.SheetMatches(sheets, sheet));

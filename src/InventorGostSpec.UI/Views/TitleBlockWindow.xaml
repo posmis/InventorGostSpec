@@ -68,7 +68,7 @@
                     <TextBox Grid.Column="4" Text="{Binding NameTextHeight}" ToolTip="2,5; 3,5; 5; 7; 10. Пусто — из настроек утилиты PDF" />
                 </Grid>
 
-                <TextBlock Text="Изменения (в основной надписи — последние две; на листах — изменения этого листа по графе «Лист»)"
+                <TextBlock Text="Изменения (в основной надписи — последние две; на листах — изменения этого листа по графе «Лист»; «Лист» пусто или «Все» — на всех листах)"
                            TextWrapping="Wrap" Margin="0,8,0,4" />
                 <DataGrid x:Name="ChangesGrid" ItemsSource="{Binding Changes}" AutoGenerateColumns="False" CanUserAddRows="True"
                           CanUserDeleteRows="True" HeadersVisibility="Column" Height="150" SelectionUnit="FullRow">

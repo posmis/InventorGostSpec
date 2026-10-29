@@ -50,7 +50,10 @@ public static class GostPdfWriter
         return new GostText(GostFontResolver.Register(font.Path));
     }
 
-    /// <summary>Входит ли лист в графу «Лист» записи изменения («2», «1-3», «1, 4»). Без номеров — только первый лист.</summary>
+    /// <summary>
+    /// Входит ли лист в графу «Лист» записи изменения («2», «1-3», «1, 4»). Без номеров (пусто, «Все») — изменение
+    /// всего документа: на всех листах.
+    /// </summary>
     public static bool SheetMatches(string sheets, int sheet)
     {
         var any = false;
@@ -69,7 +72,7 @@ public static class GostPdfWriter
             }
         }
 
-        return !any && sheet == 1;
+        return !any;
     }
 
     private sealed class SheetPainter

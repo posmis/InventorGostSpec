@@ -437,6 +437,12 @@ public static class SpecificationEditor
         spec.Groups.RemoveAll(g => g.Id == groupId);
         foreach (var row in rows)
         {
+            // Строки исполнения возвращаются в само исполнение и снова раскладываются по его сборке.
+            if (row.Kind == RowKind.VersionItem)
+            {
+                row.ManualVersionPlacement = false;
+            }
+
             MoveToGroup(spec, context, row, target, assignPositions: false);
         }
 

@@ -21,6 +21,11 @@ public enum DisplayRowKind
 
     /// <summary>Служебная надпись в графе «Наименование»: «Отсутствуют», «Различия исполнений … по сборочному чертежу».</summary>
     Notice,
+
+    /// <summary>
+    /// «Общие компоненты (постоянные данные)» — уровень исполнений в окне. Только в окне: в Excel и PDF не выводится.
+    /// </summary>
+    CommonHeader,
 }
 
 /// <param name="GroupId">Группа строки; пусто — основная часть.</param>
@@ -49,6 +54,11 @@ public static class SpecificationViewBuilder
         var hidden = new HashSet<string>();
 
         // Есть ли у исполнения данные: в нём самом или в его группах «устанавливаемые по …».
+        if (versions.Count > 0)
+        {
+            result.Add(new DisplayRow(DisplayRowKind.CommonHeader, "", "", VersionSync.CommonTitle, null, null));
+        }
+
         bool HasData(SpecGroup version) =>
             VersionSync.Scope(spec, version).Any(id => blocks.Any(b => b.GroupId == id && SpecBlocks.IsVisible(spec, b)));
 

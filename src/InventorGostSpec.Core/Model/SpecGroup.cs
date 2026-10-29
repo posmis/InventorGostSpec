@@ -37,6 +37,12 @@ public sealed class SpecGroup
     /// </summary>
     public string VersionId { get; set; } = "";
 
+    /// <summary>
+    /// Группа взята из спецификации сборки-исполнения при сравнении состава (не создана вручную): заголовок
+    /// не правится, без строк удаляется сама.
+    /// </summary>
+    public bool FromVersionAssembly { get; set; }
+
     [System.Text.Json.Serialization.JsonIgnore]
     public bool IsBaseVersion => IsVersion && VersionFile.Length == 0;
 }

@@ -901,6 +901,69 @@ public class VersionWindowTests
     }
 
     [Fact]
+    public void Levels_are_common_components_versions_then_groups_and_sections()
+    {
+        var vm = Open();
+        vm.AddVersionCommand.Execute(null);
+
+        var common = vm.Rows.First();
+        Assert.Equal(Core.Versions.VersionSync.CommonTitle, common.Name);
+        Assert.True(common.IsVersionLevel);
+        Assert.True(vm.Rows.Single(r => r.Name == "АБВГ.00.00.000-01").IsVersionLevel);
+        Assert.True(vm.Rows.Single(r => r.Name == Core.Versions.VersionSync.VariableDataTitle).IsVersionLevel);
+        Assert.False(vm.Rows.First(r => r.Kind == SpecRowKind.Header).IsVersionLevel);
+
+        // «Общие компоненты» — только в окне.
+        Assert.DoesNotContain(Excel.ExcelExporter.Rows(vm.Specification, SpecificationContext.Create(_host.Settings, vm.Specification)),
+            r => r.Values.Name == Core.Versions.VersionSync.CommonTitle);
+
+        // Резерв и «Перенести в группу» — по уровням.
+        ReserveSettingsViewModel? reserves = null;
+        _dialogs.OnReserves = r => reserves = r;
+        vm.ReservesCommand.Execute(null);
+        Assert.Contains(reserves!.Parts, p => p.Title == "Общие компоненты");
+        Assert.Contains(reserves.Parts, p => p.Title == "Исполнение АБВГ.00.00.000-01");
+    }
+
+    [Fact]
+    public void Component_of_version_01_moves_into_its_own_installed_per_group_and_stays_there()
+    {
+        var vm = Open();
+        vm.AddVersionCommand.Execute(null);
+        var version = vm.Specification.Groups.Single(g => g.Title == "АБВГ.00.00.000-01");
+
+        // Группа внутри исполнения -01 — с его строки.
+        vm.SelectedRow = vm.Rows.Single(r => r.IsVersionItem && r.Name == "Шайба");
+        _dialogs.OnGroup = g => g.Title = "Изделия, устанавливаемые по чертежу АБВГ.00.00.000-01Э4";
+        vm.AddGroupCommand.Execute(null);
+        var group = vm.Specification.Groups.Single(g => g.Title.EndsWith("Э4"));
+        Assert.Equal(version.Id, group.VersionId);
+        var header = vm.Rows.Single(r => r.GroupId == group.Id && r.IsGroupHeader);
+        Assert.True(header.CanEdit(SpecColumn.Name)); // своя группа — правится
+
+        // Для строки -01 в меню — только -01 и его группы.
+        vm.SelectedRow = vm.Rows.Single(r => r.IsVersionItem && r.Name == "Шайба");
+        Assert.Equal(new[] { version.Id, group.Id }, vm.GroupOptions.Select(o => o.Id));
+        vm.MoveToGroupCommand.Execute(group.Id);
+        Assert.Equal(group.Id, vm.Rows.Single(r => r.Name == "Шайба").GroupId);
+
+        // Обновление из сборки перенос не сбрасывает.
+        vm.UpdateFromAssemblyCommand.Execute(null);
+        Assert.Equal(group.Id, vm.Specification.Rows.Single(r => r.Get(SpecColumn.Name) == "Шайба").GroupId);
+
+        // Строку головной сборки в группу -01 не перенести.
+        vm.SelectedRow = vm.Rows.Single(r => r.Name == "Ось");
+        Assert.False(vm.MoveToGroupCommand.CanExecute(group.Id));
+        Assert.DoesNotContain(vm.GroupOptions, o => o.Id == group.Id);
+
+        // Удаление группы — строка возвращается в исполнение.
+        vm.SelectedRow = vm.Rows.Single(r => r.GroupId == group.Id && r.IsGroupHeader);
+        _dialogs.ConfirmAnswer = true;
+        vm.DeleteGroupCommand.Execute(null);
+        Assert.Equal(version.Id, vm.Specification.Rows.Single(r => r.Get(SpecColumn.Name) == "Шайба").GroupId);
+    }
+
+    [Fact]
     public void Version_assembly_shows_a_notice()
     {
         _host.VersionOf = "Эта сборка — исполнение А-01 сборки А";

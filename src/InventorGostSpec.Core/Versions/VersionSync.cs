@@ -27,6 +27,38 @@ public static class VersionSync
     /// <summary>Общий заголовок; в PDF — по центру объединённых граф «Обозначение» и «Наименование».</summary>
     public const string VariableDataTitle = "Переменные данные для исполнений:";
 
+    /// <summary>
+    /// Подпись постоянных данных в окне (уровень исполнений): «Общие компоненты» → группы «устанавливаемые по …» →
+    /// разделы. В Excel и PDF не выводится — по ГОСТ 2.113 у постоянных данных заголовка нет.
+    /// </summary>
+    public const string CommonTitle = "Общие компоненты (постоянные данные)";
+
+    /// <summary>
+    /// Название части спецификации по уровням: «Общие компоненты → группа», «Исполнение … → группа»; без исполнений —
+    /// «Основная часть» и заголовок группы.
+    /// </summary>
+    public static string PartName(Specification spec, string groupId)
+    {
+        var shown = IsShown(spec);
+        var group = spec.Groups.FirstOrDefault(g => g.Id == groupId);
+        if (group is null)
+        {
+            return shown ? "Общие компоненты" : "Основная часть";
+        }
+
+        if (group.IsVersion)
+        {
+            return $"Исполнение {group.Title}";
+        }
+
+        if (VersionOf(spec, group.Id) is { } version)
+        {
+            return $"Исполнение {version.Title} → {group.Title}";
+        }
+
+        return shown ? $"Общие компоненты → {group.Title}" : group.Title;
+    }
+
     /// <summary>Исполнения (без групп внутри них), в порядке записи.</summary>
     public static IEnumerable<SpecGroup> Versions(Specification spec) => spec.Groups.Where(g => g.IsVersion);
 
@@ -208,13 +240,18 @@ public static class VersionSync
             spec.Rows.RemoveAll(r => scope.Contains(r.GroupId) && r.Kind == RowKind.VersionItem && !wanted.ContainsKey(r.ComponentKey ?? ""));
             var existing = spec.Rows.Where(r => scope.Contains(r.GroupId) && r.Kind == RowKind.VersionItem)
                 .ToDictionary(r => r.ComponentKey!, StringComparer.OrdinalIgnoreCase);
+            SpecRow? row;
 
             foreach (var (key, snapshot) in wanted)
             {
-                var groupId = titles is not null && titles.TryGetValue(key, out var title) && title.Trim().Length > 0
-                    ? GroupIn(spec, version, title.Trim()).Id
-                    : version.Id;
-                if (existing.TryGetValue(key, out var row))
+                // Перенесена вручную в группу этого исполнения («устанавливаемые по …») — там и остаётся;
+                // иначе — в ту же группу, что в спецификации сборки-исполнения.
+                existing.TryGetValue(key, out row);
+                var groupId = row is { ManualVersionPlacement: true } && scope.Contains(row.GroupId) ? row.GroupId
+                    : titles is not null && titles.TryGetValue(key, out var title) && title.Trim().Length > 0
+                        ? GroupIn(spec, version, title.Trim()).Id
+                        : version.Id;
+                if (row is not null)
                 {
                     var moved = row.GroupId != groupId || !string.Equals(row.SectionId, snapshot.SectionId, StringComparison.OrdinalIgnoreCase);
                     row.Source = snapshot;
@@ -239,7 +276,7 @@ public static class VersionSync
             }
 
             // Группы, взятые из сборки-исполнения, без строк больше не нужны.
-            spec.Groups.RemoveAll(g => g.VersionId == version.Id && spec.Rows.All(r => r.GroupId != g.Id));
+            spec.Groups.RemoveAll(g => g.VersionId == version.Id && g.FromVersionAssembly && spec.Rows.All(r => r.GroupId != g.Id));
         }
 
         MarkInherited(spec);
@@ -249,7 +286,20 @@ public static class VersionSync
     /// <summary>Группа «устанавливаемые по …» внутри исполнения с этим заголовком; нет — создаётся.</summary>
     private static SpecGroup GroupIn(Specification spec, SpecGroup version, string title) =>
         spec.Groups.FirstOrDefault(g => g.VersionId == version.Id && string.Equals(g.Title, title, StringComparison.OrdinalIgnoreCase))
-        ?? SpecificationEditor.AddGroup(spec, title, versionId: version.Id);
+        ?? Created(SpecificationEditor.AddGroup(spec, title, versionId: version.Id));
+
+    private static SpecGroup Created(SpecGroup group)
+    {
+        group.FromVersionAssembly = true;
+        return group;
+    }
+
+    /// <summary>
+    /// Группа «устанавливаемые по …», которую можно переименовать и удалить: создана вручную (в постоянных данных или
+    /// в любом исполнении), а не взята из сборки-исполнения.
+    /// </summary>
+    public static bool IsManualGroup(Specification spec, string groupId) =>
+        spec.Groups.FirstOrDefault(g => g.Id == groupId) is { IsVersion: false, FromVersionAssembly: false };
 
     /// <summary>
     /// Строки исполнений получают номер позиции той же составной части в постоянных данных, у основного или

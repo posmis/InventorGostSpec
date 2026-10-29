@@ -70,11 +70,11 @@ public sealed partial class SpecificationViewModel : ObservableObject
         AddSectionCommand = new RelayCommand(AddSection);
         AddGroupCommand = new RelayCommand(AddGroup);
         DeleteGroupCommand = new RelayCommand(DeleteGroup, () => SelectedRow is { Kind: SpecRowKind.GroupHeader } h &&
-            _context.FindGroup(h.GroupId) is { IsVersion: false } && !VersionSync.IsReadOnly(Specification, h.GroupId));
+            VersionSync.IsManualGroup(Specification, h.GroupId));
         AddVersionCommand = new RelayCommand(AddVersion);
         RemoveVersionCommand = new RelayCommand(RemoveVersion, () => SelectedVersion() is { IsBaseVersion: false });
         SetReplacesCommand = new RelayCommand(SetReplaces, p => p is string && SelectedRow?.IsVersionItem == true);
-        MoveToGroupCommand = new RelayCommand(MoveToGroup, p => p is string && TargetRows.Any());
+        MoveToGroupCommand = new RelayCommand(MoveToGroup, p => p is string groupId && RowsToMove(groupId).Any());
         ReservesCommand = new RelayCommand(EditReserves);
         SaveCommand = new RelayCommand(Save, () => IsDirty);
         WritePositionsCommand = new RelayCommand(WritePositions);
@@ -131,6 +131,7 @@ public sealed partial class SpecificationViewModel : ObservableObject
     public void SetSelectedRows(IEnumerable<SpecRowViewModel> rows)
     {
         _selectedRows = rows.OrderBy(r => Rows.IndexOf(r)).ToList();
+        UpdateGroupOptions();
         UpdateStatus();
         OnPropertyChanged(nameof(CanSetDocumentType));
         OnPropertyChanged(nameof(CanAddExternalDocument));
@@ -167,6 +168,7 @@ public sealed partial class SpecificationViewModel : ObservableObject
                 OnPropertyChanged(nameof(CanSetNewPage));
                 OnPropertyChanged(nameof(SelectedStartsNewPage));
                 OnPropertyChanged(nameof(ReplacesOptions));
+                UpdateGroupOptions();
                 OnPropertyChanged(nameof(IsVersionItemSelected));
             }
         }
@@ -731,10 +733,10 @@ public sealed partial class SpecificationViewModel : ObservableObject
     private void EditReserves()
     {
         var sections = _context.Catalog.Sections.ToList();
-        var parts = new[] { new ReservePart("", "Основная часть", sections.Select(s => new ReserveItem(s, _context.GetReserve(s.Id)))) }
+        var parts = new[] { new ReservePart("", VersionSync.PartName(Specification, ""), sections.Select(s => new ReserveItem(s, _context.GetReserve(s.Id)))) }
             .Concat(_context.Groups.Select(g => new ReservePart(
                 g.Id,
-                g.Title,
+                VersionSync.PartName(Specification, g.Id),
                 sections.Select(s => new ReserveItem(s, _context.GetReserve(g.Id, s.Id))))));
         var viewModel = new ReserveSettingsViewModel(parts);
         if (SelectedRow is { GroupId.Length: > 0 } selected)
@@ -781,9 +783,11 @@ public sealed partial class SpecificationViewModel : ObservableObject
         Changed(rebuild: true);
     }
 
+    /// <summary>Группа — исполнение (уровень «Общие компоненты / Исполнение …»), а не «устанавливаемые по …».</summary>
+    internal bool IsVersionGroup(string groupId) => _context.FindGroup(groupId) is { IsVersion: true };
+
     /// <summary>Заголовок группы «устанавливаемые по …» правится; у исполнений заголовок — обозначение сборки.</summary>
-    internal bool CanRenameGroup(string groupId) =>
-        _context.FindGroup(groupId) is { IsVersion: false } && !VersionSync.IsReadOnly(Specification, groupId);
+    internal bool CanRenameGroup(string groupId) => VersionSync.IsManualGroup(Specification, groupId);
 
     internal void RenameGroup(string groupId, string title)
     {
@@ -809,10 +813,9 @@ public sealed partial class SpecificationViewModel : ObservableObject
             return;
         }
 
-        // Выбрана строка основного исполнения — группа внутри него («устанавливаемые по …» этого исполнения).
+        // Выбрана строка исполнения — группа внутри него («устанавливаемые по …» этого исполнения).
         var version = SelectedRow is { } selected ? VersionSync.VersionOf(Specification, selected.GroupId) : null;
-        var group = SpecificationEditor.AddGroup(Specification, viewModel.Title,
-            versionId: version is { IsBaseVersion: true } ? version.Id : "");
+        var group = SpecificationEditor.AddGroup(Specification, viewModel.Title, versionId: version?.Id ?? "");
         Changed(rebuild: true);
         SelectedRow = Rows.FirstOrDefault(r => r.IsGroupHeader && r.GroupId == group.Id);
     }
@@ -830,6 +833,45 @@ public sealed partial class SpecificationViewModel : ObservableObject
         Changed(rebuild: true);
     }
 
+    /// <summary>
+    /// «Перенести в группу»: для строк головной сборки — основная часть («Общие компоненты»), её группы, основное
+    /// исполнение и его группы; для строк другого исполнения — само это исполнение и его группы «устанавливаемые по …».
+    /// </summary>
+    private void UpdateGroupOptions()
+    {
+        var selected = SelectedSpecRows().ToList();
+        var version = selected.FirstOrDefault(r => r.Kind == RowKind.VersionItem) is { } item
+            ? VersionSync.VersionOf(Specification, item.GroupId)
+            : null;
+        var ids = version is { IsBaseVersion: false }
+            ? VersionSync.Scope(Specification, version)
+            : new[] { "" }.Concat(_context.Groups.Where(g => !VersionSync.IsReadOnly(Specification, g.Id)).Select(g => g.Id));
+
+        GroupOptions.Clear();
+        foreach (var id in ids)
+        {
+            GroupOptions.Add(new Option(id, VersionSync.PartName(Specification, id)));
+        }
+    }
+
+    /// <summary>Все выбранные строки, в том числе строки других исполнений.</summary>
+    private IEnumerable<SpecRow> SelectedSpecRows() =>
+        (_selectedRows.Count > 0 ? _selectedRows : SelectedRow is null ? Enumerable.Empty<SpecRowViewModel>() : new[] { SelectedRow })
+        .Select(r => r.Row)
+        .OfType<SpecRow>();
+
+    /// <summary>
+    /// Строки, которые переносятся в группу: строки головной сборки — в группы, открытые для правки; строки другого
+    /// исполнения — только в группы своего исполнения.
+    /// </summary>
+    private IEnumerable<SpecRow> RowsToMove(string groupId)
+    {
+        var target = VersionSync.VersionOf(Specification, groupId);
+        return SelectedSpecRows().Where(r => r.GroupId != groupId && (r.Kind == RowKind.VersionItem
+            ? target is { IsBaseVersion: false } && target.Id == VersionSync.VersionOf(Specification, r.GroupId)?.Id
+            : !VersionSync.IsReadOnly(Specification, groupId)));
+    }
+
     private void MoveToGroup(object? parameter)
     {
         if (parameter is not string groupId)
@@ -837,7 +879,7 @@ public sealed partial class SpecificationViewModel : ObservableObject
             return;
         }
 
-        foreach (var row in TargetRows.Where(r => r.GroupId != groupId).ToList())
+        foreach (var row in RowsToMove(groupId).ToList())
         {
             // Перенос между постоянными данными и переменными данными основного исполнения (или его группами) —
             // ручной: сравнение состава исполнений эту строку больше не переносит.
@@ -928,7 +970,7 @@ public sealed partial class SpecificationViewModel : ObservableObject
     /// (они берутся из сборки-исполнения).
     /// </summary>
     private bool CanInsertAtSelection =>
-        SelectedRow is { } selected && selected.Kind is not (SpecRowKind.VersionsHeader or SpecRowKind.Notice) &&
+        SelectedRow is { } selected && selected.Kind is not (SpecRowKind.VersionsHeader or SpecRowKind.Notice or SpecRowKind.CommonHeader) &&
         SectionFor(selected).Length > 0 &&
         !VersionSync.IsReadOnly(Specification, selected.GroupId);
 
@@ -1180,22 +1222,7 @@ public sealed partial class SpecificationViewModel : ObservableObject
             SectionOptions.Add(new Option(section.Id, section.Name));
         }
 
-        GroupOptions.Clear();
-        GroupOptions.Add(new Option("", "Основная часть"));
-        foreach (var group in _context.Groups)
-        {
-            // Строки головной сборки переносятся только в переменные данные основного исполнения и его группы.
-            if (VersionSync.IsReadOnly(Specification, group.Id))
-            {
-                continue;
-            }
-
-            GroupOptions.Add(new Option(group.Id,
-                group.IsBaseVersion ? $"Переменные данные — {group.Title}"
-                : group.VersionId.Length > 0 ? $"{group.Title} ({VersionSync.VersionOf(Specification, group.Id)?.Title})"
-                : group.Title));
-        }
-
+        UpdateGroupOptions();
         UpdateStatus();
         Rebuilt?.Invoke(selectRowId is null ? null : SelectedRow);
     }

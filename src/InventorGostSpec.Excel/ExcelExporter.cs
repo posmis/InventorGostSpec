@@ -91,6 +91,12 @@ public static class ExcelExporter
         var result = new List<(DisplayRow?, SheetRow)>();
         foreach (var display in displays)
         {
+            // Подпись уровня «Общие компоненты» есть только в окне.
+            if (display.Kind == DisplayRowKind.CommonHeader)
+            {
+                continue;
+            }
+
             var newPage = display.Kind switch
             {
                 DisplayRowKind.GroupHeader => specification.StartsNewPage(display.GroupId, ""),

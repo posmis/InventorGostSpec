@@ -309,6 +309,12 @@
                                 <Setter Property="Foreground" Value="{StaticResource Brush.GroupText}" />
                                 <Setter Property="FontWeight" Value="Bold" />
                             </DataTrigger>
+                            <!-- Уровень исполнений (общие компоненты, переменные данные, исполнения) — над группами и разделами. -->
+                            <DataTrigger Binding="{Binding IsVersionLevel}" Value="True">
+                                <Setter Property="Background" Value="{StaticResource Brush.Accent}" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </DataTrigger>
                             <DataTrigger Binding="{Binding IsReserve}" Value="True">
                                 <Setter Property="Foreground" Value="{StaticResource Brush.Reserve}" />
                                 <Setter Property="FontStyle" Value="Italic" />

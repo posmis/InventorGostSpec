@@ -22,6 +22,9 @@ public enum SpecRowKind
 
     /// <summary>Составная часть другого исполнения — серая, только для чтения.</summary>
     VersionItem,
+
+    /// <summary>«Общие компоненты (постоянные данные)» — подпись уровня исполнений, только в окне.</summary>
+    CommonHeader,
 }
 
 /// <summary>Строка таблицы спецификации: заголовок раздела, строка или резервная позиция.</summary>
@@ -55,6 +58,7 @@ public sealed class SpecRowViewModel : ObservableObject
             DisplayRowKind.Reserve => SpecRowKind.Reserve,
             DisplayRowKind.VersionsHeader => SpecRowKind.VersionsHeader,
             DisplayRowKind.Notice => SpecRowKind.Notice,
+            DisplayRowKind.CommonHeader => SpecRowKind.CommonHeader,
             _ => display.Row!.Kind switch
             {
                 RowKind.Component => SpecRowKind.Component,
@@ -100,7 +104,15 @@ public sealed class SpecRowViewModel : ObservableObject
     public string GroupId => _display.GroupId;
 
     /// <summary>Заголовок раздела или группы.</summary>
-    public bool IsHeader => Kind is SpecRowKind.Header or SpecRowKind.GroupHeader or SpecRowKind.VersionsHeader;
+    public bool IsHeader => Kind is SpecRowKind.Header or SpecRowKind.GroupHeader or SpecRowKind.VersionsHeader or SpecRowKind.CommonHeader;
+
+    /// <summary>
+    /// Заголовок уровня исполнений: «Общие компоненты», «Переменные данные для исполнений:», обозначение исполнения.
+    /// Ниже — группы «устанавливаемые по …», ещё ниже — разделы.
+    /// </summary>
+    public bool IsVersionLevel =>
+        Kind is SpecRowKind.VersionsHeader or SpecRowKind.CommonHeader ||
+        (Kind == SpecRowKind.GroupHeader && _owner.IsVersionGroup(GroupId));
 
     /// <summary>Строка другого исполнения: серая, только для чтения.</summary>
     public bool IsVersionItem => Kind == SpecRowKind.VersionItem;
@@ -173,7 +185,8 @@ public sealed class SpecRowViewModel : ObservableObject
     public bool CanEdit(SpecColumn column) => Kind switch
     {
         SpecRowKind.GroupHeader => column == SpecColumn.Name && _owner.CanRenameGroup(GroupId),
-        SpecRowKind.Header or SpecRowKind.Reserve or SpecRowKind.VersionsHeader or SpecRowKind.Notice or SpecRowKind.VersionItem => false,
+        SpecRowKind.Header or SpecRowKind.Reserve or SpecRowKind.VersionsHeader or SpecRowKind.Notice or SpecRowKind.VersionItem
+            or SpecRowKind.CommonHeader => false,
         SpecRowKind.Note => column == SpecColumn.Name,
 
         // Номер позиции — только у строк, которые его получают (не в «Документации»).

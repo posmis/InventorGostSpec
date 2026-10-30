@@ -3,6 +3,7 @@ using InventorGostSpec.AddIn.InventorApi;
 using InventorGostSpec.Core.Model;
 using InventorGostSpec.Core.Storage;
 using InventorGostSpec.Core.Update;
+using InventorGostSpec.Core.Versions;
 using InventorGostSpec.UI.ViewModels;
 using InventorGostSpec.UI.Views;
 
@@ -168,31 +169,23 @@ internal sealed class SpecificationCommand : AddInCommand
                 throw new InvalidOperationException("Это сама головная сборка.");
             }
 
-            return WithDocument(full, save: false, document =>
+            var needsMark = false;
+            var data = WithDocument(full, save: false, document =>
             {
                 if (document is not AssemblyDocument version)
                 {
                     return null;
                 }
 
+                // Пометка «исполнение сборки …» с путём к головной (старые пометки — без пути) — дописывается ниже.
+                var headFile = System.IO.Path.GetRelativePath(BomAccess.AssemblyFolder(version), ((Document)_assembly).FullFileName);
+                needsMark = !string.Equals(
+                    PropertyAccess.TryGet(document.PropertySets, PropertyAccess.UserDefinedSet, PropertyNames.VersionOfFile), headFile,
+                    StringComparison.OrdinalIgnoreCase);
+
                 var headFolder = BomAccess.AssemblyFolder(_assembly);
                 var versionFolder = BomAccess.AssemblyFolder(version);
-                string Rebase(string key)
-                {
-                    foreach (var prefix in new[] { "virtual:" })
-                    {
-                        if (key.StartsWith(prefix, StringComparison.Ordinal))
-                        {
-                            return key;
-                        }
-                    }
-
-                    const string drawing = "drawing:";
-                    var isDrawing = key.StartsWith(drawing, StringComparison.Ordinal);
-                    var relative = isDrawing ? key[drawing.Length..] : key;
-                    var rebased = System.IO.Path.GetRelativePath(headFolder, System.IO.Path.GetFullPath(System.IO.Path.Combine(versionFolder, relative)));
-                    return isDrawing ? drawing + rebased : rebased;
-                }
+                string Rebase(string key) => VersionSync.RebaseKey(key, versionFolder, headFolder);
 
                 var components = AssemblyReader.Read(_context.Application, version);
                 foreach (var component in components)
@@ -217,14 +210,34 @@ internal sealed class SpecificationCommand : AddInCommand
                 var partNumber = PropertyAccess.TryGet(document.PropertySets, PropertyAccess.DesignTrackingSet, PropertyAccess.PartNumber);
                 return new VersionData(Designations.WithoutAssemblyDrawingCode(partNumber), components, groupTitles);
             });
+
+            if (data is not null && needsMark)
+            {
+                try
+                {
+                    var head = PropertyAccess.TryGet(((Document)_assembly).PropertySets, PropertyAccess.DesignTrackingSet, PropertyAccess.PartNumber);
+                    MarkVersion(full, Designations.WithoutAssemblyDrawingCode(head));
+                }
+                catch (Exception ex)
+                {
+                    // Файл только для чтения — номера позиций в исполнении взять не получится, но чтение не прерываем.
+                    Log.Error("MarkVersion " + full, ex);
+                }
+            }
+
+            return data;
         }
 
         public void MarkVersion(string path, string headDesignation)
         {
-            var value = $"{headDesignation} ({System.IO.Path.GetFileName(((Document)_assembly).FullFileName)})";
-            WithDocument(System.IO.Path.GetFullPath(path), save: true, document =>
+            var head = ((Document)_assembly).FullFileName;
+            var full = System.IO.Path.GetFullPath(path);
+            var value = $"{headDesignation} ({System.IO.Path.GetFileName(head)})";
+            var headFile = System.IO.Path.GetRelativePath(System.IO.Path.GetDirectoryName(full) ?? "", head);
+            WithDocument(full, save: true, document =>
             {
                 PropertyAccess.SetCustom(document.PropertySets, PropertyNames.VersionOf, value);
+                PropertyAccess.SetCustom(document.PropertySets, PropertyNames.VersionOfFile, headFile);
                 return (object?)null;
             });
         }
@@ -233,8 +246,47 @@ internal sealed class SpecificationCommand : AddInCommand
             WithDocument(System.IO.Path.GetFullPath(path), save: true, document =>
             {
                 PropertyAccess.SetCustom(document.PropertySets, PropertyNames.VersionOf, "");
+                PropertyAccess.SetCustom(document.PropertySets, PropertyNames.VersionOfFile, "");
                 return (object?)null;
             });
+
+        public IReadOnlyDictionary<string, int>? ReadHeadPositions()
+        {
+            var own = (Document)_assembly;
+            var headFile = PropertyAccess.TryGet(own.PropertySets, PropertyAccess.UserDefinedSet, PropertyNames.VersionOfFile);
+            var ownFolder = BomAccess.AssemblyFolder(_assembly);
+            if (headFile.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "В сборке нет пути к головной сборке (пометка записана старой версией аддина). " +
+                    "Откройте головную сборку и обновите её спецификацию — пометка запишется заново.");
+            }
+
+            var headPath = System.IO.Path.GetFullPath(System.IO.Path.Combine(ownFolder, headFile));
+            if (!System.IO.File.Exists(headPath))
+            {
+                throw new InvalidOperationException($"Головная сборка не найдена:\n{headPath}");
+            }
+
+            return WithDocument(headPath, save: false, document =>
+            {
+                if (document is not AssemblyDocument head || SpecificationStore.Load(document) is not { } spec)
+                {
+                    throw new InvalidOperationException("В головной сборке нет спецификации.");
+                }
+
+                var headFolder = BomAccess.AssemblyFolder(head);
+                var version = VersionSync.Versions(spec).FirstOrDefault(g => !g.IsBaseVersion && string.Equals(
+                    System.IO.Path.GetFullPath(System.IO.Path.Combine(headFolder, g.VersionFile)), own.FullFileName, StringComparison.OrdinalIgnoreCase));
+                if (version is null)
+                {
+                    throw new InvalidOperationException("В групповой спецификации головной сборки этого исполнения нет.");
+                }
+
+                return (IReadOnlyDictionary<string, int>)VersionSync.PositionsFor(spec, version)
+                    .ToDictionary(x => VersionSync.RebaseKey(x.Key, headFolder, ownFolder), x => x.Value, StringComparer.OrdinalIgnoreCase);
+            });
+        }
 
         public string? VersionOf
         {

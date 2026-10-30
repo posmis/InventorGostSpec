@@ -255,6 +255,24 @@ public class VersionTests
         Assert.Equal(new[] { group }, spec.Groups);
         Assert.Equal(group.Id, rotor.GroupId);
     }
+
+    [Fact]
+    public void Positions_for_a_version_are_constant_data_and_its_variable_data_only()
+    {
+        var (spec, context, version) = Build();
+        PositionAllocator.RenumberAll(spec, context);
+        var baseVersion = VersionSync.Base(spec)!;
+
+        var positions = VersionSync.PositionsFor(spec, version);
+
+        // Постоянные данные — есть.
+        Assert.Equal(Row(spec, "АГБВ.686285.129", "").Position, positions["АГБВ.686285.129.iam"]);
+        // Своя составная часть -01 — есть, в том числе номер, взятый у основного исполнения.
+        Assert.Equal(Row(spec, "АГБВ.686295.012-01", version.Id).Position, positions["АГБВ.686295.012-01.iam"]);
+        Assert.Equal(Row(spec, "АГБВ.686295.012", baseVersion.Id).Position, positions["АГБВ.686295.012-01.iam"]);
+        // Переменные данные основного исполнения, которых нет в -01, — нет.
+        Assert.False(positions.ContainsKey("АГБВ.686189.349-08.iam"));
+    }
 }
 
 public class VariableDataSwitchTests
@@ -288,5 +306,25 @@ public class VariableDataSwitchTests
         Assert.Empty(spec.Groups);
         Assert.Equal("", axis.GroupId);
         Assert.DoesNotContain(SpecificationViewBuilder.Build(spec, context), r => r.Kind == DisplayRowKind.VersionsHeader);
+    }
+
+}
+
+public class RebaseKeyTests
+{
+    [Theory]
+    [InlineData(@"Детали/А.ipt", "/p/Исп01", "/p/Головная", @"../Исп01/Детали/А.ipt")]
+    [InlineData(@"../Общие/Б.ipt", "/p/Исп01", "/p/Головная", @"../Общие/Б.ipt")]
+    [InlineData("virtual:Смазка", "/p/Исп01", "/p/Головная", "virtual:Смазка")]
+    [InlineData("drawing:Узел.idw", "/p/Исп01", "/p/Головная", "drawing:../Исп01/Узел.idw")]
+    public void Keys_are_rebased_between_assembly_folders(string key, string from, string to, string expected) =>
+        Assert.Equal(expected, VersionSync.RebaseKey(key, from, to));
+
+    [Fact]
+    public void Rebase_there_and_back_gives_the_same_key()
+    {
+        const string key = "Детали/А.ipt";
+        var head = VersionSync.RebaseKey(key, "/p/Исп01", "/p/Головная");
+        Assert.Equal(key, VersionSync.RebaseKey(head, "/p/Головная", "/p/Исп01"));
     }
 }

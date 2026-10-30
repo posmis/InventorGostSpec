@@ -964,6 +964,39 @@ public class VersionWindowTests
     }
 
     [Fact]
+    public void Version_assembly_takes_positions_from_the_head_and_writes_bom()
+    {
+        _host.Components.AddRange(new[] { Part("А.001", "Корпус"), Part("А.004", "Шайба"), Part("А.009", "Своя") });
+        var spec = new Specification();
+        Core.Update.SpecificationUpdater.Update(spec, _host.Components, SpecificationContext.Create(_host.Settings, spec), DateTime.UtcNow);
+        _host.VersionOf = "Эта сборка — исполнение А-01 сборки А";
+        _host.HeadPositions = new Dictionary<string, int> { ["А.001.ipt"] = 1, ["А.004.ipt"] = 7 };
+        var vm = new SpecificationViewModel(_host, _dialogs, spec, post: action => action());
+        Assert.True(vm.PullHeadPositionsCommand.CanExecute(null));
+        _dialogs.ConfirmAnswer = true;
+
+        vm.PullHeadPositionsCommand.Execute(null);
+
+        Assert.Equal("7", vm.Rows.Single(r => r.Name == "Шайба").Position);
+        Assert.Equal("1", vm.Rows.Single(r => r.Name == "Корпус").Position);
+        Assert.Equal(1, _host.WritePositionsCount);
+        Assert.Contains(_dialogs.Confirmations, c => c.Contains("Нет в групповой спецификации (1)") && c.Contains("Своя"));
+    }
+
+    [Fact]
+    public void Head_positions_error_is_reported_and_command_only_in_version_assembly()
+    {
+        var plain = new SpecificationViewModel(_host, _dialogs, new Specification(), post: action => action());
+        Assert.False(plain.PullHeadPositionsCommand.CanExecute(null));
+
+        _host.VersionOf = "Эта сборка — исполнение";
+        var vm = new SpecificationViewModel(_host, _dialogs, new Specification(), post: action => action());
+        vm.PullHeadPositionsCommand.Execute(null);
+
+        Assert.Contains("Головная сборка не найдена", _dialogs.Warnings.Single());
+    }
+
+    [Fact]
     public void Version_assembly_shows_a_notice()
     {
         _host.VersionOf = "Эта сборка — исполнение А-01 сборки А";

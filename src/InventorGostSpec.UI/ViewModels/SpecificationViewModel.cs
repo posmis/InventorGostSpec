@@ -74,6 +74,7 @@ public sealed partial class SpecificationViewModel : ObservableObject
         AddVersionCommand = new RelayCommand(AddVersion);
         RemoveVersionCommand = new RelayCommand(RemoveVersion, () => SelectedVersion() is { IsBaseVersion: false });
         SetReplacesCommand = new RelayCommand(SetReplaces, p => p is string && SelectedRow?.IsVersionItem == true);
+        PullHeadPositionsCommand = new RelayCommand(PullHeadPositions, () => VersionNotice is not null);
         MoveToGroupCommand = new RelayCommand(MoveToGroup, p => p is string groupId && RowsToMove(groupId).Any());
         ReservesCommand = new RelayCommand(EditReserves);
         SaveCommand = new RelayCommand(Save, () => IsDirty);

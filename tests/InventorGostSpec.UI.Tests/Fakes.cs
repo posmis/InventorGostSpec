@@ -77,6 +77,12 @@ internal sealed class FakeHost : ISpecificationHost
 
     public string? VersionOf { get; set; }
 
+    /// <summary>Номера из головной сборки; <c>null</c> — ошибка «головная не найдена».</summary>
+    public Dictionary<string, int>? HeadPositions { get; set; }
+
+    public IReadOnlyDictionary<string, int>? ReadHeadPositions() =>
+        HeadPositions ?? throw new InvalidOperationException("Головная сборка не найдена.");
+
     /// <summary>Вызовы утилиты PDF: (Excel, PDF). Пока идёт вызов, временный Excel существует.</summary>
     public List<(string Excel, string Pdf, bool ExcelExisted)> PdfCalls { get; } = new();
 
@@ -228,7 +234,14 @@ internal sealed class FakeDialogs : IDialogService
 
     public string? AskVersionFile(string folder) => VersionFile;
 
-    public bool Confirm(string text) => ConfirmAnswer;
+    /// <summary>Тексты вопросов «Да/Нет».</summary>
+    public List<string> Confirmations { get; } = new();
+
+    public bool Confirm(string text)
+    {
+        Confirmations.Add(text);
+        return ConfirmAnswer;
+    }
 
     public void Info(string text) => Infos.Add(text);
 

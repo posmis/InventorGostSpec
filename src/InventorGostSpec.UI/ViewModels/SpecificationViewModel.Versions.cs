@@ -52,6 +52,12 @@ public sealed partial class SpecificationViewModel
     public bool IsVersionItemSelected => SelectedRow?.IsVersionItem == true;
 
     /// <summary>
+    /// В сборке-исполнении: номера позиций из групповой спецификации головной сборки — чтобы BOM и выноски на чертеже
+    /// исполнения совпадали с групповой спецификацией.
+    /// </summary>
+    public ICommand PullHeadPositionsCommand { get; }
+
+    /// <summary>
     /// Чьи номера может взять строка исполнения: составные части основного исполнения и предыдущих исполнений.
     /// </summary>
     public IReadOnlyList<Option> ReplacesOptions
@@ -231,5 +237,59 @@ public sealed partial class SpecificationViewModel
         VersionSync.MarkInherited(Specification);
         PositionAllocator.AssignMissing(Specification, _context);
         Changed(rebuild: true, selectRowId: row.Id);
+    }
+
+    private void PullHeadPositions()
+    {
+        CommitEdits?.Invoke();
+        IReadOnlyDictionary<string, int>? positions;
+        try
+        {
+            positions = _host.ReadHeadPositions();
+        }
+        catch (Exception ex)
+        {
+            _host.ReportError(ex);
+            _dialogs.Warning($"Не удалось взять номера позиций из головной сборки.\n\n{ex.Message}");
+            return;
+        }
+
+        if (positions is null || positions.Count == 0)
+        {
+            _dialogs.Warning("В групповой спецификации головной сборки нет номеров позиций для этого исполнения.");
+            return;
+        }
+
+        var changed = 0;
+        var missing = new List<string>();
+        foreach (var row in Specification.Rows.Where(r => r.Kind == RowKind.Component && !r.IsRemoved && r.ComponentKey is not null &&
+                                                         PositionAllocator.IsNumbered(r, _context)))
+        {
+            if (!positions.TryGetValue(row.ComponentKey!, out var position))
+            {
+                missing.Add(Describe(row));
+                continue;
+            }
+
+            if (row.Position != position)
+            {
+                row.Position = position;
+                changed++;
+            }
+        }
+
+        Changed(rebuild: true);
+        var report = $"Номера позиций из головной сборки: изменено {changed}.";
+        if (missing.Count > 0)
+        {
+            report += $"\n\nНет в групповой спецификации ({missing.Count}), номер не менялся:\n" +
+                      string.Join("\n", missing.Take(10).Select(m => "• " + m)) + (missing.Count > 10 ? "\n…" : "");
+        }
+
+        report += "\n\nЗаписать позиции в BOM (для выносок на чертеже)? Не нажимайте потом «Перенумеровать» — номера пересчитаются.";
+        if (_dialogs.Confirm(report))
+        {
+            WritePositions();
+        }
     }
 }

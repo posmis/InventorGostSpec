@@ -38,4 +38,7 @@ public static class PropertyNames
     /// Только для сообщения, ограничений не накладывает.
     /// </summary>
     public const string VersionOf = "SPEC_VersionOf";
+
+    /// <summary>Пометка в сборке-исполнении: путь к головной сборке относительно её папки (чтобы взять номера позиций).</summary>
+    public const string VersionOfFile = "SPEC_VersionOfFile";
 }

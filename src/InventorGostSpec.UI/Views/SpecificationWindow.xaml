@@ -213,7 +213,12 @@
         <!-- Эта сборка — исполнение другой: только сообщение. -->
         <Border DockPanel.Dock="Top" Background="#FEF3C7" BorderBrush="#F59E0B" BorderThickness="0,0,0,1" Padding="10,6"
                 Visibility="{Binding VersionNotice, Converter={StaticResource NullToCollapsed}}">
-            <TextBlock Text="{Binding VersionNotice}" TextWrapping="Wrap" Foreground="#78350F" />
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Margin="12,0,0,0" Padding="10,3" VerticalAlignment="Center"
+                        Content="Номера позиций из головной сборки" Command="{Binding PullHeadPositionsCommand}"
+                        ToolTip="Взять номера позиций из групповой спецификации головной сборки (общие компоненты и переменные данные этого исполнения) и записать в BOM — чтобы выноски на чертеже исполнения совпадали с групповой спецификацией." />
+                <TextBlock Text="{Binding VersionNotice}" TextWrapping="Wrap" Foreground="#78350F" VerticalAlignment="Center" />
+            </DockPanel>
         </Border>
 
         <!-- Нижняя панель: состояние, легенда, сохранение. -->

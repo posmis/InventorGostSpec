@@ -90,6 +90,12 @@ public interface ISpecificationHost
     /// <summary>Убирает пометку об исполнении из сборки.</summary>
     void UnmarkVersion(string path);
 
+    /// <summary>
+    /// Номера позиций групповой спецификации головной сборки для этой сборки-исполнения: ключ компонента (этой сборки)
+    /// → номер. Ошибка (нет пути к головной, нет спецификации, исполнения нет) — исключение с текстом для пользователя.
+    /// </summary>
+    IReadOnlyDictionary<string, int>? ReadHeadPositions();
+
     /// <summary>Эта сборка — исполнение другой: текст сообщения; <c>null</c> — нет.</summary>
     string? VersionOf { get; }
 

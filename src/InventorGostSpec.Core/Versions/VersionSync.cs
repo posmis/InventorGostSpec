@@ -103,6 +103,46 @@ public static class VersionSync
         return true;
     }
 
+    /// <summary>
+    /// Ключ компонента относительно другой папки сборки: «Детали\А.ipt» сборки-исполнения → «..\Исп01\Детали\А.ipt»
+    /// относительно головной. Виртуальные компоненты (по имени) не меняются; у чертежей («drawing:…») — путь после префикса.
+    /// </summary>
+    public static string RebaseKey(string key, string fromFolder, string toFolder)
+    {
+        const string virtualPrefix = "virtual:";
+        const string drawingPrefix = "drawing:";
+        if (key.StartsWith(virtualPrefix, StringComparison.Ordinal))
+        {
+            return key;
+        }
+
+        var isDrawing = key.StartsWith(drawingPrefix, StringComparison.Ordinal);
+        var relative = isDrawing ? key[drawingPrefix.Length..] : key;
+        var rebased = Path.GetRelativePath(toFolder, Path.GetFullPath(Path.Combine(fromFolder, relative)));
+        return isDrawing ? drawingPrefix + rebased : rebased;
+    }
+
+    /// <summary>
+    /// Номера позиций групповой спецификации, которые относятся к исполнению: постоянные данные (общие компоненты
+    /// и их группы) и переменные данные этого исполнения (в том числе номера, взятые у основного исполнения). Ключи —
+    /// как в головной спецификации. Нужны сборке-исполнению: её BOM и выноски на чертеже — с номерами групповой
+    /// спецификации.
+    /// </summary>
+    public static Dictionary<string, int> PositionsFor(Specification spec, SpecGroup version)
+    {
+        var scope = Scope(spec, version).ToHashSet();
+        var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in spec.Rows.Where(r => r.Position.HasValue && r.ComponentKey is not null && !r.IsRemoved))
+        {
+            if (scope.Contains(row.GroupId) || VersionOf(spec, row.GroupId) is null)
+            {
+                result.TryAdd(row.ComponentKey!, row.Position!.Value);
+            }
+        }
+
+        return result;
+    }
+
     /// <summary>Исполнение, к которому относится группа: само исполнение или исполнение группы внутри него.</summary>
     public static SpecGroup? VersionOf(Specification spec, string groupId)
     {

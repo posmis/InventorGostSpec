@@ -131,6 +131,30 @@ public class VersionTests
         Assert.Equal(expected, Designations.WithoutVersionNumber(designation));
 
     [Fact]
+    public void Version_format_zone_and_note_survive_sync_and_serialization()
+    {
+        var (spec, context, version) = Build();
+        var row = spec.Rows.First(r => r.Kind == RowKind.VersionItem);
+        var id = row.Id;
+        var sourceFormat = row.Source.Get(SpecColumn.Format);
+        Editing.SpecificationEditor.SetCell(spec, context, row, SpecColumn.Format, "А2");
+        Editing.SpecificationEditor.SetCell(spec, context, row, SpecColumn.Zone, "Б3");
+        Editing.SpecificationEditor.SetCell(spec, context, row, SpecColumn.Note, "Проверить чертеж");
+        Assert.Equal(sourceFormat, row.Source.Get(SpecColumn.Format));
+        Assert.True(row.IsOverridden(SpecColumn.Format));
+
+        VersionSync.Sync(spec, context, Head, new Dictionary<string, VersionComponents> { [version.Id] = new VersionComponents(Version01) });
+        var copy = Storage.SpecificationSerializer.Deserialize(Storage.SpecificationSerializer.Serialize(spec));
+        var saved = copy.Rows.Single(r => r.Id == id);
+        Assert.Equal("А2", saved.Get(SpecColumn.Format));
+        Assert.Equal("Б3", saved.Get(SpecColumn.Zone));
+        Assert.Equal("Проверить чертеж", saved.Get(SpecColumn.Note));
+
+        Editing.SpecificationEditor.SetCell(spec, context, row, SpecColumn.Format, sourceFormat);
+        Assert.False(row.IsOverridden(SpecColumn.Format));
+    }
+
+    [Fact]
     public void Version_rows_are_read_only_in_the_editor()
     {
         var (spec, context, version) = Build();

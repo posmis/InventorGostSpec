@@ -821,6 +821,34 @@ public class VersionWindowTests
     }
 
     [Fact]
+    public void Version_allows_only_format_zone_and_note_with_undo()
+    {
+        var vm = Open();
+        vm.AddVersionCommand.Execute(null);
+        var item = vm.Rows.First(r => r.IsVersionItem);
+        var id = item.RowId;
+        foreach (var column in Enum.GetValues<SpecColumn>())
+        {
+            Assert.Equal(column is SpecColumn.Format or SpecColumn.Zone or SpecColumn.Note, item.CanEdit(column));
+        }
+        var name = item.Name;
+        var format = item.Format;
+        item.Name = "Запрещено";
+        Assert.Equal(name, item.Name);
+        item.Format = "А2";
+        item.Zone = "Б3";
+        item.Note = "Примечание исполнения";
+        Assert.Equal(("А2", "Б3", "Примечание исполнения"), (item.Format, item.Zone, item.Note));
+        Assert.True(vm.IsDirty);
+        vm.UndoCommand.Execute(null);
+        Assert.Equal("", vm.Rows.Single(r => r.RowId == id).Note);
+        vm.UndoCommand.Execute(null);
+        Assert.Equal("", vm.Rows.Single(r => r.RowId == id).Zone);
+        vm.UndoCommand.Execute(null);
+        Assert.Equal(format, vm.Rows.Single(r => r.RowId == id).Format);
+    }
+
+    [Fact]
     public void Replacing_part_and_removing_the_version()
     {
         var vm = Open();

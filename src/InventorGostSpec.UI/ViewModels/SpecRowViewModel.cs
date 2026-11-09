@@ -20,7 +20,7 @@ public enum SpecRowKind
     /// <summary>Служебная надпись: «Отсутствуют», «Различия исполнений …».</summary>
     Notice,
 
-    /// <summary>Составная часть другого исполнения — серая, только для чтения.</summary>
+    /// <summary>Составная часть другого исполнения — серая; правятся формат, зона и примечание.</summary>
     VersionItem,
 
     /// <summary>«Общие компоненты (постоянные данные)» — подпись уровня исполнений, только в окне.</summary>
@@ -114,7 +114,7 @@ public sealed class SpecRowViewModel : ObservableObject
         Kind is SpecRowKind.VersionsHeader or SpecRowKind.CommonHeader ||
         (Kind == SpecRowKind.GroupHeader && _owner.IsVersionGroup(GroupId));
 
-    /// <summary>Строка другого исполнения: серая, только для чтения.</summary>
+    /// <summary>Строка другого исполнения: правятся только формат, зона и примечание.</summary>
     public bool IsVersionItem => Kind == SpecRowKind.VersionItem;
 
     public bool IsNotice => Kind == SpecRowKind.Notice;
@@ -185,7 +185,8 @@ public sealed class SpecRowViewModel : ObservableObject
     public bool CanEdit(SpecColumn column) => Kind switch
     {
         SpecRowKind.GroupHeader => column == SpecColumn.Name && _owner.CanRenameGroup(GroupId),
-        SpecRowKind.Header or SpecRowKind.Reserve or SpecRowKind.VersionsHeader or SpecRowKind.Notice or SpecRowKind.VersionItem
+        SpecRowKind.VersionItem => column is SpecColumn.Format or SpecColumn.Zone or SpecColumn.Note,
+        SpecRowKind.Header or SpecRowKind.Reserve or SpecRowKind.VersionsHeader or SpecRowKind.Notice
             or SpecRowKind.CommonHeader => false,
         SpecRowKind.Note => column == SpecColumn.Name,
 
@@ -240,8 +241,8 @@ public sealed class SpecRowViewModel : ObservableObject
             if (IsVersionItem && column is SpecColumn.Designation or SpecColumn.Name)
             {
                 tips.Add(Row!.ReplacesKey is not null
-                    ? $"Составная часть исполнения (из сборки-исполнения, только для чтения). Заменяет поз. {Row.Position}."
-                    : "Составная часть исполнения (из сборки-исполнения, только для чтения).");
+                    ? $"Составная часть исполнения (из сборки-исполнения; правятся формат, зона и примечание). Заменяет поз. {Row.Position}."
+                    : "Составная часть исполнения (из сборки-исполнения; правятся формат, зона и примечание).");
             }
 
             if (IsRemoved && column == SpecColumn.Name)

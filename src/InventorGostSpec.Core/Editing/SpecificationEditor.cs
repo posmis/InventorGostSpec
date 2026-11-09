@@ -17,8 +17,8 @@ public static class SpecificationEditor
     /// </summary>
     public static void SetCell(Specification spec, SpecificationContext context, SpecRow row, SpecColumn column, string? value)
     {
-        // Строки других исполнений — только для чтения: их данные из сборки-исполнения.
-        if (row.Kind == RowKind.VersionItem)
+        // У других исполнений вручную правятся только оформление и примечание.
+        if (row.Kind == RowKind.VersionItem && column is not (SpecColumn.Format or SpecColumn.Zone or SpecColumn.Note))
         {
             return;
         }
@@ -60,7 +60,7 @@ public static class SpecificationEditor
                 return;
             }
         }
-        else if (row.Kind == RowKind.Component)
+        else if (row.Kind is RowKind.Component or RowKind.VersionItem)
         {
             if (value == row.Source.Get(column))
             {

@@ -61,8 +61,8 @@ public sealed class GostRowComparer : IComparer<SpecRow>
         NaturalComparer.CompareEmptyLast(x.Get(SpecColumn.Designation), y.Get(SpecColumn.Designation));
 
     /// <summary>
-    /// Категория стандарта → группа по назначению → наименование изделия →
-    /// обозначение стандарта → основные параметры.
+    /// Категория стандарта → группа по назначению → тип изделия (для ГОСТ) →
+    /// обозначение стандарта → полное наименование → основные параметры.
     /// </summary>
     private static int CompareStandardProducts(SpecRow x, SpecRow y)
     {
@@ -71,11 +71,27 @@ public sealed class GostRowComparer : IComparer<SpecRow>
         return First(
             StandardCategories.SortRank(fx.StandardNumber).CompareTo(StandardCategories.SortRank(fy.StandardNumber)),
             () => NaturalComparer.CompareEmptyLast(fx.Group, fy.Group),
-            () => NaturalComparer.CompareEmptyLast(fx.SortName, fy.SortName),
+            // Внутри ГОСТ уточнение головки не должно опережать номер стандарта:
+            // «Винт со ... 7045» → «Винт с ... 7380» → «Винт ... 11738».
+            () => NaturalComparer.CompareEmptyLast(StandardProductType(fx), StandardProductType(fy)),
             () => NaturalComparer.CompareEmptyLast(
                 StandardCategories.StripPrefix(fx.StandardNumber),
                 StandardCategories.StripPrefix(fy.StandardNumber)),
+            () => NaturalComparer.CompareEmptyLast(fx.SortName, fy.SortName),
             () => NaturalComparer.CompareEmptyLast(fx.Parameters, fy.Parameters));
+    }
+
+    private static string StandardProductType(SortFields fields)
+    {
+        // Меняем только ГОСТ / ГОСТ Р; остальные категории сохраняют полное наименование.
+        if (StandardCategories.Categorize(fields.StandardNumber) is not
+            (StandardCategory.Interstate or StandardCategory.National))
+        {
+            return fields.SortName;
+        }
+
+        // Первое слово — тип изделия; дефисные названия («Рым-болт») остаются целыми.
+        return fields.SortName.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
     }
 
     /// <summary>Однородная группа → наименование → основные параметры.</summary>

@@ -142,6 +142,39 @@ public class GostRowComparerTests
             result);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Gost_products_of_same_type_follow_standard_number_despite_head_description(bool storedSortNames)
+    {
+        var names = new[]
+        {
+            "Гайка-барашек DIN 315-M8-St-C",
+            "Болт M8-6gx30.109.05(S13) ГОСТ 7798-70",
+            "Винт со скругленной головкой ГОСТ Р ИСО 7045 - M2x5-4.8-Z-A2U",
+            "Винт с полукруглой головкой и шестигранным углублением ГОСТ ISO 7380-1-M4x8-010.9-A2U",
+            "Винт M5-6gx20.109.016 ГОСТ 11738-84",
+            "Винт M8-6gx25.109.016 ГОСТ 11738-84",
+            "Шайба 8.65Г.019 ГОСТ 6402-70",
+            "Шайба А.2.01.08кп.016 ГОСТ 11371-78",
+            "Шайба А.5.01.08кп.016 ГОСТ 11371-78",
+            "Шайба А.8.01.08кп.016 ГОСТ 11371-78",
+        };
+        var rows = names.Select(n => TestData.Row(SectionIds.StandardProducts, name: n)).ToArray();
+        if (storedSortNames)
+        {
+            foreach (var row in rows)
+            {
+                row.Source.SortName = StandardDesignationParser.Parse(row.Get(SpecColumn.Name)).Name;
+            }
+        }
+
+        // Исходный порядок с фотографии, включая M8 перед M5 одного ГОСТа.
+        var input = new[] { rows[0], rows[1], rows[5], rows[3], rows[4], rows[2], rows[6], rows[7], rows[8], rows[9] };
+        Assert.Equal(names, Sort(SortRule.StandardProducts, input));
+        Assert.Equal(names, Sort(SortRule.StandardProducts, input.Reverse().ToArray()));
+    }
+
     [Fact]
     public void Foreign_standards_go_first()
     {
